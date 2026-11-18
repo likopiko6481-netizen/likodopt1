@@ -4,7 +4,6 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Likodopt</title>
-<script src="https://unpkg.com"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0;font-family:sans-serif}
 body{background:url('./bg.png') center/cover fixed,#0f1115;color:#fff;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:15px}
@@ -40,38 +39,85 @@ button{cursor:pointer;border:none;font-weight:700;border-radius:10px}
 </div>
 <div class="ck" id="ck"><span>🍪 Мы используем ваши файлы <b style="color:#00e676">Cookie</b> для улучшения работы сайта.</span><button onclick="this.parentElement.remove()" style="background:#262b38;color:#fff;width:28px;height:28px;border-radius:50%">✕</button></div>
 <script>
-let p=null,c=null,d=null,st=null,m=false,run=false;
 const $=id=>document.getElementById(id);
+const me='u'+Math.random().toString(36).slice(2,9);
+let pid=null,st='idle',mic=null,pc=null,mute=false,loop=null,sec=0,tInt=null;
+const seen=new Set();
+const API='https://jsonblob.com';
+
 const log=(t,k)=>{const e=document.createElement('div');e.className='m '+k;e.textContent=t;$('msgs').appendChild(e);$('msgs').scrollTop=9999};
 const ui=(ic,tx,on)=>{$('ico').textContent=ic;$('st').textContent=tx;$('i').disabled=!on;$('s').disabled=!on};
-function end(msg){run=false;if(c)c.close();if(d)d.close();if(p)p.destroy();c=d=p=null;ui('🎙️',msg,false)}
-function bindD(x){d=x;d.on('open',()=>{run=false;ui('🎧','Собеседник на связи!',true);$('msgs').innerHTML='';log('Собеседник найден!','sys')});d.on('data',t=>log(t,'he'));d.on('close',()=>end('Собеседник отключился'))}
-function bindC(x){c=x;c.on('stream',s=>{$('a').srcObject=s;$('a').play().catch(()=>{})})}
-function tryRoom(n){
-  if(!run)return;
-  const id='likodopt_ru_room_'+n;
-  p=new Peer({config:{iceServers:[{urls:'stun:://google.com'}]}});
-  p.on('open',()=>{
-    const conn=p.connect(id);
-    const t=setTimeout(()=>{if(run){p.destroy();hostRoom(id)}},1500);
-    conn.on('open',()=>{clearTimeout(t);bindD(conn);if(st)bindC(p.call(id,st))});
+
+function timer(on){
+  clearInterval(tInt);sec=0;
+  if(on)tInt=setInterval(()=>{sec++;$('st').textContent=(st==='search'?'В очереди: ':'Собеседник на связи: ')+String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0')},1000);
+}
+
+async function sync(fn){
+  try{
+    const r=await fetch(API);
+    let d=r.ok?await r.json():{q:[],m:[]};
+    if(!d.q)d.q=[];if(!d.m)d.m=[];
+    const now=Date.now();
+    d.q=d.q.filter(x=>now-x.t<9000);
+    d.m=d.m.filter(x=>now-x.t<15000);
+    const upd=await fn(d,now);
+    if(upd)await fetch(API,{method:'PUT',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)});
+  }catch(e){}
+}
+
+function stop(msg){
+  clearInterval(loop);timer(false);
+  if(pid)sync(d=>{d.m.push({id:me+Date.now(),f:me,to:pid,tp:'bye',t:Date.now()});return true});
+  pid=null;st='idle';if(pc){pc.close();pc=null}
+  if(msg){$('b2').disabled=true;ui('🎙️',msg,false)}
+}
+
+async function call(init){
+  st='call';timer(true);$('msgs').innerHTML='';ui('🎧','Собеседник на связи: 00:00',true);log('Собеседник найден!','sys');
+  pc=new RTCPeerConnection({iceServers:[{urls:'stun:://google.com'},{urls:'turn:openrelay.metered.ca:443',username:'openrelayproject',credential:'openrelayproject'}]});
+  if(mic)mic.getTracks().forEach(t=>pc.addTrack(t,mic));
+  pc.ontrack=e=>{$('a').srcObject=new MediaStream([e.track]);$('a').play().catch(()=>{})};
+  pc.onicecandidate=e=>{if(e.candidate&&pid)sync(d=>{d.m.push({id:me+Math.random(),f:me,to:pid,tp:'c',c:e.candidate,t:Date.now()});return true})};
+  if(init){const o=await pc.createOffer();await pc.setLocalDescription(o);sync(d=>{d.m.push({id:me+Math.random(),f:me,to:pid,tp:'o',o,t:Date.now()});return true})}
+}
+
+$('b1').onclick=()=>{
+  stop(false);st='search';$('b2').disabled=false;$('msgs').innerHTML='';ui('🔍','В очереди: 00:00',false);timer(true);log('Ищем собеседника...','sys');
+  if(!mic&&navigator.mediaDevices)navigator.mediaDevices.getUserMedia({audio:true}).then(s=>{mic=s;$('b3').disabled=false}).catch(()=>{});
+  const step=()=>sync(async(d,now)=>{
+    const other=d.q.find(x=>x.id!==me);
+    if(other&&me>other.id){
+      pid=other.id;d.q=d.q.filter(x=>x.id!==me&&x.id!==pid);
+      d.m.push({id:me+now,f:me,to:pid,tp:'ok',t:now});
+      clearInterval(loop);call(true);return true;
+    }
+    if(!d.q.some(x=>x.id===me)){d.q.push({id:me,t:now});return true}
+    d.q.find(x=>x.id===me).t=now;return true;
   });
-}
-function hostRoom(id){
-  if(!run)return;
-  p=new Peer(id,{config:{iceServers:[{urls:'stun:://google.com'}]}});
-  p.on('connection',conn=>{if(run)bindD(conn)});
-  p.on('call',call=>{call.answer(st||undefined);bindC(call)});
-  p.on('error',()=>{if(run){p.destroy();tryRoom(Math.floor(Math.random()*10)+1)}});
-}
-$('b1').onclick=async()=>{
-  end('Поиск...');run=true;$('b2').disabled=false;$('msgs').innerHTML='';ui('🔍','Ищем собеседника (Очередь)...',false);
-  if(!st&&navigator.mediaDevices)try{st=await navigator.mediaDevices.getUserMedia({audio:true});$('b3').disabled=false}catch(e){}
-  tryRoom(1);
+  step();loop=setInterval(step,1500);
 };
-$('b2').onclick=()=>{$('b2').disabled=true;end('Поиск остановлен')};
-$('b3').onclick=()=>{if(!st)return;m=!m;st.getAudioTracks().forEach(t=>t.enabled=!m);$('b3').textContent=m?'Включить микрофон':'Выключить микрофон'};
-$('f').onsubmit=e=>{e.preventDefault();const v=$('i').value.trim();if(!v||!d)return;log(v,'me');d.send(v);$('i').value=''};
+
+$('b2').onclick=()=>stop('Поиск остановлен');
+$('b3').onclick=()=>{if(!mic)return;mute=!mute;mic.getAudioTracks().forEach(t=>t.enabled=!mute);$('b3').textContent=mute?'Включить микрофон':'Выключить микрофон'};
+$('f').onsubmit=e=>{e.preventDefault();const v=$('i').value.trim();if(!v||!pid)return;log(v,'me');$('i').value='';sync(d=>{d.m.push({id:me+Date.now(),f:me,to:pid,tp:'txt',v,t:Date.now()});return true})};
+
+setInterval(()=>sync(async d=>{
+  let ch=false;
+  for(const m of d.m){
+    if(m.to!==me||seen.has(m.id))continue;seen.add(m.id);ch=true;
+    if(m.tp==='ok'&&st==='search'){pid=m.f;clearInterval(loop);call(false)}
+    else if(m.f===pid){
+      if(m.tp==='o'&&pc){await pc.setRemoteDescription(new RTCSessionDescription(m.o));const a=await pc.createAnswer();await pc.setLocalDescription(a);d.m.push({id:me+Math.random(),f:me,to:pid,tp:'a',a,t:Date.now()})}
+      else if(m.tp==='a'&&pc)await pc.setRemoteDescription(new RTCSessionDescription(m.a));
+      else if(m.tp==='c'&&pc)try{await pc.addIceCandidate(new RTCIceCandidate(m.c))}catch(e){}
+      else if(m.tp==='txt')log(m.v,'he');
+      else if(m.tp==='bye')stop('Собеседник отключился');
+    }
+  }
+  if(ch)d.m=d.m.filter(x=>x.to!==me);
+  return ch;
+}),1200);
 </script>
 </body>
 </html>
