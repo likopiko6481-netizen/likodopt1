@@ -8,47 +8,54 @@
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
 body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: url('./bg.png') no-repeat center center fixed, url('./bg.jpg') no-repeat center center fixed, #0f1115; background-size: cover; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 15px; }
-.app { background: rgba(24, 27, 34, 0.90); backdrop-filter: blur(8px); width: 100%; max-width: 460px; border-radius: 20px; padding: 25px; box-shadow: 0 12px 40px rgba(0,0,0,0.6); border: 1px solid #262a35; }
-.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.app { background: rgba(24, 27, 34, 0.94); width: 100%; max-width: 460px; border-radius: 20px; padding: 22px; box-shadow: 0 12px 40px rgba(0,0,0,0.65); border: 1px solid #262a35; position: relative; z-index: 10; }
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
 .logo { font-size: 1.5rem; font-weight: 800; color: #00e676; letter-spacing: 1px; }
 .online-badge { background: #232834; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; color: #a0aab8; display: flex; align-items: center; }
 .online-dot { width: 8px; height: 8px; background: #00e676; border-radius: 50%; margin-right: 6px; }
-.voice-box { background: rgba(18, 20, 26, 0.85); border-radius: 16px; padding: 22px 15px; text-align: center; margin-bottom: 15px; border: 1px solid #222630; min-height: 160px; display: flex; flex-direction: column; justify-content: center; }
-.avatar { width: 72px; height: 72px; border-radius: 50%; background: #232834; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+.voice-box { background: rgba(18, 20, 26, 0.9); border-radius: 16px; padding: 20px 15px; text-align: center; margin-bottom: 15px; border: 1px solid #222630; min-height: 155px; display: flex; flex-direction: column; justify-content: center; }
+.avatar { width: 70px; height: 70px; border-radius: 50%; background: #232834; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
 .avatar.speaking { box-shadow: 0 0 0 6px rgba(0, 230, 118, 0.35); background: #1c382c; border: 2px solid #00e676; }
 #status { font-size: 1rem; color: #cfd8e3; font-weight: 500; }
 .queue-window, .call-window { display: none; flex-direction: column; align-items: center; }
 .queue-window.active, .call-window.active { display: flex; }
-.radar { position: relative; width: 72px; height: 72px; border-radius: 50%; background: rgba(0, 230, 118, 0.12); border: 2px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin-bottom: 12px; }
-.radar::before { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid #00e676; animation: pulseRing 2s infinite ease-out; }
+.radar { position: relative; width: 70px; height: 70px; border-radius: 50%; background: rgba(0, 230, 118, 0.12); border: 2px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin-bottom: 10px; pointer-events: none; }
+.radar::before { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid #00e676; animation: pulseRing 2s infinite ease-out; pointer-events: none; }
 @keyframes pulseRing { 0% { transform: scale(0.95); opacity: 0.8; } 100% { transform: scale(1.55); opacity: 0; } }
 .queue-title { font-size: 1.05rem; font-weight: 700; color: #00e676; margin-bottom: 4px; }
-.queue-sub { font-size: 0.85rem; color: #a0aab8; margin-bottom: 10px; }
+.queue-sub { font-size: 0.85rem; color: #a0aab8; margin-bottom: 8px; }
 .timer-pill { background: #232834; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; border: 1px solid #323846; }
-.chat-box { background: rgba(18, 20, 26, 0.85); border-radius: 14px; height: 180px; display: flex; flex-direction: column; margin-bottom: 15px; border: 1px solid #222630; overflow: hidden; }
+.chat-box { background: rgba(18, 20, 26, 0.9); border-radius: 14px; height: 170px; display: flex; flex-direction: column; margin-bottom: 15px; border: 1px solid #222630; overflow: hidden; }
 #messages { flex: 1; padding: 12px; overflow-y: auto; font-size: 0.9rem; display: flex; flex-direction: column; gap: 8px; }
 .msg { padding: 8px 12px; border-radius: 10px; max-width: 82%; word-wrap: break-word; }
 .msg.me { background: #00e676; color: #000; align-self: flex-end; font-weight: 500; }
 .msg.partner { background: #262b38; color: #fff; align-self: flex-start; }
 .msg.sys { background: transparent; color: #788292; align-self: center; font-size: 0.8rem; text-align: center; }
 .chat-input { display: flex; border-top: 1px solid #222630; }
-.chat-input input { flex: 1; background: transparent; border: none; padding: 12px; color: #fff; outline: none; font-size: 0.9rem; }
-.chat-input button { background: transparent; border: none; color: #00e676; font-weight: bold; padding: 0 18px; font-size: 1.1rem; cursor: pointer; }
+.chat-input input { flex: 1; background: transparent; border: none; padding: 12px; color: #fff; outline: none; font-size: 16px; }
+.chat-input button { background: transparent; border: none; color: #00e676; font-weight: bold; padding: 0 18px; font-size: 1.2rem; cursor: pointer; touch-action: manipulation; }
 .chat-input button:disabled { color: #555; }
-.controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.btn { padding: 15px; border: none; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; }
+.controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; position: relative; z-index: 30; }
+.btn { padding: 16px 10px; border: none; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; touch-action: manipulation; -webkit-appearance: none; user-select: none; }
+.btn:active { transform: scale(0.96); }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 #btnNext { background: #00e676; color: #000; }
 #btnStop { background: #ff5252; color: #fff; }
 #btnMute { grid-column: span 2; background: #262b38; color: #fff; font-weight: 600; }
 #btnMute.muted { background: #ff9800; color: #000; }
-.cookie-banner { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); width: calc(100% - 30px); max-width: 460px; background: rgba(24, 27, 34, 0.96); border: 1px solid rgba(0, 230, 118, 0.35); border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; z-index: 999; }
-.cookie-text { font-size: 0.88rem; color: #e6ecf5; line-height: 1.4; }
+.cookie-banner { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); width: calc(100% - 30px); max-width: 460px; background: rgba(24, 27, 34, 0.98); border: 1px solid rgba(0, 230, 118, 0.4); border-radius: 14px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; z-index: 999; box-shadow: 0 8px 25px rgba(0,0,0,0.8); }
+.cookie-text { font-size: 0.82rem; color: #e6ecf5; line-height: 1.35; }
 .cookie-text span { color: #00e676; font-weight: 700; }
-.cookie-close { background: #262b38; color: #a0aab8; border: 1px solid #353b4d; border-radius: 50%; width: 34px; height: 34px; min-width: 34px; display: flex; align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; }
+.cookie-close { background: #262b38; color: #fff; border: 1px solid #353b4d; border-radius: 50%; width: 32px; height: 32px; min-width: 32px; display: flex; align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; touch-action: manipulation; }
 </style>
 </head>
 <body>
+
+<div class="cookie-banner" id="cookieBanner">
+  <div class="cookie-text">🍪 Мы используем ваши файлы <span>Cookie</span> для улучшения работы сайта.</div>
+  <button type="button" class="cookie-close" id="ckBtn">✕</button>
+</div>
+
 <div class="app">
   <div class="header">
     <div class="logo">LIKODOPT</div>
@@ -75,23 +82,18 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 
   <div class="chat-box">
     <div id="messages"></div>
-    <form class="chat-input" id="chatForm" onsubmit="sendMsg(event)">
+    <form class="chat-input" id="chatForm">
       <input type="text" id="msgInput" placeholder="Написать сообщение..." disabled autocomplete="off">
       <button type="submit" id="btnSend" disabled>➤</button>
     </form>
   </div>
 
   <div class="controls">
-    <button type="button" class="btn" id="btnNext" onclick="onNext()">Найти / Далее</button>
-    <button type="button" class="btn" id="btnStop" onclick="onStop()" disabled>Стоп</button>
-    <button type="button" class="btn" id="btnMute" onclick="onMute()" disabled>Выключить микрофон</button>
+    <button type="button" class="btn" id="btnNext">Найти / Далее</button>
+    <button type="button" class="btn" id="btnStop" disabled>Стоп</button>
+    <button type="button" class="btn" id="btnMute" disabled>Выключить микрофон</button>
   </div>
   <audio id="remoteAudio" autoplay playsinline></audio>
-</div>
-
-<div class="cookie-banner" id="cookieBanner">
-  <div class="cookie-text">🍪 Мы используем ваши файлы <span>Cookie</span> для улучшения работы сайта.</div>
-  <button type="button" class="cookie-close" onclick="closeCk()">✕</button>
 </div>
 
 <script>
@@ -101,8 +103,12 @@ const me = 'u_' + Math.random().toString(36).slice(2, 10);
 let pid = null, st = 'idle', stream = null, pc = null, timer = null, searchLoop = null, sec = 0, muted = false;
 const seen = new Set();
 
-if (document.cookie.includes('lk_ck=1')) document.getElementById('cookieBanner').style.display = 'none';
-function closeCk() { document.cookie = 'lk_ck=1;max-age=2592000;path=/'; document.getElementById('cookieBanner').style.display = 'none'; }
+const ckBanner = document.getElementById('cookieBanner');
+if (document.cookie.includes('lk_ck=1')) ckBanner.style.display = 'none';
+document.getElementById('ckBtn').addEventListener('click', function() {
+  document.cookie = 'lk_ck=1;max-age=2592000;path=/';
+  ckBanner.style.display = 'none';
+});
 
 function log(text, cls = 'sys') {
   const d = document.createElement('div'); d.className = 'msg ' + cls; d.textContent = text;
@@ -117,7 +123,7 @@ function setScreen(mode) {
   if (mode === 'queue' || mode === 'call') {
     const el = document.getElementById(mode === 'queue' ? 'searchTimerText' : 'callTimerText');
     el.textContent = '00:00';
-    timer = setInterval(() => {
+    timer = setInterval(function() {
       sec++;
       el.textContent = String(Math.floor(sec/60)).padStart(2,'0') + ':' + String(sec%60).padStart(2,'0');
     }, 1000);
@@ -142,43 +148,51 @@ function onNext() {
   setScreen('queue');
   log('Вы вошли в очередь ожидания собеседника...');
 
-  if (!stream && navigator.mediaDevices) {
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(s => { stream = s; document.getElementById('btnMute').disabled = false; }).catch(() => {});
+  if (!stream && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(s) {
+      stream = s;
+      document.getElementById('btnMute').disabled = false;
+    }).catch(function() {});
   }
 
-  if (!FB.startsWith('http')) { log('Укажите ссылку Firebase в коде index.html!'); return; }
+  if (!FB.startsWith('http')) {
+    log('Укажите вашу ссылку Firebase в коде index.html!');
+    return;
+  }
   findStep();
   searchLoop = setInterval(findStep, 1500);
 }
 
 function onStop(showMsg = true) {
   clearInterval(searchLoop);
-  if (FB.startsWith('http')) fetch(FB + '/q/' + me + '.json', { method: 'DELETE' }).catch(() => {});
+  if (FB.startsWith('http')) fetch(FB + '/q/' + me + '.json', { method: 'DELETE' }).catch(function() {});
   if (pid) postSig(pid, { type: 'bye' });
-  pid = null; st = 'idle'; setScreen('idle'); chatOn(false);
-  if (pc) { try { pc.close(); } catch (e) {} pc = null; }
-  if (showMsg) {
-    document.getElementById('btnStop').disabled = true;
-    document.getElementById('status').textContent = 'Поиск остановлен';
-    log('Вы вышли из очереди');
-  }
+pid = null; st = 'idle'; setScreen('idle'); chatOn(false);
+if (pc) { try { pc.close(); } catch (e) {} pc = null; }
+if (showMsg) {
+document.getElementById('btnStop').disabled = true;
+document.getElementById('status').textContent = 'Поиск остановлен';
+log('Вы вышли из очереди');
 }
-
+}
 function onMute() {
-  if (!stream) return;
-  muted = !muted;
-stream.getAudioTracks().forEach(t => t.enabled = !muted);
+if (!stream) return;
+muted = !muted;
+stream.getAudioTracks().forEach(function(t) { t.enabled = !muted; });
 const b = document.getElementById('btnMute');
 b.textContent = muted ? 'Включить микрофон' : 'Выключить микрофон';
 b.classList.toggle('muted', muted);
 }
-function sendMsg(e) {
+document.getElementById('btnNext').addEventListener('click', onNext);
+document.getElementById('btnStop').addEventListener('click', function() { onStop(true); });
+document.getElementById('btnMute').addEventListener('click', onMute);
+document.getElementById('chatForm').addEventListener('submit', function(e) {
 e.preventDefault();
 const inp = document.getElementById('msgInput');
 const txt = inp.value.trim();
 if (!txt || !pid) return;
 log(txt, 'me'); postSig(pid, { type: 'chat', text: txt }); inp.value = '';
-}
+});
 async function findStep() {
 if (st !== 'search') return;
 try {
@@ -203,15 +217,15 @@ st = 'call'; setScreen('call'); chatOn(true);
 document.getElementById('messages').innerHTML = '';
 log('Собеседник найден! Вы в комнате общения 👋');
 pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:google.com' }, { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }] });
-if (stream) stream.getTracks().forEach(t => pc.addTrack(t, stream));
-pc.ontrack = e => { const a = document.getElementById('remoteAudio'); a.srcObject = new MediaStream([e.track]); a.play().catch(() => {}); };
-pc.onicecandidate = e => { if (e.candidate && pid) postSig(pid, { type: 'cand', cand: e.candidate }); };
+if (stream) stream.getTracks().forEach(function(t) { pc.addTrack(t, stream); });
+pc.ontrack = function(e) { const a = document.getElementById('remoteAudio'); a.srcObject = new MediaStream([e.track]); a.play().catch(function() {}); };
+pc.onicecandidate = function(e) { if (e.candidate && pid) postSig(pid, { type: 'cand', cand: e.candidate }); };
 if (init) {
 const off = await pc.createOffer(); await pc.setLocalDescription(off);
 await postSig(pid, { type: 'offer', offer: off });
 }
 }
-setInterval(async () => {
+setInterval(async function() {
 if (!FB.startsWith('http')) return;
 try {
 const res = await fetch(FB + '/in/' + me + '.json');
