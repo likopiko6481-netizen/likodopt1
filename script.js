@@ -42,31 +42,22 @@ const ROOM_URL = 'https://ntfy.sh';
 const myId = 'u_' + Math.random().toString(36).slice(2, 10) + '_' + Date.now().toString(36).slice(-4);
 
 let partnerId = null;
-let state = 'idle'; // idle | searching | connecting | connected
+let state = 'idle';
 let localStream = null;
 let pc = null;
 let isMuted = false;
 let searchTimer = null;
 let clockInterval = null;
 let searchSeconds = 0;
-let eventSource = null;
+let lastMsgId = '';
 const processedEvents = new Set();
 
 const rtcConfig = {
     iceServers: [
         { urls: 'stun:://google.com' },
         { urls: 'stun:://google.com' },
-        { urls: 'stun:://google.com' },
-        {
-            urls: 'turn:openrelay.metered.ca:80',
-            username: 'openrelayproject',
-            credential: 'openrelayproject'
-        },
-        {
-            urls: 'turn:openrelay.metered.ca:443',
-            username: 'openrelayproject',
-            credential: 'openrelayproject'
-        }
+        { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+        { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
     ]
 };
 
@@ -111,48 +102,38 @@ async function sendSignal(payload) {
             method: 'POST',
             body: JSON.stringify({ msgId, from: myId, ts: Date.now(), ...payload })
         });
-    } catch (e) {
-        netStatusEl.textContent = 'Ошибка сети';
-    }
+    } catch (e) {}
 }
 
-function connectStream() {
-    if (eventSource) {
-        try { eventSource.close(); } catch (e) {}
+// Короткий опрос вместо обрывающегося EventSource
+async function pollLoop() {
+    try {
+        const query = lastMsgId ? ('?poll=1&id=' + encodeURIComponent(lastMsgId)) : '?poll=1&since=5s';
+        const res = await fetch(ROOM_URL + '/json' + query);
+        if (res.ok) {
+            netStatusEl.textContent = 'Онлайн: В сети';
+            const text = await res.text();
+            const lines = text.trim().split('\n');
+            for (let i = 0; i < lines.length; i++) {
+                if (!lines[i]) continue;
+                const wrapper = JSON.parse(lines[i]);
+                if (wrapper.id) lastMsgId = wrapper.id;
+                if (!wrapper.message) continue;
+                const data = JSON.parse(wrapper.message);
+                if (!data || data.from === myId) continue;
+                if (data.msgId && processedEvents.has(data.msgId)) continue;
+                if (data.msgId) processedEvents.add(data.msgId);
+                if (data.ts && (Date.now() - data.ts > 20000)) continue;
+                await handleIncomingData(data);
+            }
+        }
+    } catch (e) {
+        netStatusEl.textContent = 'Онлайн: Ожидание сети';
     }
-
-    // Подключаемся к живому потоку без старых сообщений
-    eventSource = new EventSource(ROOM_URL + '/sse?since=none');
-
-    eventSource.onopen = function() {
-        netStatusEl.textContent = 'Онлайн: В сети';
-    };
-
-    eventSource.onmessage = async function(ev) {
-        let wrapper, data;
-        try {
-            wrapper = JSON.parse(ev.data);
-            if (!wrapper.message) return;
-            data = JSON.parse(wrapper.message);
-        } catch (e) { return; }
-
-        if (!data || data.from === myId) return;
-        if (data.msgId && processedEvents.has(data.msgId)) return;
-        if (data.msgId) processedEvents.add(data.msgId);
-
-        // Защита от устаревших сообщений старше 15 секунд
-        if (data.ts && (Date.now() - data.ts > 15000)) return;
-
-        await handleIncomingData(data);
-    };
-
-    eventSource.onerror = function() {
-        netStatusEl.textContent = 'Переподключение...';
-    };
+    setTimeout(pollLoop, 1500);
 }
 
 async function handleIncomingData(data) {
-    // 1. Кто-то ищет собеседника, и мы тоже в поиске
     if (data.type === 'seek' && state === 'searching') {
         if (myId > data.from) {
             state = 'connecting';
@@ -161,16 +142,12 @@ async function handleIncomingData(data) {
             await sendSignal({ to: partnerId, type: 'accept' });
             await startWebRTC(true);
         }
-    }
-    // 2. Нас выбрали в пару
-    else if (data.to === myId && data.type === 'accept' && state === 'searching') {
+    } else if (data.to === myId && data.type === 'accept' && state === 'searching') {
         state = 'connecting';
         partnerId = data.from;
         clearInterval(searchTimer);
         await startWebRTC(false);
-    }
-    // 3. Сообщения от нашего текущего собеседника
-    else if (data.to === myId && data.from === partnerId) {
+    } else if (data.to === myId && data.from === partnerId) {
         if (data.type === 'offer' && pc) {
             await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
             const answer = await pc.createAnswer();
@@ -192,14 +169,11 @@ async function handleIncomingData(data) {
     }
 }
 
-connectStream();
+pollLoop();
 
 async function tryInitAudio() {
     if (localStream) return;
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        addMessage('Микрофон недоступен — работает текстовый чат', 'sys');
-        return;
-    }
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
     try {
         localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
         btnMute.disabled = false;
@@ -287,7 +261,7 @@ btnNext.onclick = async function() {
         if (state === 'searching') {
             sendSignal({ type: 'seek' });
         }
-    }, 1500);
+    }, 1800);
 };
 
 btnStop.onclick = function() {
@@ -301,13 +275,14 @@ btnMute.onclick = function() {
     if (!localStream) return;
     isMuted = !isMuted;
     localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
-btnMute.textContent = isMuted ? 'Включить микрофон' : 'Выключить микрофон';
-btnMute.classList.toggle('muted', isMuted);
+    btnMute.textContent = isMuted ? 'Включить микрофон' : 'Выключить микрофон';
+    btnMute.classList.toggle('muted', isMuted);
 };
-chatForm.onsubmit = function(e) {
-e.preventDefault();
-const text = msgInput.value.trim();
-if (!text || state !== 'connected' || !partnerId) return;
+
+chatForm.onsubmit = async function(e) {
+    e.preventDefault();
+    const text = msgInput.value.trim();
+    if (!text || state !== 'connected' || !partnerId) return;
 addMessage(text, 'me');
 sendSignal({ to: partnerId, type: 'chat', text });
 msgInput.value = '';
