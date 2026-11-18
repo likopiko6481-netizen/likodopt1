@@ -91,8 +91,6 @@
             color: #cfd8e3;
             font-weight: 500;
         }
-
-        /* Поисковое окно ожидания очереди */
         .queue-window {
             display: none;
             flex-direction: column;
@@ -154,7 +152,6 @@
             font-variant-numeric: tabular-nums;
             border: 1px solid #323846;
         }
-
         .chat-box {
             background: rgba(18, 20, 26, 0.85);
             border-radius: 14px;
@@ -218,9 +215,8 @@
             cursor: pointer;
             touch-action: manipulation;
             user-select: none;
-            transition: transform 0.1s ease, opacity 0.2s ease, filter 0.15s ease;
+            transition: transform 0.1s ease, opacity 0.2s ease;
         }
-        .btn:hover:not(:disabled) { filter: brightness(1.08); }
         .btn:active:not(:disabled) { transform: scale(0.96); }
         .btn:disabled { opacity: 0.4; cursor: not-allowed; }
         #btnNext { background: #00e676; color: #000; }
@@ -277,7 +273,7 @@
 <div class="app">
     <div class="header">
         <div class="logo">LIKODOPT</div>
-        <div class="online-badge"><span class="online-dot"></span>Онлайн: В сети</div>
+        <div class="online-badge"><span class="online-dot"></span><span id="netStatus">Онлайн: В сети</span></div>
     </div>
 
     <div class="voice-box">
@@ -305,10 +301,11 @@
     <div class="controls">
         <button type="button" class="btn" id="btnNext">Найти / Далее</button>
         <button type="button" class="btn" id="btnStop" disabled>Стоп</button>
-Выключить микрофон
+        <button type="button" class="btn" id="btnMute" disabled>Выключить микрофон</button>
+    </div>
+
 🍪 Мы используем ваши файлы Cookie для улучшения работы сайта.
 ✕
-// Cookie
 function setCookie(name, value, days) {
 const d = new Date();
 d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
@@ -325,15 +322,15 @@ return null;
 }
 const cookieBanner = document.getElementById('cookieBanner');
 if (!getCookie('likodopt_cookie_closed')) cookieBanner.classList.add('show');
-document.getElementById('closeCookieBtn').addEventListener('click', () => {
+document.getElementById('closeCookieBtn').onclick = function() {
 setCookie('likodopt_cookie_closed', '1', 30);
 cookieBanner.classList.remove('show');
-});
-// Элементы управления
+};
 const idleView = document.getElementById('idleView');
 const queueView = document.getElementById('queueView');
 const searchTimerText = document.getElementById('searchTimerText');
 const statusEl = document.getElementById('status');
+const netStatusEl = document.getElementById('netStatus');
 const partnerAvatar = document.getElementById('partnerAvatar');
 const messagesEl = document.getElementById('messages');
 const chatForm = document.getElementById('chatForm');
@@ -343,7 +340,7 @@ const btnNext = document.getElementById('btnNext');
 const btnStop = document.getElementById('btnStop');
 const btnMute = document.getElementById('btnMute');
 const remoteAudio = document.getElementById('remoteAudio');
-const TOPIC = 'likodopt_signal_channel_ru_991';
+const TOPIC = 'likodopt_ru_room_7741';
 const myId = 'u_' + Math.random().toString(36).slice(2, 10);
 let partnerId = null;
 let state = 'idle';
@@ -353,7 +350,7 @@ let isMuted = false;
 let searchTimer = null;
 let clockInterval = null;
 let searchSeconds = 0;
-let eventSource = null;
+let lastMsgId = '';
 const rtcConfig = {
 iceServers: [
 { urls: 'stun:google.com' },
@@ -377,7 +374,7 @@ queueView.classList.add('active');
 searchSeconds = 0;
 searchTimerText.textContent = '00:00';
 clearInterval(clockInterval);
-clockInterval = setInterval(() => {
+clockInterval = setInterval(function() {
 searchSeconds++;
 const mins = String(Math.floor(searchSeconds / 60)).padStart(2, '0');
 const secs = String(searchSeconds % 60).padStart(2, '0');
@@ -401,34 +398,47 @@ msgInput.disabled = !enabled;
 btnSend.disabled = !enabled;
 if (!enabled) msgInput.value = '';
 }
+// Обычные HTTPS-запросы (не блокируются как SSE/WebSocket)
 async function sendSignal(payload) {
 try {
 await fetch('ntfy.sh' + TOPIC, {
 method: 'POST',
-body: JSON.stringify({ from: myId, ...payload })
+body: JSON.stringify({ from: myId, ts: Date.now(), ...payload })
 });
 } catch (e) {}
 }
-function startListening() {
+async function pollMessages() {
 try {
-if (eventSource) eventSource.close();
-eventSource = new EventSource('ntfy.sh' + TOPIC + '/sse');
-eventSource.onmessage = async (ev) => {
-let wrapper, data;
-try {
-wrapper = JSON.parse(ev.data);
-if (!wrapper.message) return;
-data = JSON.parse(wrapper.message);
-} catch (e) { return; }
+const url = 'ntfy.sh' + TOPIC + '/json?poll=1&since=10s' + (lastMsgId ? '&id=' + lastMsgId : '');
+const res = await fetch(url);
+if (res.ok) {
+netStatusEl.textContent = 'Онлайн: В сети';
+const text = await res.text();
+const lines = text.trim().split('\n');
+for (let i = 0; i < lines.length; i++) {
+if (!lines[i]) continue;
+const wrapper = JSON.parse(lines[i]);
+if (wrapper.id) lastMsgId = wrapper.id;
+if (!wrapper.message) continue;
+const data = JSON.parse(wrapper.message);
+await processSignal(data);
+}
+}
+} catch (e) {
+netStatusEl.textContent = 'Сеть (проверьте VPN)';
+}
+setTimeout(pollMessages, 1200);
+}
+async function processSignal(data) {
 if (!data || data.from === myId) return;
 if (data.type === 'seek' && state === 'searching') {
 if (myId > data.from) {
-startCallWith(data.from, true);
+await startCallWith(data.from, true);
 sendSignal({ to: data.from, type: 'accept' });
 }
 } else if (data.to === myId) {
 if (data.type === 'accept' && state === 'searching') {
-startCallWith(data.from, false);
+await startCallWith(data.from, false);
 } else if (data.from === partnerId) {
 if (data.type === 'signal') await handleWebRTC(data.signal);
 else if (data.type === 'chat') addMessage(data.text, 'partner');
@@ -439,14 +449,12 @@ addMessage('Собеседник покинул чат. Нажмите «Дал�
 }
 }
 }
-};
-} catch (e) {}
 }
-startListening();
+pollMessages();
 async function tryInitAudio() {
 if (localStream) return;
 if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-addMessage('Голос недоступен (работает текстовый чат)', 'sys');
+addMessage('Микрофон недоступен — работает текстовый чат', 'sys');
 return;
 }
 try {
@@ -482,13 +490,13 @@ pc = new RTCPeerConnection(rtcConfig);
 if (localStream) {
 localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
 }
-pc.ontrack = (ev) => {
+pc.ontrack = function(ev) {
 const stream = new MediaStream();
 stream.addTrack(ev.track);
 remoteAudio.srcObject = stream;
 remoteAudio.play().catch(() => {});
 };
-pc.onicecandidate = (ev) => {
+pc.onicecandidate = function(ev) {
 if (ev.candidate) sendSignal({ to: partnerId, type: 'signal', signal: { candidate: ev.candidate } });
 };
 if (isInitiator) {
@@ -510,8 +518,7 @@ await pc.setRemoteDescription(new RTCSessionDescription(sig.answer));
 await pc.addIceCandidate(new RTCIceCandidate(sig.candidate));
 }
 }
-// Кнопка "Найти / Далее" срабатывает мгновенно при клике
-btnNext.addEventListener('click', () => {
+btnNext.onclick = function() {
 closeCall();
 state = 'searching';
 btnStop.disabled = false;
@@ -520,33 +527,30 @@ showQueueWindow(true);
 addMessage('Вы вошли в очередь поиска собеседника...', 'sys');
 tryInitAudio();
 sendSignal({ type: 'seek' });
-searchTimer = setInterval(() => {
+searchTimer = setInterval(function() {
 if (state === 'searching') sendSignal({ type: 'seek' });
 }, 1800);
-});
-// Кнопка "Стоп"
-btnStop.addEventListener('click', () => {
+};
+btnStop.onclick = function() {
 closeCall();
 btnStop.disabled = true;
 statusEl.textContent = 'Поиск остановлен';
 addMessage('Вы вышли из очереди', 'sys');
-});
-// Кнопка "Выключить микрофон"
-btnMute.addEventListener('click', () => {
+};
+btnMute.onclick = function() {
 if (!localStream) return;
 isMuted = !isMuted;
 localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
 btnMute.textContent = isMuted ? 'Включить микрофон' : 'Выключить микрофон';
 btnMute.classList.toggle('muted', isMuted);
-});
-// Отправка сообщения
-chatForm.addEventListener('submit', (e) => {
+};
+chatForm.onsubmit = function(e) {
 e.preventDefault();
 const text = msgInput.value.trim();
 if (!text || state !== 'connected' || !partnerId) return;
 addMessage(text, 'me');
 sendSignal({ to: partnerId, type: 'chat', text });
 msgInput.value = '';
-});
+};
 
 
