@@ -3,215 +3,75 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<meta name="google" content="notranslate">
 <title>Likodopt</title>
+<script src="https://unpkg.com"></script>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: sans-serif; background: url('./bg.png') center/cover fixed, url('./bg.jpg') center/cover fixed, #0f1115; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 15px; }
-.app { background: rgba(24, 27, 34, 0.92); width: 100%; max-width: 440px; border-radius: 20px; padding: 24px; border: 1px solid #262a35; }
-.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
-.logo { font-size: 1.5rem; font-weight: 800; color: #00e676; }
-.badge { background: #232834; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; color: #a0aab8; }
-.dot { display: inline-block; width: 8px; height: 8px; background: #00e676; border-radius: 50%; margin-right: 6px; }
-.box { background: rgba(18, 20, 26, 0.88); border-radius: 16px; padding: 22px 15px; text-align: center; margin-bottom: 15px; border: 1px solid #222630; min-height: 160px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-.ava { width: 70px; height: 70px; border-radius: 50%; background: #232834; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
-.ava.green { background: #1c382c; border: 2px solid #00e676; box-shadow: 0 0 18px rgba(0,230,118,0.4); }
-.chat { background: rgba(18, 20, 26, 0.88); border-radius: 14px; height: 170px; display: flex; flex-direction: column; margin-bottom: 15px; border: 1px solid #222630; overflow: hidden; }
-#msgs { flex: 1; padding: 12px; overflow-y: auto; font-size: 0.9rem; display: flex; flex-direction: column; gap: 8px; }
-.m { padding: 8px 12px; border-radius: 10px; max-width: 82%; word-wrap: break-word; }
-.m.me { background: #00e676; color: #000; align-self: flex-end; font-weight: 600; }
-.m.he { background: #262b38; color: #fff; align-self: flex-start; }
-.m.sys { color: #788292; align-self: center; font-size: 0.8rem; text-align: center; }
-.form { display: flex; border-top: 1px solid #222630; }
-.form input { flex: 1; background: transparent; border: none; padding: 12px; color: #fff; outline: none; }
-.form button { background: transparent; border: none; color: #00e676; font-weight: bold; padding: 0 16px; font-size: 1.1rem; cursor: pointer; }
-.form button:disabled { color: #555; }
-.btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-.btn { padding: 14px; border: none; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; }
-.btn:disabled { opacity: 0.4; cursor: not-allowed; }
-#bNext { background: #00e676; color: #000; }
-#bStop { background: #ff5252; color: #fff; }
-#bMute { grid-column: span 2; background: #262b38; color: #fff; }
-#bMute.on { background: #ff9800; color: #000; }
-.ck { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); width: calc(100% - 30px); max-width: 440px; background: #181b22; border: 1px solid #00e676; border-radius: 14px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; z-index: 99; }
-.ck button { background: #262b38; color: #fff; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; }
+*{box-sizing:border-box;margin:0;padding:0;font-family:sans-serif}
+body{background:url('./bg.png') center/cover fixed,#0f1115;color:#fff;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:15px}
+.app{background:rgba(24,27,34,.92);width:100%;max-width:420px;border-radius:20px;padding:20px;border:1px solid #262a35}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:15px}
+.logo{font-size:1.4rem;font-weight:800;color:#00e676}
+.box{background:#12141a;border-radius:15px;padding:20px;text-align:center;margin-bottom:12px}
+.chat{background:#12141a;border-radius:12px;height:150px;display:flex;flex-direction:column;margin-bottom:12px;overflow:hidden}
+#msgs{flex:1;padding:10px;overflow-y:auto;display:flex;flex-direction:column;gap:6px;font-size:.9rem}
+.m{padding:6px 10px;border-radius:8px;max-width:80%}
+.me{background:#00e676;color:#000;align-self:flex-end}
+.he{background:#262b38;align-self:flex-start}
+.sys{color:#788292;align-self:center;font-size:.8rem}
+form{display:flex;border-top:1px solid #222}
+input{flex:1;background:none;border:none;padding:10px;color:#fff;outline:none}
+button{cursor:pointer;border:none;font-weight:700;border-radius:10px}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:8px}
+.btn{padding:14px;font-size:1rem}
+.btn:disabled{opacity:.4}
+#b1{background:#00e676;color:#000}
+#b2{background:#ff5252;color:#fff}
+#b3{grid-column:span 2;background:#262b38;color:#fff}
+.ck{position:fixed;bottom:15px;left:50%;transform:translateX(-50%);width:92%;max-width:420px;background:#181b22;border:1px solid #00e676;border-radius:12px;padding:10px 14px;display:flex;justify-content:space-between;align-items:center;font-size:.85rem}
 </style>
 </head>
 <body>
 <div class="app">
-  <div class="header">
-    <div class="logo">LIKODOPT</div>
-    <div class="badge"><span class="dot"></span>Онлайн: В сети</div>
-  </div>
-
-  <div class="box">
-    <div class="ava" id="ava">🎙️</div>
-    <div id="title" style="font-weight:700; font-size:1.05rem; margin-bottom:6px;">Нажмите «Найти / Далее»</div>
-    <div id="sub" style="font-size:0.85rem; color:#a0aab8;">Готово к запуску</div>
-  </div>
-
-  <div class="chat">
-    <div id="msgs"></div>
-    <form class="form" id="cForm">
-      <input type="text" id="inp" placeholder="Сообщение..." disabled autocomplete="off">
-      <button type="submit" id="bSend" disabled>➤</button>
-    </form>
-  </div>
-
-  <div class="btns">
-    <button type="button" class="btn" id="bNext">Найти / Далее</button>
-    <button type="button" class="btn" id="bStop" disabled>Стоп</button>
-    <button type="button" class="btn" id="bMute" disabled>Выключить микрофон</button>
-  </div>
-  <audio id="aud" autoplay playsinline></audio>
+  <div class="top"><span class="logo">LIKODOPT</span><span id="net" style="font-size:.85rem;color:#00e676">● В сети</span></div>
+  <div class="box"><div id="ico" style="font-size:2.2rem;margin-bottom:8px">🎙️</div><div id="st">Нажмите «Найти / Далее»</div></div>
+  <div class="chat"><div id="msgs"></div><form id="f"><input id="i" placeholder="Сообщение..." disabled><button id="s" disabled style="background:none;color:#00e676;padding:0 15px">➤</button></form></div>
+  <div class="btns"><button class="btn" id="b1">Найти / Далее</button><button class="btn" id="b2" disabled>Стоп</button><button class="btn" id="b3" disabled>Выключить микрофон</button></div>
+  <audio id="a" autoplay playsinline></audio>
 </div>
-
-<div class="ck" id="ckBox">
-  <div style="font-size:0.85rem;">🍪 Мы используем ваши файлы <b style="color:#00e676;">Cookie</b> для улучшения работы сайта.</div>
-  <button type="button" id="ckClose">✕</button>
-</div>
-
+<div class="ck" id="ck"><span>🍪 Мы используем ваши файлы <b style="color:#00e676">Cookie</b> для улучшения работы сайта.</span><button onclick="this.parentElement.remove()" style="background:#262b38;color:#fff;width:28px;height:28px;border-radius:50%">✕</button></div>
 <script>
-const DB = 'https://kvdb.io';
-const myId = 'u_' + Math.random().toString(36).slice(2, 10);
-let pId = null, st = 'idle', stream = null, pc = null, muted = false, sLoop = null, tLoop = null, sec = 0;
-const seen = new Set();
-
-const ckBox = document.getElementById('ckBox');
-if (document.cookie.includes('lk=1')) ckBox.style.display = 'none';
-document.getElementById('ckClose').onclick = function() {
-  document.cookie = 'lk=1;max-age=2592000;path=/';
-  ckBox.style.display = 'none';
+let p=null,c=null,d=null,st=null,m=false,run=false;
+const $=id=>document.getElementById(id);
+const log=(t,k)=>{const e=document.createElement('div');e.className='m '+k;e.textContent=t;$('msgs').appendChild(e);$('msgs').scrollTop=9999};
+const ui=(ic,tx,on)=>{$('ico').textContent=ic;$('st').textContent=tx;$('i').disabled=!on;$('s').disabled=!on};
+function end(msg){run=false;if(c)c.close();if(d)d.close();if(p)p.destroy();c=d=p=null;ui('🎙️',msg,false)}
+function bindD(x){d=x;d.on('open',()=>{run=false;ui('🎧','Собеседник на связи!',true);$('msgs').innerHTML='';log('Собеседник найден!','sys')});d.on('data',t=>log(t,'he'));d.on('close',()=>end('Собеседник отключился'))}
+function bindC(x){c=x;c.on('stream',s=>{$('a').srcObject=s;$('a').play().catch(()=>{})})}
+function tryRoom(n){
+  if(!run)return;
+  const id='likodopt_ru_room_'+n;
+  p=new Peer({config:{iceServers:[{urls:'stun:://google.com'}]}});
+  p.on('open',()=>{
+    const conn=p.connect(id);
+    const t=setTimeout(()=>{if(run){p.destroy();hostRoom(id)}},1500);
+    conn.on('open',()=>{clearTimeout(t);bindD(conn);if(st)bindC(p.call(id,st))});
+  });
+}
+function hostRoom(id){
+  if(!run)return;
+  p=new Peer(id,{config:{iceServers:[{urls:'stun:://google.com'}]}});
+  p.on('connection',conn=>{if(run)bindD(conn)});
+  p.on('call',call=>{call.answer(st||undefined);bindC(call)});
+  p.on('error',()=>{if(run){p.destroy();tryRoom(Math.floor(Math.random()*10)+1)}});
+}
+$('b1').onclick=async()=>{
+  end('Поиск...');run=true;$('b2').disabled=false;$('msgs').innerHTML='';ui('🔍','Ищем собеседника (Очередь)...',false);
+  if(!st&&navigator.mediaDevices)try{st=await navigator.mediaDevices.getUserMedia({audio:true});$('b3').disabled=false}catch(e){}
+  tryRoom(1);
 };
-
-function log(t, c) {
-  const d = document.createElement('div'); d.className = 'm ' + c; d.textContent = t;
-  const m = document.getElementById('msgs'); m.appendChild(d); m.scrollTop = m.scrollHeight;
-}
-
-function setUI(mode, tText, sText) {
-  clearInterval(tLoop); sec = 0;
-  const ava = document.getElementById('ava');
-  ava.className = mode === 'call' ? 'ava green' : 'ava';
-  ava.textContent = mode === 'queue' ? '🔍' : (mode === 'call' ? '🎧' : '🎙️');
-  document.getElementById('title').textContent = tText;
-  document.getElementById('sub').textContent = sText;
-  if (mode === 'queue' || mode === 'call') {
-    tLoop = setInterval(function() {
-      sec++;
-      const tm = String(Math.floor(sec/60)).padStart(2,'0') + ':' + String(sec%60).padStart(2,'0');
-      document.getElementById('sub').textContent = (mode === 'queue' ? 'В очереди: ' : 'Разговор: ') + tm;
-    }, 1000);
-  }
-}
-
-function setChat(on) {
-  document.getElementById('inp').disabled = !on;
-  document.getElementById('bSend').disabled = !on;
-}
-
-async function getJ(k) { try { const r = await fetch(DB+'/'+k+'?t='+Date.now()); return r.ok ? r.json() : null; } catch(e) { return null; } }
-async function setJ(k, d) { try { await fetch(DB+'/'+k, { method: 'PUT', body: JSON.stringify(d) }); } catch(e) {} }
-async function send(to, data) {
-  const cur = (await getJ('in_'+to)) || [];
-  const arr = Array.isArray(cur) ? cur.filter(x => Date.now()-x.ts < 15000) : [];
-  arr.push({ id: myId+'_'+Date.now()+Math.random(), from: myId, ts: Date.now(), ...data });
-  await setJ('in_'+to, arr.slice(-15));
-}
-
-document.getElementById('bNext').onclick = function() {
-  stopAll(false);
-  st = 'search';
-  document.getElementById('bStop').disabled = false;
-  document.getElementById('msgs').innerHTML = '';
-  setUI('queue', 'Вы в очереди ожидания', 'В очереди: 00:00');
-  log('Поиск свободного собеседника...', 'sys');
-  if (!stream && navigator.mediaDevices) {
-    navigator.mediaDevices.getUserMedia({audio:true}).then(s => { stream = s; document.getElementById('bMute').disabled = false; }).catch(()=>{});
-  }
-  findStep();
-  sLoop = setInterval(findStep, 1500);
-};
-
-document.getElementById('bStop').onclick = function() { stopAll(true); };
-
-function stopAll(showStop) {
-  clearInterval(sLoop);
-  if (pId) send(pId, { type: 'bye' });
-  pId = null; st = 'idle'; setChat(false);
-  if (pc) { try { pc.close(); } catch(e) {} pc = null; }
-  if (showStop) {
-    document.getElementById('bStop').disabled = true;
-    setUI('idle', 'Поиск остановлен', 'Нажмите «Найти / Далее»');
-    log('Вы вышли из очереди', 'sys');
-  }
-}
-
-document.getElementById('bMute').onclick = function() {
-  if (!stream) return;
-  muted = !muted;
-  stream.getAudioTracks().forEach(t => t.enabled = !muted);
-  this.textContent = muted ? 'Включить микрофон' : 'Выключить микрофон';
-  this.classList.toggle('on', muted);
-};
-
-document.getElementById('cForm').onsubmit = function(e) {
-  e.preventDefault();
-  const inp = document.getElementById('inp');
-  const txt = inp.value.trim();
-  if (!txt || !pId) return;
-  log(txt, 'me'); send(pId, { type: 'chat', text: txt }); inp.value = '';
-};
-
-async function findStep() {
-  if (st !== 'search') return;
-  let q = (await getJ('q_ru')) || [];
-  if (!Array.isArray(q)) q = [];
-  q = q.filter(x => x && x.id && x.id !== myId && Date.now()-x.ts < 8000);
-  if (q.length > 0 && myId > q[0].id) {
-    st = 'conn'; pId = q[0].id; clearInterval(sLoop);
-    await setJ('q_ru', q.slice(1));
-    await send(pId, { type: 'ok' });
-    startCall(true); return;
-  }
-  q.push({ id: myId, ts: Date.now() });
-  await setJ('q_ru', q);
-}
-
-async function startCall(init) {
-  st = 'call'; setChat(true);
-  document.getElementById('msgs').innerHTML = '';
-  setUI('call', 'Собеседник на связи', 'Разговор: 00:00');
-  log('Собеседник найден! Поздоровайтесь 👋', 'sys');
- pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:://google.com' }, { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }] });
-  if (stream) stream.getTracks().forEach(t => pc.addTrack(t, stream));
-  pc.ontrack = e => { const a = document.getElementById('aud'); a.srcObject = new MediaStream([e.track]); a.play().catch(()=>{}); };
-  pc.onicecandidate = e => { if (e.candidate && pId) send(pId, { type: 'cand', cand: e.candidate }); };
-  if (init) {
-    const off = await pc.createOffer(); await pc.setLocalDescription(off);
-    await send(pId, { type: 'off', off: off });
-  }
-}
-
-setInterval(async () => {
-  const msgs = await getJ('in_'+myId);
-  if (!Array.isArray(msgs) || !msgs.length) return;
-  await setJ('in_'+myId, []);
-  for (const m of msgs) {
-    if (!m || seen.has(m.id)) continue; seen.add(m.id);
-    if (m.type === 'ok' && st === 'search') { pId = m.from; clearInterval(sLoop); startCall(false); }
-    else if (m.from === pId) {
-if (m.type === 'off' && pc) { await pc.setRemoteDescription(new RTCSessionDescription(m.off)); const ans = await pc.createAnswer(); await pc.setLocalDescription(ans); send(pId, { type: 'ans', ans: ans }); }
-else if (m.type === 'ans' && pc) await pc.setRemoteDescription(new RTCSessionDescription(m.ans));
-else if (m.type === 'cand' && pc) { try { await pc.addIceCandidate(new RTCIceCandidate(m.cand)); } catch(e) {} }
-else if (m.type === 'chat') log(m.text, 'he');
-else if (m.type === 'bye') { stopAll(true); document.getElementById('title').textContent = 'Собеседник отключился'; }
-}
-}
-}, 1000);
+$('b2').onclick=()=>{$('b2').disabled=true;end('Поиск остановлен')};
+$('b3').onclick=()=>{if(!st)return;m=!m;st.getAudioTracks().forEach(t=>t.enabled=!m);$('b3').textContent=m?'Включить микрофон':'Выключить микрофон'};
+$('f').onsubmit=e=>{e.preventDefault();const v=$('i').value.trim();if(!v||!d)return;log(v,'me');d.send(v);$('i').value=''};
 </script>
 </body>
 </html>
-
-
-
