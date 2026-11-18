@@ -8,24 +8,38 @@
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
         body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: url('./bg.png') no-repeat center center fixed, url('./bg.jpg') no-repeat center center fixed, #0f1115; background-size: cover; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 15px; }
-        .app { background: rgba(24, 27, 34, 0.90); backdrop-filter: blur(8px); width: 100%; max-width: 460px; border-radius: 20px; padding: 25px; box-shadow: 0 12px 40px rgba(0,0,0,0.6); border: 1px solid #262a35; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .app { background: rgba(24, 27, 34, 0.92); backdrop-filter: blur(10px); width: 100%; max-width: 460px; border-radius: 22px; padding: 24px; box-shadow: 0 12px 40px rgba(0,0,0,0.65); border: 1px solid #262a35; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
         .logo { font-size: 1.5rem; font-weight: 800; color: #00e676; letter-spacing: 1px; }
         .online-badge { background: #232834; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; color: #a0aab8; display: flex; align-items: center; }
         .online-dot { width: 8px; height: 8px; background: #00e676; border-radius: 50%; margin-right: 6px; }
-        .voice-box { background: rgba(18, 20, 26, 0.85); border-radius: 16px; padding: 22px 15px; text-align: center; margin-bottom: 15px; border: 1px solid #222630; }
+        
+        .voice-box { background: rgba(18, 20, 26, 0.88); border-radius: 18px; padding: 22px 15px; text-align: center; margin-bottom: 15px; border: 1px solid #222630; min-height: 165px; display: flex; flex-direction: column; justify-content: center; }
+        
+        /* 1. Начальное окно */
         .avatar { width: 72px; height: 72px; border-radius: 50%; background: #232834; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
-        .avatar.speaking { box-shadow: 0 0 0 6px rgba(0, 230, 118, 0.35); background: #1c382c; }
         #status { font-size: 1rem; color: #cfd8e3; font-weight: 500; }
-        .queue-window { display: none; flex-direction: column; align-items: center; padding: 10px 5px; }
+
+        /* 2. Окно ожидания очереди */
+        .queue-window { display: none; flex-direction: column; align-items: center; }
         .queue-window.active { display: flex; }
-        .radar { position: relative; width: 76px; height: 76px; border-radius: 50%; background: rgba(0, 230, 118, 0.12); border: 2px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 1.9rem; margin-bottom: 14px; }
+        .radar { position: relative; width: 72px; height: 72px; border-radius: 50%; background: rgba(0, 230, 118, 0.12); border: 2px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin-bottom: 12px; }
         .radar::before { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid #00e676; animation: pulseRing 2s infinite ease-out; }
         @keyframes pulseRing { 0% { transform: scale(0.95); opacity: 0.8; } 100% { transform: scale(1.55); opacity: 0; } }
-        .queue-title { font-size: 1.05rem; font-weight: 700; color: #00e676; margin-bottom: 6px; }
+        .queue-title { font-size: 1.05rem; font-weight: 700; color: #00e676; margin-bottom: 4px; }
         .queue-sub { font-size: 0.85rem; color: #a0aab8; margin-bottom: 10px; }
-        .queue-timer { background: #232834; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; border: 1px solid #323846; }
-        .chat-box { background: rgba(18, 20, 26, 0.85); border-radius: 14px; height: 180px; display: flex; flex-direction: column; margin-bottom: 15px; border: 1px solid #222630; overflow: hidden; }
+        .timer-pill { background: #232834; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; border: 1px solid #323846; }
+
+        /* 3. Окно активного разговора (когда собеседник найден) */
+        .call-window { display: none; flex-direction: column; align-items: center; animation: fadeIn 0.3s ease; }
+        .call-window.active { display: flex; }
+        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
+        .partner-card { width: 76px; height: 76px; border-radius: 50%; background: #1c382c; border: 2px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; margin-bottom: 10px; box-shadow: 0 0 20px rgba(0, 230, 118, 0.35); animation: voiceGlow 2s infinite alternate; }
+        @keyframes voiceGlow { from { box-shadow: 0 0 10px rgba(0, 230, 118, 0.25); } to { box-shadow: 0 0 24px rgba(0, 230, 118, 0.55); } }
+        .call-title { font-size: 1.1rem; font-weight: 800; color: #fff; margin-bottom: 4px; }
+        .call-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(0, 230, 118, 0.15); color: #00e676; padding: 4px 12px; border-radius: 20px; font-size: 0.82rem; font-weight: 700; border: 1px solid rgba(0, 230, 118, 0.3); }
+
+        .chat-box { background: rgba(18, 20, 26, 0.88); border-radius: 14px; height: 175px; display: flex; flex-direction: column; margin-bottom: 15px; border: 1px solid #222630; overflow: hidden; }
         #messages { flex: 1; padding: 12px; overflow-y: auto; font-size: 0.9rem; display: flex; flex-direction: column; gap: 8px; }
         .msg { padding: 8px 12px; border-radius: 10px; max-width: 82%; word-wrap: break-word; }
         .msg.me { background: #00e676; color: #000; align-self: flex-end; font-weight: 500; }
@@ -35,13 +49,15 @@
         .chat-input input { flex: 1; background: transparent; border: none; padding: 12px; color: #fff; outline: none; font-size: 0.9rem; }
         .chat-input button { background: transparent; border: none; color: #00e676; font-weight: bold; padding: 0 18px; font-size: 1.1rem; cursor: pointer; }
         .chat-input button:disabled { color: #555; }
+        
         .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .btn { padding: 15px; border: none; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; }
+        .btn { padding: 14px; border: none; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; }
         .btn:disabled { opacity: 0.4; cursor: not-allowed; }
         #btnNext { background: #00e676; color: #000; }
         #btnStop { background: #ff5252; color: #fff; }
         #btnMute { grid-column: span 2; background: #262b38; color: #fff; font-weight: 600; }
         #btnMute.muted { background: #ff9800; color: #000; }
+
         .cookie-banner { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); width: calc(100% - 30px); max-width: 460px; background: rgba(24, 27, 34, 0.96); border: 1px solid rgba(0, 230, 118, 0.35); border-radius: 16px; padding: 14px 16px; display: none; align-items: center; justify-content: space-between; gap: 12px; z-index: 999; }
         .cookie-banner.show { display: flex; }
         .cookie-text { font-size: 0.88rem; color: #e6ecf5; line-height: 1.4; }
@@ -55,18 +71,30 @@
         <div class="logo">LIKODOPT</div>
         <div class="online-badge"><span class="online-dot"></span><span id="netStatus">Онлайн: В сети</span></div>
     </div>
+
     <div class="voice-box">
+        <!-- 1. Начальное окно -->
         <div id="idleView">
-            <div class="avatar" id="partnerAvatar">🎙️</div>
+            <div class="avatar">🎙️</div>
             <div id="status">Нажмите «Найти / Далее»</div>
         </div>
+
+        <!-- 2. Окно очереди поиска -->
         <div class="queue-window" id="queueView">
             <div class="radar">🔍</div>
             <div class="queue-title">Вы в очереди ожидания</div>
             <div class="queue-sub">Подбираем свободного собеседника...</div>
-            <div class="queue-timer">Время поиска: <span id="searchTimerText">00:00</span></div>
+            <div class="timer-pill">Время поиска: <span id="searchTimerText">00:00</span></div>
+        </div>
+
+        <!-- 3. Окно разговора (когда собеседник найден) -->
+        <div class="call-window" id="callView">
+            <div class="partner-card">🎧</div>
+            <div class="call-title">Собеседник на связи</div>
+            <div class="call-badge">● Разговор: <span id="callTimerText">00:00</span></div>
         </div>
     </div>
+
     <div class="chat-box">
         <div id="messages"></div>
         <form class="chat-input" id="chatForm">
@@ -74,22 +102,21 @@
             <button type="submit" id="btnSend" disabled>➤</button>
         </form>
     </div>
+
     <div class="controls">
         <button type="button" class="btn" id="btnNext">Найти / Далее</button>
         <button type="button" class="btn" id="btnStop" disabled>Стоп</button>
         <button type="button" class="btn" id="btnMute" disabled>Выключить микрофон</button>
     </div>
+
     <audio id="remoteAudio" autoplay playsinline></audio>
 </div>
+
 <div class="cookie-banner" id="cookieBanner">
     <div class="cookie-text">🍪 Мы используем ваши файлы <span>Cookie</span> для улучшения работы сайта.</div>
     <button type="button" class="cookie-close" id="closeCookieBtn">✕</button>
 </div>
-    <script src="https://jsdelivr.net"></script>
-<script src="./script.js?v=30"></script>
-</body>
-</html>
 
-<script type="module" src="./script.js?v=50"></script>
+<script type="module" src="./script.js?v=60"></script>
 </body>
 </html>
