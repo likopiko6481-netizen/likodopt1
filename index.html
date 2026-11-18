@@ -3,6 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="google" content="notranslate">
     <title>Likodopt — Голосовая чат-рулетка</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
@@ -301,9 +302,7 @@
     <div class="controls">
         <button type="button" class="btn" id="btnNext">Найти / Далее</button>
         <button type="button" class="btn" id="btnStop" disabled>Стоп</button>
-        <button type="button" class="btn" id="btnMute" disabled>Выключить микрофон</button>
-    </div>
-
+Выключить микрофон
 🍪 Мы используем ваши файлы Cookie для улучшения работы сайта.
 ✕
 function setCookie(name, value, days) {
@@ -398,7 +397,6 @@ msgInput.disabled = !enabled;
 btnSend.disabled = !enabled;
 if (!enabled) msgInput.value = '';
 }
-// Обычные HTTPS-запросы (не блокируются как SSE/WebSocket)
 async function sendSignal(payload) {
 try {
 await fetch('ntfy.sh' + TOPIC, {
