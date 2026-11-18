@@ -29,244 +29,45 @@
             padding: 25px;
             box-shadow: 0 12px 40px rgba(0,0,0,0.6);
             border: 1px solid #262a35;
-            position: relative;
-            z-index: 10;
         }
-        .header {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 20px;
-        }
-        .logo {
-            font-size: 1.5rem;
-            font-weight: 800;
-            color: #00e676;
-            letter-spacing: 1px;
-        }
-        .online-badge {
-            background: #232834;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            color: #a0aab8;
-            display: flex;
-            align-items: center;
-        }
-        .online-dot {
-            display: inline-block;
-            width: 8px;
-            height: 8px;
-            background: #00e676;
-            border-radius: 50%;
-            margin-right: 6px;
-        }
-        .voice-box {
-            background: rgba(18, 20, 26, 0.85);
-            border-radius: 16px;
-            padding: 22px 15px;
-            text-align: center;
-            margin-bottom: 15px;
-            border: 1px solid #222630;
-            position: relative;
-            overflow: hidden;
-        }
-        .avatar {
-            width: 72px;
-            height: 72px;
-            border-radius: 50%;
-            background: #232834;
-            margin: 0 auto 12px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2rem;
-            transition: box-shadow 0.15s ease;
-        }
-        .avatar.speaking {
-            box-shadow: 0 0 0 6px rgba(0, 230, 118, 0.35);
-            background: #1c382c;
-        }
-        #status {
-            font-size: 1rem;
-            color: #cfd8e3;
-            font-weight: 500;
-        }
-        .queue-window {
-            display: none;
-            flex-direction: column;
-            align-items: center;
-            justify-content: center;
-            padding: 10px 5px;
-        }
-        .queue-window.active {
-            display: flex;
-        }
-        .radar {
-            position: relative;
-            width: 76px;
-            height: 76px;
-            border-radius: 50%;
-            background: rgba(0, 230, 118, 0.12);
-            border: 2px solid #00e676;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1.9rem;
-            margin-bottom: 14px;
-            pointer-events: none;
-        }
-        .radar::before, .radar::after {
-            content: '';
-            position: absolute;
-            inset: -4px;
-            border-radius: 50%;
-            border: 2px solid #00e676;
-            animation: pulseRing 2s infinite ease-out;
-            pointer-events: none;
-        }
-        .radar::after {
-            animation-delay: 1s;
-        }
-        @keyframes pulseRing {
-            0% { transform: scale(0.95); opacity: 0.8; }
-            100% { transform: scale(1.55); opacity: 0; }
-        }
-        .queue-title {
-            font-size: 1.05rem;
-            font-weight: 700;
-            color: #00e676;
-            margin-bottom: 6px;
-        }
-        .queue-sub {
-            font-size: 0.85rem;
-            color: #a0aab8;
-            margin-bottom: 10px;
-        }
-        .queue-timer {
-            background: #232834;
-            color: #fff;
-            padding: 4px 12px;
-            border-radius: 12px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            font-variant-numeric: tabular-nums;
-            border: 1px solid #323846;
-        }
-        .chat-box {
-            background: rgba(18, 20, 26, 0.85);
-            border-radius: 14px;
-            height: 180px;
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 15px;
-            border: 1px solid #222630;
-            overflow: hidden;
-        }
-        #messages {
-            flex: 1;
-            padding: 12px;
-            overflow-y: auto;
-            font-size: 0.9rem;
-            display: flex;
-            flex-direction: column;
-            gap: 8px;
-        }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .logo { font-size: 1.5rem; font-weight: 800; color: #00e676; letter-spacing: 1px; }
+        .online-badge { background: #232834; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; color: #a0aab8; display: flex; align-items: center; }
+        .online-dot { width: 8px; height: 8px; background: #00e676; border-radius: 50%; margin-right: 6px; }
+        .voice-box { background: rgba(18, 20, 26, 0.85); border-radius: 16px; padding: 22px 15px; text-align: center; margin-bottom: 15px; border: 1px solid #222630; }
+        .avatar { width: 72px; height: 72px; border-radius: 50%; background: #232834; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+        .avatar.speaking { box-shadow: 0 0 0 6px rgba(0, 230, 118, 0.35); background: #1c382c; }
+        #status { font-size: 1rem; color: #cfd8e3; font-weight: 500; }
+        .queue-window { display: none; flex-direction: column; align-items: center; padding: 10px 5px; }
+        .queue-window.active { display: flex; }
+        .radar { position: relative; width: 76px; height: 76px; border-radius: 50%; background: rgba(0, 230, 118, 0.12); border: 2px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 1.9rem; margin-bottom: 14px; }
+        .radar::before { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid #00e676; animation: pulseRing 2s infinite ease-out; }
+        @keyframes pulseRing { 0% { transform: scale(0.95); opacity: 0.8; } 100% { transform: scale(1.55); opacity: 0; } }
+        .queue-title { font-size: 1.05rem; font-weight: 700; color: #00e676; margin-bottom: 6px; }
+        .queue-sub { font-size: 0.85rem; color: #a0aab8; margin-bottom: 10px; }
+        .queue-timer { background: #232834; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; border: 1px solid #323846; }
+        .chat-box { background: rgba(18, 20, 26, 0.85); border-radius: 14px; height: 180px; display: flex; flex-direction: column; margin-bottom: 15px; border: 1px solid #222630; overflow: hidden; }
+        #messages { flex: 1; padding: 12px; overflow-y: auto; font-size: 0.9rem; display: flex; flex-direction: column; gap: 8px; }
         .msg { padding: 8px 12px; border-radius: 10px; max-width: 82%; word-wrap: break-word; }
         .msg.me { background: #00e676; color: #000; align-self: flex-end; font-weight: 500; }
         .msg.partner { background: #262b38; color: #fff; align-self: flex-start; }
         .msg.sys { background: transparent; color: #788292; align-self: center; font-size: 0.8rem; text-align: center; }
-        .chat-input {
-            display: flex;
-            border-top: 1px solid #222630;
-        }
-        .chat-input input {
-            flex: 1;
-            background: transparent;
-            border: none;
-            padding: 12px;
-            color: #fff;
-            outline: none;
-            font-size: 0.9rem;
-        }
-        .chat-input button {
-            background: transparent;
-            border: none;
-            color: #00e676;
-            font-weight: bold;
-            padding: 0 18px;
-            font-size: 1.1rem;
-            cursor: pointer;
-            touch-action: manipulation;
-        }
-        .chat-input button:disabled { color: #555; cursor: not-allowed; }
-        .controls {
-            display: grid;
-            grid-template-columns: 1fr 1fr;
-            gap: 10px;
-            position: relative;
-            z-index: 20;
-        }
-        .btn {
-            padding: 15px;
-            border: none;
-            border-radius: 12px;
-            font-size: 1rem;
-            font-weight: 700;
-            cursor: pointer;
-            touch-action: manipulation;
-            user-select: none;
-            transition: transform 0.1s ease, opacity 0.2s ease;
-        }
-        .btn:active:not(:disabled) { transform: scale(0.96); }
+        .chat-input { display: flex; border-top: 1px solid #222630; }
+        .chat-input input { flex: 1; background: transparent; border: none; padding: 12px; color: #fff; outline: none; font-size: 0.9rem; }
+        .chat-input button { background: transparent; border: none; color: #00e676; font-weight: bold; padding: 0 18px; font-size: 1.1rem; cursor: pointer; }
+        .chat-input button:disabled { color: #555; }
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .btn { padding: 15px; border: none; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; }
         .btn:disabled { opacity: 0.4; cursor: not-allowed; }
         #btnNext { background: #00e676; color: #000; }
         #btnStop { background: #ff5252; color: #fff; }
-        #btnMute {
-            grid-column: span 2;
-            background: #262b38;
-            color: #fff;
-            font-weight: 600;
-        }
+        #btnMute { grid-column: span 2; background: #262b38; color: #fff; font-weight: 600; }
         #btnMute.muted { background: #ff9800; color: #000; }
-
-        .cookie-banner {
-            position: fixed;
-            bottom: 18px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: calc(100% - 30px);
-            max-width: 460px;
-            background: rgba(24, 27, 34, 0.96);
-            border: 1px solid rgba(0, 230, 118, 0.35);
-            border-radius: 16px;
-            padding: 14px 16px;
-            display: none;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.8);
-            z-index: 999;
-        }
+        .cookie-banner { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); width: calc(100% - 30px); max-width: 460px; background: rgba(24, 27, 34, 0.96); border: 1px solid rgba(0, 230, 118, 0.35); border-radius: 16px; padding: 14px 16px; display: none; align-items: center; justify-content: space-between; gap: 12px; z-index: 999; }
         .cookie-banner.show { display: flex; }
         .cookie-text { font-size: 0.88rem; color: #e6ecf5; line-height: 1.4; }
         .cookie-text span { color: #00e676; font-weight: 700; }
-        .cookie-close {
-            background: #262b38;
-            color: #a0aab8;
-            border: 1px solid #353b4d;
-            border-radius: 50%;
-            width: 34px;
-            height: 34px;
-            min-width: 34px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1rem;
-            cursor: pointer;
-            touch-action: manipulation;
-        }
-        .cookie-close:hover { background: #ff5252; color: #fff; border-color: #ff5252; }
+        .cookie-close { background: #262b38; color: #a0aab8; border: 1px solid #353b4d; border-radius: 50%; width: 34px; height: 34px; min-width: 34px; display: flex; align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -282,7 +83,6 @@
             <div class="avatar" id="partnerAvatar">🎙️</div>
             <div id="status">Нажмите «Найти / Далее»</div>
         </div>
-
         <div class="queue-window" id="queueView">
             <div class="radar">🔍</div>
             <div class="queue-title">Вы в очереди ожидания</div>
@@ -301,253 +101,18 @@
 
     <div class="controls">
         <button type="button" class="btn" id="btnNext">Найти / Далее</button>
-        <button type="button" class="btn" id="btnStop" disabled>Стоп</button>Выключить микрофон
-🍪 Мы используем ваши файлы Cookie для улучшения работы сайта.
-✕
-function setCookie(name, value, days) {
-const d = new Date();
-d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
-document.cookie = name + "=" + encodeURIComponent(value) + ";expires=" + d.toUTCString() + ";path=/;SameSite=Lax";
-}
-function getCookie(name) {
-const prefix = name + "=";
-const parts = document.cookie.split(';');
-for (let i = 0; i < parts.length; i++) {
-let c = parts[i].trim();
-if (c.indexOf(prefix) === 0) return decodeURIComponent(c.substring(prefix.length));
-}
-return null;
-}
-const cookieBanner = document.getElementById('cookieBanner');
-if (!getCookie('likodopt_cookie_closed')) cookieBanner.classList.add('show');
-document.getElementById('closeCookieBtn').onclick = function() {
-setCookie('likodopt_cookie_closed', '1', 30);
-cookieBanner.classList.remove('show');
-};
-const idleView = document.getElementById('idleView');
-const queueView = document.getElementById('queueView');
-const searchTimerText = document.getElementById('searchTimerText');
-const statusEl = document.getElementById('status');
-const netStatusEl = document.getElementById('netStatus');
-const partnerAvatar = document.getElementById('partnerAvatar');
-const messagesEl = document.getElementById('messages');
-const chatForm = document.getElementById('chatForm');
-const msgInput = document.getElementById('msgInput');
-const btnSend = document.getElementById('btnSend');
-const btnNext = document.getElementById('btnNext');
-const btnStop = document.getElementById('btnStop');
-const btnMute = document.getElementById('btnMute');
-const remoteAudio = document.getElementById('remoteAudio');
-const TOPIC = 'likodopt_ru_room_7741';
-const myId = 'u_' + Math.random().toString(36).slice(2, 10);
-let partnerId = null;
-let state = 'idle';
-let localStream = null;
-let pc = null;
-let isMuted = false;
-let searchTimer = null;
-let clockInterval = null;
-let searchSeconds = 0;
-let lastMsgId = '';
-const rtcConfig = {
-iceServers: [
-{ urls: 'stun:google.com' },
-{ urls: 'stun:google.com' },
-{
-urls: 'turn:openrelay.metered.ca:80',
-username: 'openrelayproject',
-credential: 'openrelayproject'
-},
-{
-urls: 'turn:openrelay.metered.ca:443',
-username: 'openrelayproject',
-credential: 'openrelayproject'
-}
-]
-};
-function showQueueWindow(show) {
-if (show) {
-idleView.style.display = 'none';
-queueView.classList.add('active');
-searchSeconds = 0;
-searchTimerText.textContent = '00:00';
-clearInterval(clockInterval);
-clockInterval = setInterval(function() {
-searchSeconds++;
-const mins = String(Math.floor(searchSeconds / 60)).padStart(2, '0');
-const secs = String(searchSeconds % 60).padStart(2, '0');
-searchTimerText.textContent = mins + ':' + secs;
-}, 1000);
-} else {
-clearInterval(clockInterval);
-queueView.classList.remove('active');
-idleView.style.display = 'block';
-}
-}
-function addMessage(text, type) {
-const div = document.createElement('div');
-div.className = 'msg ' + type;
-div.textContent = text;
-messagesEl.appendChild(div);
-messagesEl.scrollTop = messagesEl.scrollHeight;
-}
-function setChatEnabled(enabled) {
-msgInput.disabled = !enabled;
-btnSend.disabled = !enabled;
-if (!enabled) msgInput.value = '';
-}
-async function sendSignal(payload) {
-try {
-await fetch('ntfy.sh' + TOPIC, {
-method: 'POST',
-body: JSON.stringify({ from: myId, ts: Date.now(), ...payload })
-});
-} catch (e) {}
-}
-async function pollMessages() {
-try {
-const url = 'ntfy.sh' + TOPIC + '/json?poll=1&since=10s' + (lastMsgId ? '&id=' + lastMsgId : '');
-const res = await fetch(url);
-if (res.ok) {
-netStatusEl.textContent = 'Онлайн: В сети';
-const text = await res.text();
-const lines = text.trim().split('\n');
-for (let i = 0; i < lines.length; i++) {
-if (!lines[i]) continue;
-const wrapper = JSON.parse(lines[i]);
-if (wrapper.id) lastMsgId = wrapper.id;
-if (!wrapper.message) continue;
-const data = JSON.parse(wrapper.message);
-await processSignal(data);
-}
-}
-} catch (e) {
-netStatusEl.textContent = 'Сеть (проверьте VPN)';
-}
-setTimeout(pollMessages, 1200);
-}
-async function processSignal(data) {
-if (!data || data.from === myId) return;
-if (data.type === 'seek' && state === 'searching') {
-if (myId > data.from) {
-await startCallWith(data.from, true);
-sendSignal({ to: data.from, type: 'accept' });
-}
-} else if (data.to === myId) {
-if (data.type === 'accept' && state === 'searching') {
-await startCallWith(data.from, false);
-} else if (data.from === partnerId) {
-if (data.type === 'signal') await handleWebRTC(data.signal);
-else if (data.type === 'chat') addMessage(data.text, 'partner');
-else if (data.type === 'bye') {
-closeCall();
-statusEl.textContent = 'Собеседник отключился';
-addMessage('Собеседник покинул чат. Нажмите «Далее»', 'sys');
-}
-}
-}
-}
-pollMessages();
-async function tryInitAudio() {
-if (localStream) return;
-if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-addMessage('Микрофон недоступен — работает текстовый чат', 'sys');
-return;
-}
-try {
-localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-btnMute.disabled = false;
-addMessage('Микрофон подключен', 'sys');
-} catch (err) {
-addMessage('Доступ к микрофону закрыт — доступен только текст', 'sys');
-}
-}
-function closeCall() {
-clearInterval(searchTimer);
-showQueueWindow(false);
-if (partnerId) sendSignal({ to: partnerId, type: 'bye' });
-partnerId = null;
-state = 'idle';
-partnerAvatar.classList.remove('speaking');
-setChatEnabled(false);
-if (pc) { try { pc.close(); } catch (e) {} pc = null; }
-remoteAudio.srcObject = null;
-}
-async function startCallWith(target, isInitiator) {
-clearInterval(searchTimer);
-showQueueWindow(false);
-partnerId = target;
-state = 'connected';
-statusEl.textContent = 'Собеседник на связи!';
-messagesEl.innerHTML = '';
-addMessage('Соединение установлено. Поздоровайтесь!', 'sys');
-partnerAvatar.classList.add('speaking');
-setChatEnabled(true);
-pc = new RTCPeerConnection(rtcConfig);
-if (localStream) {
-localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-}
-pc.ontrack = function(ev) {
-const stream = new MediaStream();
-stream.addTrack(ev.track);
-remoteAudio.srcObject = stream;
-remoteAudio.play().catch(() => {});
-};
-pc.onicecandidate = function(ev) {
-if (ev.candidate) sendSignal({ to: partnerId, type: 'signal', signal: { candidate: ev.candidate } });
-};
-if (isInitiator) {
-const offer = await pc.createOffer();
-await pc.setLocalDescription(offer);
-sendSignal({ to: partnerId, type: 'signal', signal: { offer } });
-}
-}
-async function handleWebRTC(sig) {
-if (!pc) return;
-if (sig.offer) {
-await pc.setRemoteDescription(new RTCSessionDescription(sig.offer));
-const answer = await pc.createAnswer();
-await pc.setLocalDescription(answer);
-sendSignal({ to: partnerId, type: 'signal', signal: { answer } });
-} else if (sig.answer) {
-await pc.setRemoteDescription(new RTCSessionDescription(sig.answer));
-} else if (sig.candidate) {
-await pc.addIceCandidate(new RTCIceCandidate(sig.candidate));
-}
-}
-btnNext.onclick = function() {
-closeCall();
-state = 'searching';
-btnStop.disabled = false;
-messagesEl.innerHTML = '';
-showQueueWindow(true);
-addMessage('Вы вошли в очередь поиска собеседника...', 'sys');
-tryInitAudio();
-sendSignal({ type: 'seek' });
-searchTimer = setInterval(function() {
-if (state === 'searching') sendSignal({ type: 'seek' });
-}, 1800);
-};
-btnStop.onclick = function() {
-closeCall();
-btnStop.disabled = true;
-statusEl.textContent = 'Поиск остановлен';
-addMessage('Вы вышли из очереди', 'sys');
-};
-btnMute.onclick = function() {
-if (!localStream) return;
-isMuted = !isMuted;
-localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
-btnMute.textContent = isMuted ? 'Включить микрофон' : 'Выключить микрофон';
-btnMute.classList.toggle('muted', isMuted);
-};
-chatForm.onsubmit = function(e) {
-e.preventDefault();
-const text = msgInput.value.trim();
-if (!text || state !== 'connected' || !partnerId) return;
-addMessage(text, 'me');
-sendSignal({ to: partnerId, type: 'chat', text });
-msgInput.value = '';
-};
+        <button type="button" class="btn" id="btnStop" disabled>Стоп</button>
+        <button type="button" class="btn" id="btnMute" disabled>Выключить микрофон</button>
+    </div>
 
+    <audio id="remoteAudio" autoplay playsinline></audio>
+</div>
 
+<div class="cookie-banner" id="cookieBanner">
+    <div class="cookie-text">🍪 Мы используем ваши файлы <span>Cookie</span> для улучшения работы сайта.</div>
+    <button type="button" class="cookie-close" id="closeCookieBtn">✕</button>
+</div>
+
+<script src="./script.js"></script>
+</body>
+</html>
