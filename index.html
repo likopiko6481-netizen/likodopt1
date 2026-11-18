@@ -1,226 +1,211 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="google" content="notranslate">
-    <title>Likodopt — Голосовая чат-рулетка</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: url('./bg.png') no-repeat center center fixed, url('./bg.jpg') no-repeat center center fixed, #0f1115; background-size: cover; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 15px; }
-        .app { background: rgba(24, 27, 34, 0.92); backdrop-filter: blur(10px); width: 100%; max-width: 460px; border-radius: 22px; padding: 24px; box-shadow: 0 12px 40px rgba(0,0,0,0.65); border: 1px solid #262a35; }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
-        .logo { font-size: 1.5rem; font-weight: 800; color: #00e676; letter-spacing: 1px; }
-        .online-badge { background: #232834; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; color: #a0aab8; display: flex; align-items: center; }
-        .online-dot { width: 8px; height: 8px; background: #00e676; border-radius: 50%; margin-right: 6px; }
-        .voice-box { background: rgba(18, 20, 26, 0.88); border-radius: 18px; padding: 22px 15px; text-align: center; margin-bottom: 15px; border: 1px solid #222630; min-height: 165px; display: flex; flex-direction: column; justify-content: center; }
-        .avatar { width: 72px; height: 72px; border-radius: 50%; background: #232834; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
-        #status { font-size: 1rem; color: #cfd8e3; font-weight: 500; }
-        .queue-window, .call-window { display: none; flex-direction: column; align-items: center; }
-        .queue-window.active, .call-window.active { display: flex; }
-        .radar { position: relative; width: 72px; height: 72px; border-radius: 50%; background: rgba(0, 230, 118, 0.12); border: 2px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin-bottom: 12px; }
-        .radar::before { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid #00e676; animation: pulseRing 2s infinite ease-out; }
-        @keyframes pulseRing { 0% { transform: scale(0.95); opacity: 0.8; } 100% { transform: scale(1.55); opacity: 0; } }
-        .queue-title { font-size: 1.05rem; font-weight: 700; color: #00e676; margin-bottom: 4px; }
-        .queue-sub { font-size: 0.85rem; color: #a0aab8; margin-bottom: 10px; }
-        .timer-pill { background: #232834; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; border: 1px solid #323846; }
-        .partner-card { width: 76px; height: 76px; border-radius: 50%; background: #1c382c; border: 2px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; margin-bottom: 10px; box-shadow: 0 0 20px rgba(0, 230, 118, 0.35); }
-        .call-title { font-size: 1.1rem; font-weight: 800; color: #fff; margin-bottom: 4px; }
-        .call-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(0, 230, 118, 0.15); color: #00e676; padding: 4px 12px; border-radius: 20px; font-size: 0.82rem; font-weight: 700; border: 1px solid rgba(0, 230, 118, 0.3); }
-        .chat-box { background: rgba(18, 20, 26, 0.88); border-radius: 14px; height: 175px; display: flex; flex-direction: column; margin-bottom: 15px; border: 1px solid #222630; overflow: hidden; }
-        #messages { flex: 1; padding: 12px; overflow-y: auto; font-size: 0.9rem; display: flex; flex-direction: column; gap: 8px; }
-        .msg { padding: 8px 12px; border-radius: 10px; max-width: 82%; word-wrap: break-word; }
-        .msg.me { background: #00e676; color: #000; align-self: flex-end; font-weight: 500; }
-        .msg.partner { background: #262b38; color: #fff; align-self: flex-start; }
-        .msg.sys { background: transparent; color: #788292; align-self: center; font-size: 0.8rem; text-align: center; }
-        .chat-input { display: flex; border-top: 1px solid #222630; }
-        .chat-input input { flex: 1; background: transparent; border: none; padding: 12px; color: #fff; outline: none; font-size: 0.9rem; }
-        .chat-input button { background: transparent; border: none; color: #00e676; font-weight: bold; padding: 0 18px; font-size: 1.1rem; cursor: pointer; }
-        .chat-input button:disabled { color: #555; }
-        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .btn { padding: 14px; border: none; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; }
-        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        #btnNext { background: #00e676; color: #000; }
-        #btnStop { background: #ff5252; color: #fff; }
-        #btnMute { grid-column: span 2; background: #262b38; color: #fff; font-weight: 600; }
-        #btnMute.muted { background: #ff9800; color: #000; }
-        .cookie-banner { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); width: calc(100% - 30px); max-width: 460px; background: rgba(24, 27, 34, 0.96); border: 1px solid rgba(0, 230, 118, 0.35); border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; z-index: 999; }
-        .cookie-text { font-size: 0.88rem; color: #e6ecf5; line-height: 1.4; }
-        .cookie-text span { color: #00e676; font-weight: 700; }
-        .cookie-close { background: #262b38; color: #a0aab8; border: 1px solid #353b4d; border-radius: 50%; width: 34px; height: 34px; min-width: 34px; display: flex; align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; }
-    </style>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="google" content="notranslate">
+<title>Likodopt</title>
+<style>
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body { font-family: sans-serif; background: url('./bg.png') center/cover fixed, url('./bg.jpg') center/cover fixed, #0f1115; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 15px; }
+.app { background: rgba(24, 27, 34, 0.92); width: 100%; max-width: 440px; border-radius: 20px; padding: 24px; border: 1px solid #262a35; }
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+.logo { font-size: 1.5rem; font-weight: 800; color: #00e676; }
+.badge { background: #232834; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; color: #a0aab8; }
+.dot { display: inline-block; width: 8px; height: 8px; background: #00e676; border-radius: 50%; margin-right: 6px; }
+.box { background: rgba(18, 20, 26, 0.88); border-radius: 16px; padding: 22px 15px; text-align: center; margin-bottom: 15px; border: 1px solid #222630; min-height: 160px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+.ava { width: 70px; height: 70px; border-radius: 50%; background: #232834; margin-bottom: 12px; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+.ava.green { background: #1c382c; border: 2px solid #00e676; box-shadow: 0 0 18px rgba(0,230,118,0.4); }
+.chat { background: rgba(18, 20, 26, 0.88); border-radius: 14px; height: 170px; display: flex; flex-direction: column; margin-bottom: 15px; border: 1px solid #222630; overflow: hidden; }
+#msgs { flex: 1; padding: 12px; overflow-y: auto; font-size: 0.9rem; display: flex; flex-direction: column; gap: 8px; }
+.m { padding: 8px 12px; border-radius: 10px; max-width: 82%; word-wrap: break-word; }
+.m.me { background: #00e676; color: #000; align-self: flex-end; font-weight: 600; }
+.m.he { background: #262b38; color: #fff; align-self: flex-start; }
+.m.sys { color: #788292; align-self: center; font-size: 0.8rem; text-align: center; }
+.form { display: flex; border-top: 1px solid #222630; }
+.form input { flex: 1; background: transparent; border: none; padding: 12px; color: #fff; outline: none; }
+.form button { background: transparent; border: none; color: #00e676; font-weight: bold; padding: 0 16px; font-size: 1.1rem; cursor: pointer; }
+.form button:disabled { color: #555; }
+.btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.btn { padding: 14px; border: none; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; }
+.btn:disabled { opacity: 0.4; cursor: not-allowed; }
+#bNext { background: #00e676; color: #000; }
+#bStop { background: #ff5252; color: #fff; }
+#bMute { grid-column: span 2; background: #262b38; color: #fff; }
+#bMute.on { background: #ff9800; color: #000; }
+.ck { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); width: calc(100% - 30px); max-width: 440px; background: #181b22; border: 1px solid #00e676; border-radius: 14px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 10px; z-index: 99; }
+.ck button { background: #262b38; color: #fff; border: none; border-radius: 50%; width: 30px; height: 30px; cursor: pointer; }
+</style>
 </head>
 <body>
 <div class="app">
-    <div class="header">
-        <div class="logo">LIKODOPT</div>
-        <div class="online-badge"><span class="online-dot"></span><span>Онлайн: В сети</span></div>
-    </div>
+  <div class="header">
+    <div class="logo">LIKODOPT</div>
+    <div class="badge"><span class="dot"></span>Онлайн: В сети</div>
+  </div>
 
-    <div class="voice-box">
-        <div id="idleView">
-            <div class="avatar">🎙️</div>
-            <div id="status">Нажмите «Найти / Далее»</div>
-        </div>
-        <div class="queue-window" id="queueView">
-            <div class="radar">🔍</div>
-            <div class="queue-title">Вы в очереди ожидания</div>
-            <div class="queue-sub">Подбираем свободного собеседника...</div>
-            <div class="timer-pill">Время поиска: <span id="searchTimerText">00:00</span></div>
-        </div>
-        <div class="call-window" id="callView">
-            <div class="partner-card">🎧</div>
-            <div class="call-title">Собеседник на связи</div>
-            <div class="call-badge">● Разговор: <span id="callTimerText">00:00</span></div>
-        </div>
-    </div>
+  <div class="box">
+    <div class="ava" id="ava">🎙️</div>
+    <div id="title" style="font-weight:700; font-size:1.05rem; margin-bottom:6px;">Нажмите «Найти / Далее»</div>
+    <div id="sub" style="font-size:0.85rem; color:#a0aab8;">Готово к запуску</div>
+  </div>
 
-    <div class="chat-box">
-        <div id="messages"></div>
-        <form class="chat-input" id="chatForm" onsubmit="sendText(event)">
-            <input type="text" id="msgInput" placeholder="Написать сообщение..." disabled autocomplete="off">
-            <button type="submit" id="btnSend" disabled>➤</button>
-        </form>
-    </div>
+  <div class="chat">
+    <div id="msgs"></div>
+    <form class="form" id="cForm">
+      <input type="text" id="inp" placeholder="Сообщение..." disabled autocomplete="off">
+      <button type="submit" id="bSend" disabled>➤</button>
+    </form>
+  </div>
 
-    <div class="controls">
-        <button type="button" class="btn" id="btnNext" onclick="startSearch()">Найти / Далее</button>
-        <button type="button" class="btn" id="btnStop" onclick="stopSearch()" disabled>Стоп</button>
-        <button type="button" class="btn" id="btnMute" onclick="toggleMute()" disabled>Выключить микрофон</button>
-    </div>
-
-    <audio id="remoteAudio" autoplay playsinline></audio>
+  <div class="btns">
+    <button type="button" class="btn" id="bNext">Найти / Далее</button>
+    <button type="button" class="btn" id="bStop" disabled>Стоп</button>
+    <button type="button" class="btn" id="bMute" disabled>Выключить микрофон</button>
+  </div>
+  <audio id="aud" autoplay playsinline></audio>
 </div>
 
-<div class="cookie-banner" id="cookieBanner">
-    <div class="cookie-text">🍪 Мы используем ваши файлы <span>Cookie</span> для улучшения работы сайта.</div>
-    <button type="button" class="cookie-close" onclick="closeCookies()">✕</button>
+<div class="ck" id="ckBox">
+  <div style="font-size:0.85rem;">🍪 Мы используем ваши файлы <b style="color:#00e676;">Cookie</b> для улучшения работы сайта.</div>
+  <button type="button" id="ckClose">✕</button>
 </div>
 
 <script>
 const DB = 'https://kvdb.io';
 const myId = 'u_' + Math.random().toString(36).slice(2, 10);
-let partnerId = null, state = 'idle', stream = null, pc = null, muted = false, sTimer = null, cTimer = null, sec = 0;
+let pId = null, st = 'idle', stream = null, pc = null, muted = false, sLoop = null, tLoop = null, sec = 0;
 const seen = new Set();
 
-if (document.cookie.includes('lk_ok=1')) document.getElementById('cookieBanner').style.display = 'none';
-function closeCookies() {
-    document.cookie = 'lk_ok=1;max-age=2592000;path=/';
-    document.getElementById('cookieBanner').style.display = 'none';
-}
-
-function showView(v) {
-    clearInterval(cTimer); sec = 0;
-    document.getElementById('idleView').style.display = v === 'idle' ? 'block' : 'none';
-    document.getElementById('queueView').classList.toggle('active', v === 'queue');
-    document.getElementById('callView').classList.toggle('active', v === 'call');
-    if (v === 'queue' || v === 'call') {
-        const el = document.getElementById(v === 'queue' ? 'searchTimerText' : 'callTimerText');
-        el.textContent = '00:00';
-        cTimer = setInterval(() => {
-            sec++;
-            el.textContent = String(Math.floor(sec/60)).padStart(2,'0') + ':' + String(sec%60).padStart(2,'0');
-        }, 1000);
-    }
-}
+const ckBox = document.getElementById('ckBox');
+if (document.cookie.includes('lk=1')) ckBox.style.display = 'none';
+document.getElementById('ckClose').onclick = function() {
+  document.cookie = 'lk=1;max-age=2592000;path=/';
+  ckBox.style.display = 'none';
+};
 
 function log(t, c) {
-    const d = document.createElement('div'); d.className = 'msg ' + c; d.textContent = t;
-    const m = document.getElementById('messages'); m.appendChild(d); m.scrollTop = m.scrollHeight;
+  const d = document.createElement('div'); d.className = 'm ' + c; d.textContent = t;
+  const m = document.getElementById('msgs'); m.appendChild(d); m.scrollTop = m.scrollHeight;
 }
 
-function chatOn(on) {
-    document.getElementById('msgInput').disabled = !on;
-    document.getElementById('btnSend').disabled = !on;
+function setUI(mode, tText, sText) {
+  clearInterval(tLoop); sec = 0;
+  const ava = document.getElementById('ava');
+  ava.className = mode === 'call' ? 'ava green' : 'ava';
+  ava.textContent = mode === 'queue' ? '🔍' : (mode === 'call' ? '🎧' : '🎙️');
+  document.getElementById('title').textContent = tText;
+  document.getElementById('sub').textContent = sText;
+  if (mode === 'queue' || mode === 'call') {
+    tLoop = setInterval(function() {
+      sec++;
+      const tm = String(Math.floor(sec/60)).padStart(2,'0') + ':' + String(sec%60).padStart(2,'0');
+      document.getElementById('sub').textContent = (mode === 'queue' ? 'В очереди: ' : 'Разговор: ') + tm;
+    }, 1000);
+  }
+}
+
+function setChat(on) {
+  document.getElementById('inp').disabled = !on;
+  document.getElementById('bSend').disabled = !on;
 }
 
 async function getJ(k) { try { const r = await fetch(DB+'/'+k+'?t='+Date.now()); return r.ok ? r.json() : null; } catch(e) { return null; } }
 async function setJ(k, d) { try { await fetch(DB+'/'+k, { method: 'PUT', body: JSON.stringify(d) }); } catch(e) {} }
 async function send(to, data) {
-    const cur = (await getJ('in_'+to)) || [];
-const arr = Array.isArray(cur) ? cur.filter(x => Date.now()-x.ts < 15000) : [];
-arr.push({ id: myId+''+Date.now()+Math.random(), from: myId, ts: Date.now(), ...data });
-await setJ('in'+to, arr.slice(-15));
+  const cur = (await getJ('in_'+to)) || [];
+  const arr = Array.isArray(cur) ? cur.filter(x => Date.now()-x.ts < 15000) : [];
+  arr.push({ id: myId+'_'+Date.now()+Math.random(), from: myId, ts: Date.now(), ...data });
+  await setJ('in_'+to, arr.slice(-15));
 }
-function startSearch() {
-stopSearch(false);
-state = 'searching';
-document.getElementById('btnStop').disabled = false;
-document.getElementById('messages').innerHTML = '';
-showView('queue');
-log('Ищем свободного собеседника...', 'sys');
-if (!stream && navigator.mediaDevices) {
-navigator.mediaDevices.getUserMedia({audio:true}).then(s => { stream = s; document.getElementById('btnMute').disabled = false; }).catch(()=>{});
+
+document.getElementById('bNext').onclick = function() {
+  stopAll(false);
+  st = 'search';
+  document.getElementById('bStop').disabled = false;
+  document.getElementById('msgs').innerHTML = '';
+  setUI('queue', 'Вы в очереди ожидания', 'В очереди: 00:00');
+  log('Поиск свободного собеседника...', 'sys');
+  if (!stream && navigator.mediaDevices) {
+    navigator.mediaDevices.getUserMedia({audio:true}).then(s => { stream = s; document.getElementById('bMute').disabled = false; }).catch(()=>{});
+  }
+  findStep();
+  sLoop = setInterval(findStep, 1500);
+};
+
+document.getElementById('bStop').onclick = function() { stopAll(true); };
+
+function stopAll(showStop) {
+  clearInterval(sLoop);
+  if (pId) send(pId, { type: 'bye' });
+  pId = null; st = 'idle'; setChat(false);
+  if (pc) { try { pc.close(); } catch(e) {} pc = null; }
+  if (showStop) {
+    document.getElementById('bStop').disabled = true;
+    setUI('idle', 'Поиск остановлен', 'Нажмите «Найти / Далее»');
+    log('Вы вышли из очереди', 'sys');
+  }
 }
-findLoop();
-sTimer = setInterval(findLoop, 1500);
+
+document.getElementById('bMute').onclick = function() {
+  if (!stream) return;
+  muted = !muted;
+  stream.getAudioTracks().forEach(t => t.enabled = !muted);
+  this.textContent = muted ? 'Включить микрофон' : 'Выключить микрофон';
+  this.classList.toggle('on', muted);
+};
+
+document.getElementById('cForm').onsubmit = function(e) {
+  e.preventDefault();
+  const inp = document.getElementById('inp');
+  const txt = inp.value.trim();
+  if (!txt || !pId) return;
+  log(txt, 'me'); send(pId, { type: 'chat', text: txt }); inp.value = '';
+};
+
+async function findStep() {
+  if (st !== 'search') return;
+  let q = (await getJ('q_ru')) || [];
+  if (!Array.isArray(q)) q = [];
+  q = q.filter(x => x && x.id && x.id !== myId && Date.now()-x.ts < 8000);
+  if (q.length > 0 && myId > q[0].id) {
+    st = 'conn'; pId = q[0].id; clearInterval(sLoop);
+    await setJ('q_ru', q.slice(1));
+    await send(pId, { type: 'ok' });
+    startCall(true); return;
+  }
+  q.push({ id: myId, ts: Date.now() });
+  await setJ('q_ru', q);
 }
-function stopSearch(updateText = true) {
-clearInterval(sTimer);
-if (partnerId) send(partnerId, { type: 'bye' });
-partnerId = null; state = 'idle'; showView('idle'); chatOn(false);
-if (pc) { try { pc.close(); } catch(e) {} pc = null; }
-if (updateText) {
-document.getElementById('btnStop').disabled = true;
-document.getElementById('status').textContent = 'Поиск остановлен';
-log('Вы вышли из очереди', 'sys');
+
+async function startCall(init) {
+  st = 'call'; setChat(true);
+  document.getElementById('msgs').innerHTML = '';
+  setUI('call', 'Собеседник на связи', 'Разговор: 00:00');
+  log('Собеседник найден! Поздоровайтесь 👋', 'sys');
+  pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:://google.com' }, { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }] });
+  if (stream) stream.getTracks().forEach(t => pc.addTrack(t, stream));
+  pc.ontrack = e => { const a = document.getElementById('aud'); a.srcObject = new MediaStream([e.track]); a.play().catch(()=>{}); };
+  pc.onicecandidate = e => { if (e.candidate && pId) send(pId, { type: 'cand', cand: e.candidate }); };
+  if (init) {
+    const off = await pc.createOffer(); await pc.setLocalDescription(off);
+    await send(pId, { type: 'off', off: off });
+  }
 }
-}
-function toggleMute() {
-if (!stream) return;
-muted = !muted;
-stream.getAudioTracks().forEach(t => t.enabled = !muted);
-const b = document.getElementById('btnMute');
-b.textContent = muted ? 'Включить микрофон' : 'Выключить микрофон';
-b.classList.toggle('muted', muted);
-}
-function sendText(e) {
-e.preventDefault();
-const inp = document.getElementById('msgInput');
-const txt = inp.value.trim();
-if (!txt || !partnerId) return;
-log(txt, 'me'); send(partnerId, { type: 'chat', text: txt }); inp.value = '';
-}
-async function findLoop() {
-if (state !== 'searching') return;
-let q = (await getJ('q_ru')) || [];
-if (!Array.isArray(q)) q = [];
-q = q.filter(x => x && x.id !== myId && Date.now()-x.ts < 8000);
-if (q.length > 0 && myId > q[0].id) {
-state = 'connecting'; partnerId = q[0].id; clearInterval(sTimer);
-await setJ('q_ru', q.slice(1));
-await send(partnerId, { type: 'accept' });
-initCall(true); return;
-}
-q.push({ id: myId, ts: Date.now() });
-await setJ('q_ru', q);
-}
-async function initCall(init) {
-state = 'connected'; showView('call'); chatOn(true);
-document.getElementById('messages').innerHTML = '';
-log('Собеседник найден! Поздоровайтесь 👋', 'sys');
-pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:google.com' }, { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }] });
-if (stream) stream.getTracks().forEach(t => pc.addTrack(t, stream));
-pc.ontrack = e => { const s = new MediaStream([e.track]); const a = document.getElementById('remoteAudio'); a.srcObject = s; a.play().catch(()=>{}); };
-pc.onicecandidate = e => { if (e.candidate && partnerId) send(partnerId, { type: 'cand', cand: e.candidate }); };
-if (init) {
-const off = await pc.createOffer(); await pc.setLocalDescription(off);
-await send(partnerId, { type: 'offer', offer: off });
-}
-}
+
 setInterval(async () => {
-const msgs = await getJ('in_'+myId);
-if (!Array.isArray(msgs) || !msgs.length) return;
-await setJ('in_'+myId, []);
-for (const m of msgs) {
-if (!m || seen.has(m.id)) continue; seen.add(m.id);
-if (m.type === 'accept' && state === 'searching') { partnerId = m.from; clearInterval(sTimer); initCall(false); }
-else if (m.from === partnerId) {
-if (m.type === 'offer' && pc) { await pc.setRemoteDescription(new RTCSessionDescription(m.offer)); const ans = await pc.createAnswer(); await pc.setLocalDescription(ans); send(partnerId, { type: 'answer', answer: ans }); }
-else if (m.type === 'answer' && pc) await pc.setRemoteDescription(new RTCSessionDescription(m.answer));
+  const msgs = await getJ('in_'+myId);
+  if (!Array.isArray(msgs) || !msgs.length) return;
+  await setJ('in_'+myId, []);
+  for (const m of msgs) {
+    if (!m || seen.has(m.id)) continue; seen.add(m.id);
+    if (m.type === 'ok' && st === 'search') { pId = m.from; clearInterval(sLoop); startCall(false); }
+    else if (m.from === pId) {
+if (m.type === 'off' && pc) { await pc.setRemoteDescription(new RTCSessionDescription(m.off)); const ans = await pc.createAnswer(); await pc.setLocalDescription(ans); send(pId, { type: 'ans', ans: ans }); }
+else if (m.type === 'ans' && pc) await pc.setRemoteDescription(new RTCSessionDescription(m.ans));
 else if (m.type === 'cand' && pc) { try { await pc.addIceCandidate(new RTCIceCandidate(m.cand)); } catch(e) {} }
-else if (m.type === 'chat') log(m.text, 'partner');
-else if (m.type === 'bye') { stopSearch(true); document.getElementById('status').textContent = 'Собеседник отключился'; }
+else if (m.type === 'chat') log(m.text, 'he');
+else if (m.type === 'bye') { stopAll(true); document.getElementById('title').textContent = 'Собеседник отключился'; }
 }
 }
 }, 1000);
