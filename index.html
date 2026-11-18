@@ -4,12 +4,14 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Likodopt — Голосовая чат-рулетка</title>
-    <script src="https://unpkg.com"></script>
+    <script src="https://jsdelivr.net"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: url('/bg') no-repeat center center fixed, #0f1115;
+            background: url('./bg.png') no-repeat center center fixed,
+                        url('./bg.jpg') no-repeat center center fixed,
+                        #0f1115;
             background-size: cover;
             color: #fff;
             display: flex;
@@ -58,9 +60,7 @@
             margin-right: 6px;
             transition: background 0.3s;
         }
-        .online-dot.connected {
-            background: #00e676;
-        }
+        .online-dot.connected { background: #00e676; }
         .voice-box {
             background: rgba(18, 20, 26, 0.8);
             border-radius: 16px;
@@ -160,6 +160,54 @@
             font-weight: 600;
         }
         #btnMute.muted { background: #ff9800; color: #000; }
+
+        .cookie-banner {
+            position: fixed;
+            bottom: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 30px);
+            max-width: 460px;
+            background: rgba(24, 27, 34, 0.96);
+            backdrop-filter: blur(12px);
+            border: 1px solid rgba(0, 230, 118, 0.35);
+            border-radius: 16px;
+            padding: 14px 16px;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.8);
+            z-index: 999;
+        }
+        .cookie-banner.show { display: flex; }
+        .cookie-text {
+            font-size: 0.88rem;
+            color: #e6ecf5;
+            line-height: 1.4;
+            font-weight: 500;
+        }
+        .cookie-text span { color: #00e676; font-weight: 700; }
+        .cookie-close {
+            background: #262b38;
+            color: #a0aab8;
+            border: 1px solid #353b4d;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .cookie-close:hover {
+            background: #ff5252;
+            color: #fff;
+            border-color: #ff5252;
+        }
     </style>
 </head>
 <body>
@@ -167,12 +215,12 @@
 <div class="app">
     <div class="header">
         <div class="logo">LIKODOPT</div>
-        <div class="online-badge"><span class="online-dot" id="connDot"></span>Онлайн: <span id="onlineCount">0</span></div>
+        <div class="online-badge"><span class="online-dot" id="connDot"></span><span id="onlineText">Подключение...</span></div>
     </div>
 
     <div class="voice-box">
         <div class="avatar" id="partnerAvatar">🎙️</div>
-        <div id="status">Подключение к серверу...</div>
+        <div id="status">Подключение к сети...</div>
     </div>
 
     <div class="chat-box">
@@ -192,9 +240,38 @@
     <audio id="remoteAudio" autoplay playsinline></audio>
 </div>
 
+<div class="cookie-banner" id="cookieBanner">
+    <div class="cookie-text">🍪 Мы используем ваши файлы <span>Cookie</span> для улучшения работы сайта.</div>
+    <button class="cookie-close" id="closeCookieBtn" title="Закрыть">✕</button>
+</div>
+
 <script>
+    function setCookie(name, value, days) {
+        const d = new Date();
+        d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
+        document.cookie = name + "=" + encodeURIComponent(value) + ";expires=" + d.toUTCString() + ";path=/;SameSite=Lax";
+    }
+
+    function getCookie(name) {
+        const prefix = name + "=";
+        const parts = document.cookie.split(';');
+        for (let i = 0; i < parts.length; i++) {
+            let c = parts[i].trim();
+            if (c.indexOf(prefix) === 0) return decodeURIComponent(c.substring(prefix.length));
+        }
+        return null;
+    }
+
+    const cookieBanner = document.getElementById('cookieBanner');
+    const closeCookieBtn = document.getElementById('closeCookieBtn');
+    if (!getCookie('likodopt_cookie_closed')) cookieBanner.classList.add('show');
+    closeCookieBtn.addEventListener('click', () => {
+        setCookie('likodopt_cookie_closed', '1', 30);
+        cookieBanner.classList.remove('show');
+    });
+
     const statusEl = document.getElementById('status');
-    const onlineCountEl = document.getElementById('onlineCount');
+    const onlineText = document.getElementById('onlineText');
     const connDot = document.getElementById('connDot');
     const partnerAvatar = document.getElementById('partnerAvatar');
     const messagesEl = document.getElementById('messages');
@@ -206,178 +283,198 @@
     const btnMute = document.getElementById('btnMute');
     const remoteAudio = document.getElementById('remoteAudio');
 
-    let peer = null;
-    let myPeerId = null;
-    let currentCall = null;
-    let dataConn = null;
-    let localStream = null;
-    let isMuted = false;
-    let isSearching = false;
-    let searchTimer = null;
+    // Список серверов по стандартному порту 443 (не режутся в РФ)
+    const BROKERS = [
+        'wss://://hivemq.com',
+        'wss://broker.emqx.io:8084/mqtt',
+        'wss://test.mosquitto.org:8081/mqtt'
+    ];
 
-    function addMessage(text, type) {
-        const div = document.createElement('div');
-        div.className = 'msg ' + type;
-        div.textContent = text;
-        messagesEl.appendChild(div);
-        messagesEl.scrollTop = messagesEl.scrollHeight;
-    }
-
-    function setChatEnabled(enabled) {
-        msgInput.disabled = !enabled;
-        btnSend.disabled = !enabled;
-        if (!enabled) msgInput.value = '';
-    }
-
-    function initPeer() {
-        const isHttps = window.location.protocol === 'https:';
-        peer = new Peer({
-            host: window.location.hostname,
-            port: window.location.port || (isHttps ? 443 : 80),
-            path: '/peerjs',
-            key: 'peerjs',
-            secure: isHttps,
-            config: {
-                iceServers: [
-                    { urls: 'stun:://google.com' },
-                    { urls: 'stun:://google.com' },
-                    {
-                        urls: 'turn:openrelay.metered.ca:80',
-                        username: 'openrelayproject',
-                        credential: 'openrelayproject'
-                    }
-                ]
-            }
-        });
-
-        peer.on('open', (id) => {
-            myPeerId = id;
-            connDot.classList.add('connected');
-            btnNext.disabled = false;
-            statusEl.textContent = 'Нажмите «Найти / Далее»';
-            pingServer();
-            setInterval(pingServer, 5000);
-        });
-
-        peer.on('call', (incomingCall) => {
-            if (!isSearching && currentCall) {
-                incomingCall.close();
-                return;
-            }
-            stopSearchLoop();
-            incomingCall.answer(localStream);
-            setupCall(incomingCall);
-        });
-
-        peer.on('connection', (incomingConn) => {
-            setupData(incomingConn);
-        });
-
-        peer.on('disconnected', () => {
-            connDot.classList.remove('connected');
-            statusEl.textContent = 'Переподключение к серверу...';
-            peer.reconnect();
-        });
-
-        peer.on('error', (err) => {
-            statusEl.textContent = 'Ошибка связи: ' + err.type;
-        });
-    }
-
-    async function pingServer() {
-        if (!myPeerId) return;
-        try {
-            await fetch('/ping?peerId=' + encodeURIComponent(myPeerId));
-            const res = await fetch('/online-count');
-            const data = await res.json();
-            if (data.count !== undefined) onlineCountEl.textContent = data.count;
-        } catch (e) {}
-    }
-
-    initPeer();
-
-    async function initAudio() {
-        if (!localStream) {
-            try {
-                localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-                btnMute.disabled = false;
-            } catch (err) {
-statusEl.textContent = 'Разрешите доступ к микрофону в браузере!';
+const myId = 'lk_' + Math.random().toString(36).slice(2, 10);
+const LOBBY = 'likodopt/ru/v2/lobby';
+const MY_INBOX = 'likodopt/ru/v2/u/' + myId;
+let brokerIndex = 0;
+let client = null;
+let partnerId = null;
+let state = 'idle';
+let localStream = null;
+let pc = null;
+let isMuted = false;
+let searchTimer = null;
+const rtcConfig = {
+iceServers: [
+{ urls: 'stun:google.com' },
+{ urls: 'stun:google.com' },
+{
+urls: 'turn:openrelay.metered.ca:80',
+username: 'openrelayproject',
+credential: 'openrelayproject'
+},
+{
+urls: 'turn:openrelay.metered.ca:443',
+username: 'openrelayproject',
+credential: 'openrelayproject'
+}
+]
+};
+function addMessage(text, type) {
+const div = document.createElement('div');
+div.className = 'msg ' + type;
+div.textContent = text;
+messagesEl.appendChild(div);
+messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+function setChatEnabled(enabled) {
+msgInput.disabled = !enabled;
+btnSend.disabled = !enabled;
+if (!enabled) msgInput.value = '';
+}
+function sendTo(target, data) {
+if (client && client.connected) {
+client.publish('likodopt/ru/v2/u/' + target, JSON.stringify({ from: myId, ...data }));
+}
+}
+function connectToBroker() {
+if (typeof mqtt === 'undefined') {
+statusEl.textContent = 'Ошибка загрузки сети (проверьте интернет)';
+return;
+}
+const url = BROKERS[brokerIndex];
+statusEl.textContent = 'Подключение (сервер ' + (brokerIndex + 1) + ')...';
+if (client) {
+try { client.end(true); } catch (e) {}
+}
+client = mqtt.connect(url, {
+clientId: 'likodopt_' + myId + '_' + brokerIndex,
+clean: true,
+connectTimeout: 5000,
+reconnectPeriod: 0
+});
+const failTimer = setTimeout(() => {
+if (!client.connected) {
+brokerIndex = (brokerIndex + 1) % BROKERS.length;
+connectToBroker();
+}
+}, 5500);
+client.on('connect', () => {
+clearTimeout(failTimer);
+connDot.classList.add('connected');
+onlineText.textContent = 'Онлайн: В сети';
+btnNext.disabled = false;
+statusEl.textContent = 'Нажмите «Найти / Далее»';
+client.subscribe(MY_INBOX);
+});
+client.on('close', () => {
+if (connDot.classList.contains('connected')) {
+connDot.classList.remove('connected');
+onlineText.textContent = 'Переподключение...';
+setTimeout(connectToBroker, 2000);
+}
+});
+client.on('message', async (topic, raw) => {
+let data;
+try { data = JSON.parse(raw.toString()); } catch (e) { return; }
+if (data.from === myId) return;
+if (topic === LOBBY && data.type === 'seek' && state === 'searching') {
+if (myId > data.from) {
+startCallWith(data.from, true);
+sendTo(data.from, { type: 'accept' });
+}
+} else if (topic === MY_INBOX) {
+if (data.type === 'accept' && state === 'searching') {
+startCallWith(data.from, false);
+} else if (data.from === partnerId) {
+if (data.type === 'signal') await handleSignal(data.signal);
+else if (data.type === 'chat') addMessage(data.text, 'partner');
+else if (data.type === 'bye') {
+closeCall();
+statusEl.textContent = 'Собеседник отключился';
+addMessage('Собеседник покинул чат. Нажмите «Далее»', 'sys');
+}
+}
+}
+});
+}
+connectToBroker();
+async function initAudio() {
+if (!localStream) {
+try {
+localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+btnMute.disabled = false;
+} catch (err) {
+statusEl.textContent = 'Разрешите доступ к микрофону!';
 addMessage('Ошибка: браузер заблокировал микрофон', 'sys');
 throw err;
 }
 }
 }
-function stopSearchLoop() {
-isSearching = false;
-clearInterval(searchTimer);
-}
 function closeCall() {
-stopSearchLoop();
+clearInterval(searchTimer);
+if (partnerId) sendTo(partnerId, { type: 'bye' });
+partnerId = null;
+state = 'idle';
 partnerAvatar.classList.remove('speaking');
 setChatEnabled(false);
-if (currentCall) { try { currentCall.close(); } catch (e) {} currentCall = null; }
-if (dataConn) { try { dataConn.close(); } catch (e) {} dataConn = null; }
+if (pc) { try { pc.close(); } catch (e) {} pc = null; }
 remoteAudio.srcObject = null;
+if (client && client.connected) client.unsubscribe(LOBBY);
 }
-function onConnected() {
-stopSearchLoop();
+async function startCallWith(target, isInitiator) {
+clearInterval(searchTimer);
+if (client && client.connected) client.unsubscribe(LOBBY);
+partnerId = target;
+state = 'connected';
 statusEl.textContent = 'Собеседник на связи!';
 messagesEl.innerHTML = '';
 addMessage('Соединение установлено. Поздоровайтесь!', 'sys');
 partnerAvatar.classList.add('speaking');
 setChatEnabled(true);
-}
-function setupCall(call) {
-currentCall = call;
-call.on('stream', (remoteStream) => {
-onConnected();
-remoteAudio.srcObject = remoteStream;
+pc = new RTCPeerConnection(rtcConfig);
+localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+pc.ontrack = (ev) => {
+const stream = new MediaStream();
+stream.addTrack(ev.track);
+remoteAudio.srcObject = stream;
 remoteAudio.play().catch(() => {});
-});
-call.on('close', () => {
-closeCall();
-statusEl.textContent = 'Собеседник отключился';
-addMessage('Собеседник покинул чат. Нажмите «Далее»', 'sys');
-});
+};
+pc.onicecandidate = (ev) => {
+if (ev.candidate) sendTo(partnerId, { type: 'signal', signal: { candidate: ev.candidate } });
+};
+if (isInitiator) {
+const offer = await pc.createOffer();
+await pc.setLocalDescription(offer);
+sendTo(partnerId, { type: 'signal', signal: { offer } });
 }
-function setupData(conn) {
-dataConn = conn;
-conn.on('open', onConnected);
-conn.on('data', (text) => {
-if (typeof text === 'string') addMessage(text, 'partner');
-});
-conn.on('close', () => {
-closeCall();
-statusEl.textContent = 'Собеседник отключился';
-addMessage('Собеседник покинул чат. Нажмите «Далее»', 'sys');
-});
 }
-async function findPartnerStep() {
-if (!isSearching || !myPeerId) return;
-try {
-const res = await fetch('/find-partner?myId=' + encodeURIComponent(myPeerId));
-const data = await res.json();
-if (data.partnerId && isSearching) {
-stopSearchLoop();
-statusEl.textContent = 'Соединение с собеседником...';
-const conn = peer.connect(data.partnerId, { reliable: true });
-const call = peer.call(data.partnerId, localStream);
-setupData(conn);
-setupCall(call);
+async function handleSignal(sig) {
+if (!pc) return;
+if (sig.offer) {
+await pc.setRemoteDescription(new RTCSessionDescription(sig.offer));
+const answer = await pc.createAnswer();
+await pc.setLocalDescription(answer);
+sendTo(partnerId, { type: 'signal', signal: { answer } });
+} else if (sig.answer) {
+await pc.setRemoteDescription(new RTCSessionDescription(sig.answer));
+} else if (sig.candidate) {
+await pc.addIceCandidate(new RTCIceCandidate(sig.candidate));
 }
-} catch (e) {}
 }
 btnNext.addEventListener('click', async () => {
 await initAudio();
 closeCall();
-isSearching = true;
+state = 'searching';
 btnStop.disabled = false;
 messagesEl.innerHTML = '';
-statusEl.textContent = 'Ищем собеседника...';
+statusEl.textContent = 'Поиск собеседника...';
 addMessage('Ожидание свободного собеседника...', 'sys');
-findPartnerStep();
-searchTimer = setInterval(findPartnerStep, 2000);
+client.subscribe(LOBBY);
+const pingLobby = () => {
+if (state === 'searching' && client && client.connected) {
+client.publish(LOBBY, JSON.stringify({ from: myId, type: 'seek' }));
+}
+};
+pingLobby();
+searchTimer = setInterval(pingLobby, 1500);
 });
 btnStop.addEventListener('click', () => {
 closeCall();
@@ -395,9 +492,9 @@ btnMute.classList.toggle('muted', isMuted);
 chatForm.addEventListener('submit', (e) => {
 e.preventDefault();
 const text = msgInput.value.trim();
-if (!text || !dataConn || !dataConn.open) return;
+if (!text || state !== 'connected' || !partnerId) return;
 addMessage(text, 'me');
-dataConn.send(text);
+sendTo(partnerId, { type: 'chat', text });
 msgInput.value = '';
 });
 
