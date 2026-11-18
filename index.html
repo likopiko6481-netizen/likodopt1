@@ -61,17 +61,19 @@
         .voice-box {
             background: rgba(18, 20, 26, 0.8);
             border-radius: 16px;
-            padding: 25px 15px;
+            padding: 22px 15px;
             text-align: center;
             margin-bottom: 15px;
             border: 1px solid #222630;
+            position: relative;
+            overflow: hidden;
         }
         .avatar {
             width: 72px;
             height: 72px;
             border-radius: 50%;
             background: #232834;
-            margin: 0 auto 15px;
+            margin: 0 auto 12px;
             display: flex;
             align-items: center;
             justify-content: center;
@@ -87,6 +89,73 @@
             color: #cfd8e3;
             font-weight: 500;
         }
+
+        /* Поисковое окно ожидания очереди */
+        .queue-window {
+            display: none;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 10px 5px;
+            animation: fadeIn 0.25s ease;
+        }
+        .queue-window.active {
+            display: flex;
+        }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.96); }
+            to { opacity: 1; transform: scale(1); }
+        }
+        .radar {
+            position: relative;
+            width: 76px;
+            height: 76px;
+            border-radius: 50%;
+            background: rgba(0, 230, 118, 0.12);
+            border: 2px solid #00e676;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.9rem;
+            margin-bottom: 14px;
+        }
+        .radar::before, .radar::after {
+            content: '';
+            position: absolute;
+            inset: -4px;
+            border-radius: 50%;
+            border: 2px solid #00e676;
+            animation: pulseRing 2s infinite ease-out;
+        }
+        .radar::after {
+            animation-delay: 1s;
+        }
+        @keyframes pulseRing {
+            0% { transform: scale(0.95); opacity: 0.8; }
+            100% { transform: scale(1.55); opacity: 0; }
+        }
+        .queue-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #00e676;
+            margin-bottom: 6px;
+        }
+        .queue-sub {
+            font-size: 0.85rem;
+            color: #a0aab8;
+            margin-bottom: 10px;
+        }
+        .queue-timer {
+            background: #232834;
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            font-variant-numeric: tabular-nums;
+            border: 1px solid #323846;
+        }
+
         .chat-box {
             background: rgba(18, 20, 26, 0.8);
             border-radius: 14px;
@@ -202,8 +271,19 @@
     </div>
 
     <div class="voice-box">
-        <div class="avatar" id="partnerAvatar">🎙️</div>
-        <div id="status">Нажмите «Найти / Далее»</div>
+        <!-- Обычный экран (ожидание старта / активный звонок) -->
+        <div id="idleView">
+            <div class="avatar" id="partnerAvatar">🎙️</div>
+            <div id="status">Нажмите «Найти / Далее»</div>
+        </div>
+
+        <!-- Поисковое окно очереди -->
+        <div class="queue-window" id="queueView">
+            <div class="radar">🔍</div>
+            <div class="queue-title">Вы в очереди ожидания</div>
+            <div class="queue-sub">Подбираем свободного собеседника...</div>
+            <div class="queue-timer">Время поиска: <span id="searchTimerText">00:00</span></div>
+        </div>
     </div>
 
     <div class="chat-box">
@@ -231,70 +311,88 @@
 <script>
     // Cookie
     function setCookie(name, value, days) {
-        const d = new Date();
-        d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
-        document.cookie = name + "=" + encodeURIComponent(value) + ";expires=" + d.toUTCString() + ";path=/;SameSite=Lax";
-    }
-    function getCookie(name) {
-        const prefix = name + "=";
-        const parts = document.cookie.split(';');
-        for (let i = 0; i < parts.length; i++) {
-            let c = parts[i].trim();
-            if (c.indexOf(prefix) === 0) return decodeURIComponent(c.substring(prefix.length));
-        }
-        return null;
-    }
-    const cookieBanner = document.getElementById('cookieBanner');
-    if (!getCookie('likodopt_cookie_closed')) cookieBanner.classList.add('show');
-    document.getElementById('closeCookieBtn').addEventListener('click', () => {
-        setCookie('likodopt_cookie_closed', '1', 30);
-        cookieBanner.classList.remove('show');
-    });
-
-    // Элементы
-    const statusEl = document.getElementById('status');
-    const partnerAvatar = document.getElementById('partnerAvatar');
-    const messagesEl = document.getElementById('messages');
-    const chatForm = document.getElementById('chatForm');
-    const msgInput = document.getElementById('msgInput');
-    const btnSend = document.getElementById('btnSend');
-    const btnNext = document.getElementById('btnNext');
-    const btnStop = document.getElementById('btnStop');
-    const btnMute = document.getElementById('btnMute');
-    const remoteAudio = document.getElementById('remoteAudio');
-
-    // Обмен сигналами через обычный HTTPS (порт 443, ntfy.sh)
-    const TOPIC = 'likodopt_signal_channel_ru_991';
-    const myId = 'u_' + Math.random().toString(36).slice(2, 10);
-
-    let partnerId = null;
-    let state = 'idle';
-    let localStream = null;
-    let pc = null;
-    let isMuted = false;
-    let searchTimer = null;
-    let eventSource = null;
-
-    const rtcConfig = {
-        iceServers: [
-            { urls: 'stun:://google.com' },
-            { urls: 'stun:://google.com' },
-            {
-                urls: 'turn:openrelay.metered.ca:80',
-                username: 'openrelayproject',
-                credential: 'openrelayproject'
-            },
-            {
-                urls: 'turn:openrelay.metered.ca:443',
-                username: 'openrelayproject',
-                credential: 'openrelayproject'
-            }
-        ]
-    };
-
-    function addMessage(text, type) {
-        const div = document.createElement('div');
-        div.className = 'msg ' + type;
+const d = new Date();
+d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
+document.cookie = name + "=" + encodeURIComponent(value) + ";expires=" + d.toUTCString() + ";path=/;SameSite=Lax";
+}
+function getCookie(name) {
+const prefix = name + "=";
+const parts = document.cookie.split(';');
+for (let i = 0; i < parts.length; i++) {
+let c = parts[i].trim();
+if (c.indexOf(prefix) === 0) return decodeURIComponent(c.substring(prefix.length));
+}
+return null;
+}
+const cookieBanner = document.getElementById('cookieBanner');
+if (!getCookie('likodopt_cookie_closed')) cookieBanner.classList.add('show');
+document.getElementById('closeCookieBtn').addEventListener('click', () => {
+setCookie('likodopt_cookie_closed', '1', 30);
+cookieBanner.classList.remove('show');
+});
+// Элементы
+const idleView = document.getElementById('idleView');
+const queueView = document.getElementById('queueView');
+const searchTimerText = document.getElementById('searchTimerText');
+const statusEl = document.getElementById('status');
+const partnerAvatar = document.getElementById('partnerAvatar');
+const messagesEl = document.getElementById('messages');
+const chatForm = document.getElementById('chatForm');
+const msgInput = document.getElementById('msgInput');
+const btnSend = document.getElementById('btnSend');
+const btnNext = document.getElementById('btnNext');
+const btnStop = document.getElementById('btnStop');
+const btnMute = document.getElementById('btnMute');
+const remoteAudio = document.getElementById('remoteAudio');
+const TOPIC = 'likodopt_signal_channel_ru_991';
+const myId = 'u_' + Math.random().toString(36).slice(2, 10);
+let partnerId = null;
+let state = 'idle';
+let localStream = null;
+let pc = null;
+let isMuted = false;
+let searchTimer = null;
+let clockInterval = null;
+let searchSeconds = 0;
+let eventSource = null;
+const rtcConfig = {
+iceServers: [
+{ urls: 'stun:google.com' },
+{ urls: 'stun:google.com' },
+{
+urls: 'turn:openrelay.metered.ca:80',
+username: 'openrelayproject',
+credential: 'openrelayproject'
+},
+{
+urls: 'turn:openrelay.metered.ca:443',
+username: 'openrelayproject',
+credential: 'openrelayproject'
+}
+]
+};
+function showQueueWindow(show) {
+if (show) {
+idleView.style.display = 'none';
+queueView.classList.add('active');
+searchSeconds = 0;
+searchTimerText.textContent = '00:00';
+clearInterval(clockInterval);
+clockInterval = setInterval(() => {
+searchSeconds++;
+const mins = String(Math.floor(searchSeconds / 60)).padStart(2, '0');
+const secs = String(searchSeconds % 60).padStart(2, '0');
+searchTimerText.textContent = mins + ':' + secs;
+}, 1000);
+} else {
+clearInterval(clockInterval);
+queueView.classList.remove('active');
+idleView.style.display = 'block';
+}
+}
+function addMessage(text, type) {
+const div = document.createElement('div');
+div.className = 'msg ' + type;
 div.textContent = text;
 messagesEl.appendChild(div);
 messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -350,6 +448,7 @@ try {
 localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
 btnMute.disabled = false;
 } catch (err) {
+showQueueWindow(false);
 statusEl.textContent = 'Разрешите доступ к микрофону!';
 addMessage('Ошибка: браузер заблокировал микрофон', 'sys');
 throw err;
@@ -358,6 +457,7 @@ throw err;
 }
 function closeCall() {
 clearInterval(searchTimer);
+showQueueWindow(false);
 if (partnerId) sendSignal({ to: partnerId, type: 'bye' });
 partnerId = null;
 state = 'idle';
@@ -368,6 +468,7 @@ remoteAudio.srcObject = null;
 }
 async function startCallWith(target, isInitiator) {
 clearInterval(searchTimer);
+showQueueWindow(false);
 partnerId = target;
 state = 'connected';
 statusEl.textContent = 'Собеседник на связи!';
@@ -411,8 +512,8 @@ closeCall();
 state = 'searching';
 btnStop.disabled = false;
 messagesEl.innerHTML = '';
-statusEl.textContent = 'Поиск собеседника...';
-addMessage('Ожидание свободного собеседника...', 'sys');
+showQueueWindow(true);
+addMessage('Вы вошли в очередь поиска собеседника...', 'sys');
 sendSignal({ type: 'seek' });
 searchTimer = setInterval(() => {
 if (state === 'searching') sendSignal({ type: 'seek' });
@@ -422,7 +523,7 @@ btnStop.addEventListener('click', () => {
 closeCall();
 btnStop.disabled = true;
 statusEl.textContent = 'Поиск остановлен';
-addMessage('Вы завершили диалог', 'sys');
+addMessage('Вы вышли из очереди', 'sys');
 });
 btnMute.addEventListener('click', () => {
 if (!localStream) return;
