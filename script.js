@@ -27,10 +27,11 @@ if (cookieBanner) {
 
 const idleView = document.getElementById('idleView');
 const queueView = document.getElementById('queueView');
+const callView = document.getElementById('callView');
 const searchTimerText = document.getElementById('searchTimerText');
+const callTimerText = document.getElementById('callTimerText');
 const statusEl = document.getElementById('status');
 const netStatusEl = document.getElementById('netStatus');
-const partnerAvatar = document.getElementById('partnerAvatar');
 const messagesEl = document.getElementById('messages');
 const chatForm = document.getElementById('chatForm');
 const msgInput = document.getElementById('msgInput');
@@ -46,10 +47,9 @@ let partnerPeerId = null;
 let localStream = null;
 let isMuted = false;
 let clockInterval = null;
-let searchSeconds = 0;
+let secondsCounter = 0;
 let searchLoop = null;
 
-// Подключаемся к общей P2P-комнате через стандартные WSS-трекеры (порт 443)
 const room = joinRoom({
     appId: 'likodopt_ru_voice_roulette_2026',
     rtcConfig: {
@@ -68,22 +68,34 @@ const [sendChat, onChat] = room.makeAction('chat');
 
 netStatusEl.textContent = 'Онлайн: В сети';
 
-function showQueueWindow(show) {
-    if (show) {
-        idleView.style.display = 'none';
+// Переключение экранов: 'idle' | 'queue' | 'call'
+function setScreen(mode) {
+    clearInterval(clockInterval);
+    idleView.style.display = 'none';
+    queueView.classList.remove('active');
+    callView.classList.remove('active');
+
+    if (mode === 'queue') {
         queueView.classList.add('active');
-        searchSeconds = 0;
+        secondsCounter = 0;
         searchTimerText.textContent = '00:00';
-        clearInterval(clockInterval);
-        clockInterval = setInterval(function() {
-            searchSeconds++;
-            const mins = String(Math.floor(searchSeconds / 60)).padStart(2, '0');
-            const secs = String(searchSeconds % 60).padStart(2, '0');
-            searchTimerText.textContent = mins + ':' + secs;
+        clockInterval = setInterval(() => {
+            secondsCounter++;
+            const m = String(Math.floor(secondsCounter / 60)).padStart(2, '0');
+            const s = String(secondsCounter % 60).padStart(2, '0');
+            searchTimerText.textContent = m + ':' + s;
+        }, 1000);
+    } else if (mode === 'call') {
+        callView.classList.add('active');
+        secondsCounter = 0;
+        callTimerText.textContent = '00:00';
+        clockInterval = setInterval(() => {
+            secondsCounter++;
+            const m = String(Math.floor(secondsCounter / 60)).padStart(2, '0');
+            const s = String(secondsCounter % 60).padStart(2, '0');
+            callTimerText.textContent = m + ':' + s;
         }, 1000);
     } else {
-        clearInterval(clockInterval);
-        queueView.classList.remove('active');
         idleView.style.display = 'block';
     }
 }
@@ -107,11 +119,9 @@ function onConnected(peerId) {
     clearInterval(searchLoop);
     state = 'connected';
     partnerPeerId = peerId;
-    showQueueWindow(false);
-    statusEl.textContent = 'Собеседник на связи!';
+    setScreen('call');
     messagesEl.innerHTML = '';
-    addMessage('Соединение установлено! Поздоровайтесь 👋', 'sys');
-    partnerAvatar.classList.add('speaking');
+    addMessage('Собеседник найден! Вы в комнате общения 👋', 'sys');
     setChatEnabled(true);
 
     if (localStream) {
@@ -119,7 +129,6 @@ function onConnected(peerId) {
     }
 }
 
-// Получение голоса от собеседника
 room.onPeerStream((stream, peerId) => {
     if (peerId === partnerPeerId || state === 'searching') {
         onConnected(peerId);
@@ -128,7 +137,6 @@ room.onPeerStream((stream, peerId) => {
     }
 });
 
-// Обработка поиска пары
 onSignal((data, peerId) => {
     if (!data) return;
 
@@ -142,23 +150,21 @@ onSignal((data, peerId) => {
     } else if (data.type === 'bye' && peerId === partnerPeerId) {
         closeCall(false);
         statusEl.textContent = 'Собеседник отключился';
-        addMessage('Собеседник покинул чат. Нажмите «Далее»', 'sys');
+        addMessage('Собеседник покинул комнату. Нажмите «Найти / Далее»', 'sys');
     }
 });
 
-// Получение текстовых сообщений
 onChat((text, peerId) => {
     if (peerId === partnerPeerId && typeof text === 'string') {
         addMessage(text, 'partner');
     }
 });
 
-// Если собеседник закрыл вкладку
 room.onPeerLeave((peerId) => {
     if (peerId === partnerPeerId) {
         closeCall(false);
         statusEl.textContent = 'Собеседник отключился';
-        addMessage('Собеседник покинул чат. Нажмите «Далее»', 'sys');
+        addMessage('Собеседник покинул комнату. Нажмите «Найти / Далее»', 'sys');
     }
 });
 
@@ -175,7 +181,7 @@ async function tryInitAudio() {
 
 function closeCall(notify = true) {
     clearInterval(searchLoop);
-    showQueueWindow(false);
+    setScreen('idle');
     if (notify && partnerPeerId) {
         sendSignal({ type: 'bye' }, partnerPeerId);
     }
@@ -184,7 +190,6 @@ function closeCall(notify = true) {
     }
     partnerPeerId = null;
     state = 'idle';
-    partnerAvatar.classList.remove('speaking');
     setChatEnabled(false);
     remoteAudio.srcObject = null;
 }
@@ -196,7 +201,7 @@ btnNext.onclick = async function() {
     state = 'searching';
     btnStop.disabled = false;
     messagesEl.innerHTML = '';
-    showQueueWindow(true);
+    setScreen('queue');
     addMessage('Ищем свободного собеседника...', 'sys');
 
     sendSignal({ type: 'seek', uid: myId });
@@ -210,8 +215,8 @@ btnNext.onclick = async function() {
 btnStop.onclick = function() {
     closeCall(true);
     btnStop.disabled = true;
-    statusEl.textContent = 'Поиск остановлен';
-    addMessage('Вы вышли из очереди', 'sys');
+    statusEl.textContent = 'Диалог завершён';
+    addMessage('Вы вышли из комнаты общения', 'sys');
 };
 
 btnMute.onclick = function() {
