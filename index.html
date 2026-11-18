@@ -2,152 +2,91 @@
 <html lang="ru" translate="no">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta name="google" content="notranslate">
-    <title>LIKODOPT — Голосовая и текстовая чат-рулетка</title>
+    <title>LIKODOPT — Голосовая чат-рулетка</title>
     <style>
-        :root {
-            --bg-dark: #0b0d12;
-            --card-bg: rgba(20, 23, 31, 0.94);
-            --panel-bg: rgba(14, 16, 22, 0.9);
-            --border-color: #262b38;
-            --accent: #00e676;
-            --accent-hover: #00c853;
-            --accent-glow: rgba(0, 230, 118, 0.35);
-            --danger: #ff5252;
-            --warning: #ff9800;
-            --text-main: #f1f5f9;
-            --text-muted: #94a3b8;
-        }
-
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
-            -webkit-tap-highlight-color: transparent;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
         }
-
         body {
-            background-color: var(--bg-dark);
-            background-image: url('./bg.png'), url('./bg.jpg');
-            background-position: center center;
-            background-repeat: no-repeat;
-            background-size: cover;
-            background-attachment: fixed;
-            color: var(--text-main);
+            background: radial-gradient(circle at top, #171c26 0%, #0b0d12 100%);
+            color: #f1f5f9;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
             padding: 16px;
         }
-
         .app-container {
-            background: var(--card-bg);
+            background: #14171f;
             width: 100%;
-            max-width: 480px;
+            max-width: 460px;
             border-radius: 24px;
             padding: 24px;
-            border: 1px solid var(--border-color);
+            border: 1px solid #262b38;
             box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75);
             display: flex;
             flex-direction: column;
             gap: 16px;
-            position: relative;
-            z-index: 10;
         }
-
-        /* Шапка приложения */
         .header {
             display: flex;
             justify-content: space-between;
             align-items: center;
             padding-bottom: 12px;
-            border-bottom: 1px solid var(--border-color);
+            border-bottom: 1px solid #262b38;
         }
-
-        .brand {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-        }
-
         .logo {
-            font-size: 1.55rem;
+            font-size: 1.5rem;
             font-weight: 900;
-            color: var(--accent);
-            letter-spacing: 1.2px;
+            color: #00e676;
+            letter-spacing: 1px;
         }
-
-        .stats-pill {
-            background: #1e2330;
-            border: 1px solid #2e3548;
-            padding: 4px 10px;
-            border-radius: 12px;
-            font-size: 0.78rem;
-            color: var(--text-muted);
-            font-weight: 600;
-        }
-
         .status-badge {
             background: #1e2330;
             padding: 6px 12px;
             border-radius: 20px;
             font-size: 0.82rem;
             font-weight: 600;
-            color: var(--text-main);
             display: flex;
             align-items: center;
             gap: 7px;
             border: 1px solid #2e3548;
         }
-
         .status-dot {
             width: 9px;
             height: 9px;
             border-radius: 50%;
-            background: var(--accent);
-            box-shadow: 0 0 8px var(--accent);
+            background: #00e676;
         }
-
-        /* Основной блок с 3 экранами */
         .stage-box {
-            background: var(--panel-bg);
+            background: #0e1016;
             border-radius: 18px;
             padding: 24px 16px;
-            border: 1px solid var(--border-color);
-            min-height: 210px;
+            border: 1px solid #262b38;
+            min-height: 190px;
             display: flex;
             flex-direction: column;
             justify-content: center;
             align-items: center;
             text-align: center;
-            position: relative;
-            overflow: hidden;
         }
-
         .screen {
             display: none;
             flex-direction: column;
             align-items: center;
             width: 100%;
-            animation: screenFade 0.25s ease-out;
         }
-
         .screen.active {
             display: flex;
         }
-
-        @keyframes screenFade {
-            from { opacity: 0; transform: translateY(6px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-
-        /* Экран 1: Главный */
         .avatar-circle {
-            width: 78px;
-            height: 78px;
+            width: 76px;
+            height: 76px;
             border-radius: 50%;
             background: #1e2330;
             border: 2px solid #2e3548;
@@ -155,141 +94,64 @@
             align-items: center;
             justify-content: center;
             font-size: 2.2rem;
-            margin-bottom: 14px;
-            transition: all 0.2s ease;
+            margin-bottom: 12px;
         }
-
-        .stage-title {
-            font-size: 1.15rem;
-            font-weight: 700;
-            color: var(--text-main);
-            margin-bottom: 6px;
-        }
-
-        .stage-subtitle {
-            font-size: 0.86rem;
-            color: var(--text-muted);
-            margin-bottom: 14px;
-            max-width: 340px;
-            line-height: 1.4;
-        }
-
-        .tags-row {
-            display: flex;
-            flex-wrap: wrap;
-            justify-content: center;
-            gap: 6px;
-        }
-
-        .tag-btn {
-            background: #1e2330;
-            border: 1px solid #2e3548;
-            color: var(--text-muted);
-            padding: 5px 11px;
-            border-radius: 14px;
-            font-size: 0.78rem;
-            font-weight: 600;
-            cursor: pointer;
-            transition: all 0.15s;
-        }
-
-        .tag-btn.selected {
-            background: rgba(0, 230, 118, 0.15);
-            border-color: var(--accent);
-            color: var(--accent);
-        }
-
-        /* Экран 2: Поиск в очереди */
         .radar-ring {
-            width: 82px;
-            height: 82px;
+            width: 76px;
+            height: 76px;
             border-radius: 50%;
-            background: rgba(0, 230, 118, 0.1);
-            border: 2px solid var(--accent);
+            background: rgba(0, 230, 118, 0.12);
+            border: 2px solid #00e676;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2.1rem;
-            margin-bottom: 14px;
-            position: relative;
-            animation: radarPulse 1.6s infinite ease-out;
+            font-size: 2rem;
+            margin-bottom: 12px;
+            animation: pulse 1.5s infinite;
         }
-
-        @keyframes radarPulse {
-            0% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.65); }
-            100% { box-shadow: 0 0 0 22px rgba(0, 230, 118, 0); }
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.6); }
+            100% { box-shadow: 0 0 0 20px rgba(0, 230, 118, 0); }
         }
-
+        .partner-avatar {
+            width: 76px;
+            height: 76px;
+            border-radius: 50%;
+            background: #163326;
+            border: 3px solid #00e676;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2.2rem;
+            margin-bottom: 12px;
+        }
+        .stage-title {
+            font-size: 1.1rem;
+            font-weight: 700;
+            margin-bottom: 6px;
+        }
+        .stage-subtitle {
+            font-size: 0.85rem;
+            color: #94a3b8;
+            margin-bottom: 12px;
+        }
         .timer-badge {
             background: #1e2330;
             border: 1px solid #333b50;
-            padding: 6px 14px;
-            border-radius: 14px;
-            font-size: 0.88rem;
+            padding: 5px 14px;
+            border-radius: 12px;
+            font-size: 0.85rem;
             font-weight: 700;
-            color: var(--text-main);
-            font-variant-numeric: tabular-nums;
         }
-
-        /* Экран 3: Собеседник найден */
-        .partner-avatar {
-            width: 84px;
-            height: 84px;
-            border-radius: 50%;
-            background: #163326;
-            border: 3px solid var(--accent);
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 2.3rem;
-            margin-bottom: 12px;
-            transition: transform 0.1s ease, box-shadow 0.1s ease;
-        }
-
-        .call-meta {
-            display: flex;
-            align-items: center;
-            gap: 10px;
-            margin-top: 4px;
-        }
-
-        .live-indicator {
-            background: rgba(0, 230, 118, 0.15);
-            border: 1px solid rgba(0, 230, 118, 0.4);
-            color: var(--accent);
-            padding: 5px 12px;
-            border-radius: 14px;
-            font-size: 0.84rem;
-            font-weight: 700;
-            font-variant-numeric: tabular-nums;
-        }
-
-        .mic-level-bar {
-            width: 90px;
-            height: 6px;
-            background: #1e2330;
-            border-radius: 4px;
-            overflow: hidden;
-        }
-
-        .mic-level-fill {
-            height: 100%;
-            width: 0%;
-            background: var(--accent);
-            transition: width 0.08s linear;
-        }
-
-        /* Чат и быстрые реакции */
         .chat-wrapper {
-            background: var(--panel-bg);
+            background: #0e1016;
             border-radius: 16px;
-            border: 1px solid var(--border-color);
+            border: 1px solid #262b38;
             display: flex;
             flex-direction: column;
-            height: 195px;
+            height: 170px;
             overflow: hidden;
         }
-
         #messages {
             flex: 1;
             padding: 12px;
@@ -299,627 +161,347 @@
             gap: 8px;
             font-size: 0.9rem;
         }
-
         .msg {
-            padding: 8px 13px;
+            padding: 8px 12px;
             border-radius: 12px;
             max-width: 82%;
             word-wrap: break-word;
-            line-height: 1.35;
         }
-
         .msg.me {
-            background: var(--accent);
+            background: #00e676;
             color: #000;
             align-self: flex-end;
             font-weight: 600;
-            border-bottom-right-radius: 4px;
         }
-
         .msg.partner {
             background: #232836;
             color: #fff;
             align-self: flex-start;
-            border-bottom-left-radius: 4px;
         }
-
         .msg.sys {
-            background: transparent;
-            color: var(--text-muted);
+            color: #94a3b8;
             align-self: center;
             font-size: 0.8rem;
             text-align: center;
-            padding: 4px 8px;
         }
-
-        .typing-hint {
-            font-size: 0.76rem;
-            color: var(--accent);
-            padding: 0 12px 4px;
-            height: 18px;
-            opacity: 0;
-            transition: opacity 0.2s;
-        }
-
-        .typing-hint.visible {
-            opacity: 1;
-        }
-
-        .quick-reactions {
+        .chat-form {
             display: flex;
-            gap: 6px;
-            padding: 6px 10px;
-            border-top: 1px solid #1e222d;
-            background: rgba(18, 21, 28, 0.6);
+            border-top: 1px solid #262b38;
         }
-
-        .react-btn {
-            background: #1e2330;
-            border: 1px solid #2c3345;
-            border-radius: 8px;
-            padding: 4px 8px;
+        .chat-form input {
+            flex: 1;
+            background: transparent;
+            border: none;
+            padding: 12px;
+            color: #fff;
+            outline: none;
             font-size: 0.95rem;
+        }
+        .chat-form button {
+            background: transparent;
+            border: none;
+            color: #00e676;
+            font-weight: 800;
+            padding: 0 18px;
+            font-size: 1.2rem;
             cursor: pointer;
-transition: transform 0.1s;
-}
-.react-btn:active {
-transform: scale(0.9);
-}
-.react-btn:disabled {
-opacity: 0.35;
-cursor: not-allowed;
-}
-.chat-form {
-display: flex;
-border-top: 1px solid var(--border-color);
-background: #12151c;
-}
-.chat-form input {
-flex: 1;
-background: transparent;
-border: none;
-padding: 12px 14px;
-color: #fff;
-outline: none;
-font-size: 0.95rem;
-}
-.chat-form button {
-background: transparent;
-border: none;
-color: var(--accent);
-font-weight: 800;
-padding: 0 18px;
-font-size: 1.2rem;
-cursor: pointer;
-}
-.chat-form button:disabled {
-color: #475569;
-cursor: not-allowed;
-}
-/* Панель кнопок управления */
-.controls-grid {
-display: grid;
-grid-template-columns: 1fr 1fr;
-gap: 10px;
-}
-.btn {
-padding: 15px 12px;
-border: none;
-border-radius: 14px;
-font-size: 0.98rem;
-font-weight: 700;
-cursor: pointer;
-transition: transform 0.1s ease, opacity 0.2s ease, background 0.2s ease;
-display: flex;
-align-items: center;
-justify-content: center;
-gap: 6px;
-}
-.btn:active:not(:disabled) {
-transform: scale(0.97);
-}
-.btn:disabled {
-opacity: 0.4;
-cursor: not-allowed;
-}
-#btnNext {
-background: var(--accent);
-color: #000;
-}
-#btnNext:hover:not(:disabled) {
-background: var(--accent-hover);
-}
-#btnStop {
-background: var(--danger);
-color: #fff;
-}
-#btnMute {
-background: #232836;
-color: #fff;
-border: 1px solid #32394d;
-}
-#btnMute.muted {
-background: var(--warning);
-color: #000;
-border-color: var(--warning);
-}
-#btnSound {
-background: #232836;
-color: #fff;
-border: 1px solid #32394d;
-}
-/* Плашка Cookie */
-.cookie-banner {
-position: fixed;
-bottom: 18px;
-left: 50%;
-transform: translateX(-50%);
-width: calc(100% - 32px);
-max-width: 480px;
-background: rgba(20, 23, 31, 0.98);
-border: 1px solid var(--accent);
-border-radius: 16px;
-padding: 12px 16px;
-display: flex;
-align-items: center;
-justify-content: space-between;
-gap: 12px;
-z-index: 9999;
-box-shadow: 0 12px 35px rgba(0, 0, 0, 0.85);
-}
-.cookie-banner.hidden {
-display: none !important;
-}
-.cookie-text {
-font-size: 0.84rem;
-color: #e2e8f0;
-line-height: 1.4;
-}
-.cookie-text b {
-color: var(--accent);
-}
-.cookie-close-btn {
-background: #232836;
-color: #fff;
-border: 1px solid #363e54;
-border-radius: 50%;
-width: 34px;
-height: 34px;
-min-width: 34px;
-font-size: 1rem;
-font-weight: 700;
-cursor: pointer;
-display: flex;
-align-items: center;
-justify-content: center;
-}
-.cookie-close-btn:hover {
-background: var(--danger);
-border-color: var(--danger);
-}
+        }
+        .chat-form button:disabled {
+            color: #475569;
+            cursor: not-allowed;
+        }
+        .controls-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+        .btn {
+            padding: 15px 12px;
+            border: none;
+            border-radius: 14px;
+            font-size: 0.98rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+        .btn:disabled {
+            opacity: 0.4;
+            cursor: not-allowed;
+        }
+        #btnNext { background: #00e676; color: #000; }
+        #btnStop { background: #ff5252; color: #fff; }
+        #btnMute { grid-column: span 2; background: #232836; color: #fff; border: 1px solid #32394d; }
+        #btnMute.muted { background: #ff9800; color: #000; }
 
+        .cookie-banner {
+            position: fixed;
+            bottom: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 32px);
+            max-width: 460px;
+            background: #14171f;
+            border: 1px solid #00e676;
+            border-radius: 16px;
+            padding: 12px 16px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            z-index: 9999;
+            box-shadow: 0 12px 35px rgba(0, 0, 0, 0.85);
+        }
+        .cookie-banner.hidden { display: none; }
+        .cookie-text { font-size: 0.84rem; color: #e2e8f0; }
+        .cookie-text b { color: #00e676; }
+        .cookie-close-btn {
+            background: #232836;
+            color: #fff;
+            border: 1px solid #363e54;
+            border-radius: 50%;
+            width: 32px;
+            height: 32px;
+            min-width: 32px;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+    </style>
+</head>
+<body>
 
-LIKODOPT
-Встреч: 0
+<div class="app-container">
+    <div class="header">
+        <div class="logo">LIKODOPT</div>
+        <div class="status-badge">
+            <span class="status-dot"></span>
+            <span>Онлайн: В сети</span>
+        </div>
+    </div>
 
+    <div class="stage-box">
+        <!-- Экран 1: Главный -->
+        <div class="screen active" id="screenHome">
+            <div class="avatar-circle">🎙️</div>
+            <div class="stage-title" id="homeTitle">Нажмите «Найти / Далее»</div>
+            <div class="stage-subtitle" id="homeSub">Голосовая и текстовая чат-рулетка</div>
+        </div>
 
+        <!-- Экран 2: Поиск собеседника -->
+        <div class="screen" id="screenSearch">
+            <div class="radar-ring">🔍</div>
+            <div class="stage-title" style="color: #00e676;">Поиск собеседника...</div>
+            <div class="stage-subtitle">Вы в очереди ожидания. Подбираем свободного человека</div>
+            <div class="timer-badge">Время поиска: <span id="searchTimer">00:00</span></div>
+        </div>
 
-Онлайн: В сети
+        <!-- Экран 3: Собеседник найден -->
+        <div class="screen" id="screenCall">
+            <div class="partner-avatar">🎧</div>
+            <div class="stage-title">Собеседник на связи!</div>
+            <div class="stage-subtitle" style="color: #00e676;">Вы находитесь в комнате разговора</div>
+            <div class="timer-badge" style="color: #00e676;">● Разговор: <span id="callTimer">00:00</span></div>
+        </div>
+    </div>
 
-🎙️
-Готовы к общению?
-Выберите тему разговора или сразу нажмите «Найти / Далее»
+    <div class="chat-wrapper">
+        <div id="messages"></div>
+        <form class="chat-form" id="chatForm">
+            <input type="text" id="msgInput" placeholder="Написать сообщение..." disabled autocomplete="off">
+            <button type="submit" id="btnSend" disabled>➤</button>
+        </form>
+    </div>
 
-Любая тема
-Поболтать
-Игры
-Музыка
+    <div class="controls-grid">
+        <button type="button" class="btn" id="btnNext">Найти / Далее</button>
+        <button type="button" class="btn" id="btnStop" disabled>Стоп</button>
+        <button type="button" class="btn" id="btnMute" disabled>Выключить микрофон</button>
+    </div>
 
-🔍
-Поиск собеседника...
-Вы находитесь в живой очереди. Подбираем свободного человека
-Время в очереди: 00:00
-🎧
-Собеседник на связи!
-Вы находитесь в комнате разговора
+    <audio id="remoteAudio" autoplay playsinline></audio>
+</div>
 
-● Разговор: 00:00
-
-
-
-
-
-Собеседник печатает...
-
-👋
-😂
-🔥
-👍
-❤️
-
-
-
-➤
-
-Найти / Далее
-Стоп
-🎙️ Выкл. микрофон
-🔊 Звук: ВКЛ
-🍪 Мы используем ваши файлы Cookie для сохранения настроек и работы сайта.
+<div class="cookie-banner" id="cookieBanner">
+🍪 Мы используем ваши файлы Cookie для улучшения работы сайта.
 ✕
-(function() {
 const $ = id => document.getElementById(id);
-// Конфигурация узлов сигнализации (работают по стандартному HTTPS 443)
-const CHANNELS = [
-'ntfy.sh',
-'ntfy.sh'
-];
-let activeChannelIdx = 0;
-const myId = 'lk_' + Math.random().toString(36).slice(2, 10) + '_' + Date.now().toString(36).slice(-4);
+const CHANNEL = 'ntfy.sh';
+const myId = 'u_' + Math.random().toString(36).slice(2, 10);
 let partnerId = null;
-let state = 'home'; // home | search | connecting | call
+let state = 'home';
 let localStream = null;
-let peerConnection = null;
+let pc = null;
 let isMuted = false;
-let soundEffects = true;
-let selectedTopic = 'all';
-let meetingsCount = 0;
-let timerInterval = null;
-let searchLoop = null;
-let offerRetryLoop = null;
-let typingTimeout = null;
-let secondsElapsed = 0;
-let audioCtx = null;
-let analyser = null;
-let micAnimFrame = null;
-const processedMsgIds = new Set();
-const rtcConfiguration = {
-iceServers: [
-{ urls: 'stun:google.com' },
-{ urls: 'stun:google.com' },
-{ urls: 'stun:google.com' },
-{
-urls: 'turn:openrelay.metered.ca:80',
-username: 'openrelayproject',
-credential: 'openrelayproject'
-},
-{
-urls: 'turn:openrelay.metered.ca:443',
-username: 'openrelayproject',
-credential: 'openrelayproject'
-},
-{
-urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-username: 'openrelayproject',
-credential: 'openrelayproject'
+let timerInt = null;
+let searchInt = null;
+let sec = 0;
+const seen = new Set();
+// Закрытие плашки Cookie
+if (localStorage.getItem('likodopt_ck') === '1') {
+$('cookieBanner').classList.add('hidden');
 }
-]
+$('btnCloseCookie').onclick = function() {
+localStorage.setItem('likodopt_ck', '1');
+$('cookieBanner').classList.add('hidden');
 };
-// 1. Управление плашкой Cookie
-function initCookieBanner() {
-const isClosed = localStorage.getItem('likodopt_ck_closed') === '1' || document.cookie.includes('likodopt_ck=1');
-if (isClosed) {
-$('cookieBanner').classList.add('hidden');
-}
-$('btnCloseCookie').addEventListener('click', function() {
-localStorage.setItem('likodopt_ck_closed', '1');
-document.cookie = 'likodopt_ck=1;max-age=2592000;path=/;SameSite=Lax';
-$('cookieBanner').classList.add('hidden');
-});
-}
-initCookieBanner();
-// 2. Встроенный синтезатор звуковых сигналов (не требует внешних mp3-файлов)
-function playTone(freq, duration, type = 'sine') {
-if (!soundEffects) return;
-try {
-if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-if (audioCtx.state === 'suspended') audioCtx.resume();
-const osc = audioCtx.createOscillator();
-const gain = audioCtx.createGain();
-osc.type = type;
-osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
-gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
-gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
-osc.connect(gain);
-gain.connect(audioCtx.destination);
-osc.start();
-osc.stop(audioCtx.currentTime + duration);
-} catch (e) {}
-}
-// 3. Выбор темы разговора на главном экране
-document.querySelectorAll('.tag-btn').forEach(btn => {
-btn.addEventListener('click', function() {
-document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('selected'));
-this.classList.add('selected');
-selectedTopic = this.getAttribute('data-topic');
-});
-});
-// 4. Переключение между 3 экранами
-function switchScreen(screenName) {
-clearInterval(timerInterval);
-secondsElapsed = 0;
-$('screenHome').classList.toggle('active', screenName === 'home');
-$('screenSearch').classList.toggle('active', screenName === 'search');
-$('screenCall').classList.toggle('active', screenName === 'call');
-if (screenName === 'search' || screenName === 'call') {
-const timerEl = screenName === 'search' ? $('searchTimer') : $('callTimer');
-timerEl.textContent = '00:00';
-timerInterval = setInterval(() => {
-secondsElapsed++;
-const mins = String(Math.floor(secondsElapsed / 60)).padStart(2, '0');
-const secs = String(secondsElapsed % 60).padStart(2, '0');
-timerEl.textContent = mins + ':' + secs;
+function switchScreen(name) {
+clearInterval(timerInt);
+sec = 0;
+$('screenHome').classList.toggle('active', name === 'home');
+$('screenSearch').classList.toggle('active', name === 'search');
+$('screenCall').classList.toggle('active', name === 'call');
+if (name === 'search' || name === 'call') {
+const el = name === 'search' ? $('searchTimer') : $('callTimer');
+el.textContent = '00:00';
+timerInt = setInterval(() => {
+sec++;
+el.textContent = String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0');
 }, 1000);
 }
 }
-function appendMessage(text, type = 'sys') {
-const div = document.createElement('div');
-div.className = 'msg ' + type;
-div.textContent = text;
-$('messages').appendChild(div);
+function addMsg(text, type = 'sys') {
+const d = document.createElement('div');
+d.className = 'msg ' + type;
+d.textContent = text;
+$('messages').appendChild(d);
 $('messages').scrollTop = $('messages').scrollHeight;
 }
-function setChatEnabled(enabled) {
-$('msgInput').disabled = !enabled;
-$('btnSend').disabled = !enabled;
-document.querySelectorAll('.react-btn').forEach(b => b.disabled = !enabled);
-if (!enabled) {
-$('msgInput').value = '';
-$('typingHint').classList.remove('visible');
+function setChat(on) {
+$('msgInput').disabled = !on;
+$('btnSend').disabled = !on;
+if (!on) $('msgInput').value = '';
 }
+function sendSig(data) {
+const mid = myId + '' + Date.now() + '' + Math.random().toString(36).slice(2, 6);
+fetch(CHANNEL, {
+method: 'POST',
+body: JSON.stringify({ mid, from: myId, ts: Date.now(), ...data })
+}).catch(() => {});
 }
-// 5. Анализатор громкости микрофона
-function startMicVisualizer(stream) {
-try {
-if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
-const source = audioCtx.createMediaStreamSource(stream);
-analyser = audioCtx.createAnalyser();
-analyser.fftSize = 64;
-source.connect(analyser);
-const dataArray = new Uint8Array(analyser.frequencyBinCount);
-function updateMeter() {
-if (analyser && !isMuted) {
-analyser.getByteFrequencyData(dataArray);
-let sum = 0;
-for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
-const avg = sum / dataArray.length;
-const pct = Math.min(100, Math.round((avg / 128) * 100));
-$('micBar').style.width = pct + '%';
-} else {
-$('micBar').style.width = '0%';
-}
-micAnimFrame = requestAnimationFrame(updateMeter);
-}
-cancelAnimationFrame(micAnimFrame);
-updateMeter();
-} catch (e) {}
-}
-async function initMicrophone() {
-if (localStream) return;
-if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-appendMessage('Микрофон недоступен в этом браузере — работает текстовый чат');
-return;
-}
-try {
-localStream = await navigator.mediaDevices.getUserMedia({
-audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-video: false
-});
-$('btnMute').disabled = false;
-startMicVisualizer(localStream);
-} catch (err) {
-appendMessage('Доступ к микрофону запрещён — доступен только текстовый чат');
-}
-}
-// 6. Отправка сигналов в сеть
-async function broadcastSignal(payload) {
-const msgId = myId + '' + Date.now() + '' + Math.random().toString(36).slice(2, 6);
-const bodyStr = JSON.stringify({ msgId, from: myId, ts: Date.now(), ...payload });
-const url = CHANNELS[activeChannelIdx];
-try {
-const res = await fetch(url, { method: 'POST', body: bodyStr });
-if (!res.ok) throw new Error('HTTP ' + res.status);
-} catch (e) {
-activeChannelIdx = (activeChannelIdx + 1) % CHANNELS.length;
-try { await fetch(CHANNELS[activeChannelIdx], { method: 'POST', body: bodyStr }); } catch (err) {}
-}
-}
-// 7. Кнопка «Найти / Далее»
-$('btnNext').addEventListener('click', function() {
-terminateSession(false);
+$('btnNext').onclick = function() {
+stopAll(false);
 state = 'search';
 $('btnStop').disabled = false;
 $('messages').innerHTML = '';
 switchScreen('search');
-appendMessage('Вы вошли в очередь поиска собеседника...');
-playTone(520, 0.12);
-initMicrophone();
-const sendSeek = () => {
-if (state === 'search') {
-broadcastSignal({ type: 'seek', topic: selectedTopic });
+addMsg('Вы вошли в очередь поиска собеседника...');
+if (!localStream && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+navigator.mediaDevices.getUserMedia({ audio: true })
+.then(s => {
+localStream = s;
+$('btnMute').disabled = false;
+})
+.catch(() => addMsg('Микрофон недоступен — работает текстовый чат'));
 }
+sendSig({ type: 'seek' });
+searchInt = setInterval(() => {
+if (state === 'search') sendSig({ type: 'seek' });
+}, 1500);
 };
-sendSeek();
-searchLoop = setInterval(sendSeek, 1500);
-});
-// 8. Кнопка «Стоп»
-$('btnStop').addEventListener('click', function() {
-terminateSession(true);
-playTone(320, 0.15);
-});
-function terminateSession(showStoppedUi) {
-clearInterval(searchLoop);
-clearInterval(offerRetryLoop);
-if (partnerId) {
-broadcastSignal({ to: partnerId, type: 'bye' });
-}
+$('btnStop').onclick = function() {
+stopAll(true);
+};
+function stopAll(showStop) {
+clearInterval(searchInt);
+if (partnerId) sendSig({ to: partnerId, type: 'bye' });
 partnerId = null;
 state = 'home';
-setChatEnabled(false);
-if (peerConnection) {
-try { peerConnection.close(); } catch (e) {}
-peerConnection = null;
+setChat(false);
+if (pc) {
+try { pc.close(); } catch (e) {}
+pc = null;
 }
-$('remoteAudio').srcObject = null;
-if (showStoppedUi) {
+if (showStop) {
 $('btnStop').disabled = true;
 $('homeTitle').textContent = 'Поиск остановлен';
-$('homeSub').textContent = 'Нажмите «Найти / Далее», чтобы вернуться в очередь';
 switchScreen('home');
-appendMessage('Вы завершили поиск и вышли из комнаты');
+addMsg('Вы вышли из очереди');
 }
 }
-// 9. Кнопка «Выключить микрофон» (Мут)
-$('btnMute').addEventListener('click', function() {
+$('btnMute').onclick = function() {
 if (!localStream) return;
 isMuted = !isMuted;
-localStream.getAudioTracks().forEach(track => {
-track.enabled = !isMuted;
-});
-this.textContent = isMuted ? '🔇 Вкл. микрофон' : '🎙️ Выкл. микрофон';
+localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+this.textContent = isMuted ? 'Включить микрофон' : 'Выключить микрофон';
 this.classList.toggle('muted', isMuted);
-appendMessage(isMuted ? 'Вы выключили свой микрофон' : 'Вы включили свой микрофон');
-});
-// 10. Кнопка «Звук уведомлений»
-$('btnSound').addEventListener('click', function() {
-soundEffects = !soundEffects;
-this.textContent = soundEffects ? '🔊 Звук: ВКЛ' : '🔇 Звук: ВЫКЛ';
-});
-// 11. Текстовый чат, индикатор набора и быстрые реакции
-$('chatForm').addEventListener('submit', function(e) {
+};
+$('chatForm').onsubmit = function(e) {
 e.preventDefault();
-const text = $('msgInput').value.trim();
-if (!text || !partnerId) return;
-appendMessage(text, 'me');
-broadcastSignal({ to: partnerId, type: 'chat', text });
+const txt = $('msgInput').value.trim();
+if (!txt || !partnerId) return;
+addMsg(txt, 'me');
+sendSig({ to: partnerId, type: 'chat', text: txt });
 $('msgInput').value = '';
-});
-$('msgInput').addEventListener('input', function() {
-if (partnerId && state === 'call') {
-broadcastSignal({ to: partnerId, type: 'typing' });
-}
-});
-document.querySelectorAll('.react-btn').forEach(btn => {
-btn.addEventListener('click', function() {
-const text = this.getAttribute('data-react');
-if (!text || !partnerId) return;
-appendMessage(text, 'me');
-broadcastSignal({ to: partnerId, type: 'chat', text });
-});
-});
-// 12. Установка WebRTC-соединения при нахождении собеседника
-async function establishCall(isInitiator) {
+};
+async function startCall(init) {
 state = 'call';
-meetingsCount++;
-$('meetCount').textContent = meetingsCount;
 switchScreen('call');
-setChatEnabled(true);
+setChat(true);
 $('messages').innerHTML = '';
-appendMessage('Собеседник найден! Вы в комнате разговора 👋');
-playTone(660, 0.14);
-setTimeout(() => playTone(880, 0.18), 140);
-peerConnection = new RTCPeerConnection(rtcConfiguration);
-if (localStream) {
-localStream.getTracks().forEach(track => {
-peerConnection.addTrack(track, localStream);
+addMsg('Собеседник найден! Вы в комнате общения 👋');
+pc = new RTCPeerConnection({
+iceServers: [
+{ urls: 'stun:google.com' },
+{ urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
+]
 });
-}
-peerConnection.ontrack = function(event) {
-const remoteStream = new MediaStream([event.track]);
-const audioEl = $('remoteAudio');
-audioEl.srcObject = remoteStream;
-audioEl.play().catch(() => {});
+if (localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+pc.ontrack = e => {
+$('remoteAudio').srcObject = new MediaStream([e.track]);
+$('remoteAudio').play().catch(() => {});
 };
-peerConnection.onicecandidate = function(event) {
-if (event.candidate && partnerId) {
-broadcastSignal({ to: partnerId, type: 'ice', candidate: event.candidate });
-}
+pc.onicecandidate = e => {
+if (e.candidate && partnerId) sendSig({ to: partnerId, type: 'cand', cand: e.candidate });
 };
-if (isInitiator) {
-const sendOffer = async () => {
-if (!peerConnection || state !== 'call') return;
-const offer = await peerConnection.createOffer();
-await peerConnection.setLocalDescription(offer);
-await broadcastSignal({ to: partnerId, type: 'offer', offer });
-};
-await sendOffer();
-clearInterval(offerRetryLoop);
-offerRetryLoop = setInterval(() => {
-if (peerConnection && peerConnection.signalingState !== 'stable') {
-sendOffer();
-} else {
-clearInterval(offerRetryLoop);
-}
-}, 2500);
+if (init) {
+const off = await pc.createOffer();
+await pc.setLocalDescription(off);
+sendSig({ to: partnerId, type: 'offer', offer: off });
 }
 }
-// 13. Фоновый приём сигналов из сети
-async function pollNetwork() {
-const url = CHANNELS[activeChannelIdx];
+async function poll() {
 try {
-const response = await fetch(url + '/json?poll=1&since=12s');
-if (response.ok) {
-$('netLabel').textContent = 'Онлайн: В сети';
-$('netDot').style.background = '#00e676';
-const rawText = await response.text();
-const lines = rawText.trim().split('\n');
-for (let i = 0; i < lines.length; i++) {
-if (!lines[i]) continue;
-const wrapper = JSON.parse(lines[i]);
-if (!wrapper.message) continue;
-const data = JSON.parse(wrapper.message);
-if (!data || data.from === myId || processedMsgIds.has(data.msgId)) continue;
-processedMsgIds.add(data.msgId);
-if (Date.now() - data.ts > 16000) continue;
-// Логика подбора пары
-if (data.type === 'seek' && state === 'search' && myId > data.from) {
-const topicMatch = (selectedTopic === 'all' || data.topic === 'all' || selectedTopic === data.topic);
-if (topicMatch) {
-state = 'connecting';
-partnerId = data.from;
-clearInterval(searchLoop);
-await broadcastSignal({ to: partnerId, type: 'accept' });
-establishCall(true);
-}
-} else if (data.to === myId && data.type === 'accept' && state === 'search') {
-state = 'connecting';
-partnerId = data.from;
-clearInterval(searchLoop);
-establishCall(false);
-} else if (data.to === myId && data.from === partnerId) {
-if (data.type === 'offer' && peerConnection) {
-await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
-const answer = await peerConnection.createAnswer();
-await peerConnection.setLocalDescription(answer);
-await broadcastSignal({ to: partnerId, type: 'answer', answer });
-} else if (data.type === 'answer' && peerConnection) {
-clearInterval(offerRetryLoop);
-await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
-} else if (data.type === 'ice' && peerConnection) {
-try { await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch (e) {}
-} else if (data.type === 'chat') {
-$('typingHint').classList.remove('visible');
-appendMessage(data.text, 'partner');
-playTone(580, 0.08);
-} else if (data.type === 'typing') {
-$('typingHint').classList.add('visible');
-clearTimeout(typingTimeout);
-typingTimeout = setTimeout(() => $('typingHint').classList.remove('visible'), 2000);
-} else if (data.type === 'bye') {
-terminateSession(true);
+const res = await fetch(CHANNEL + '/json?poll=1&since=12s');
+if (res.ok) {
+const lines = (await res.text()).trim().split('\n');
+for (const l of lines) {
+if (!l) continue;
+const w = JSON.parse(l);
+if (!w.message) continue;
+const m = JSON.parse(w.message);
+if (!m || m.from === myId || seen.has(m.mid) || Date.now() - m.ts > 15000) continue;
+seen.add(m.mid);
+if (m.type === 'seek' && state === 'search' && myId > m.from) {
+state = 'conn';
+partnerId = m.from;
+clearInterval(searchInt);
+sendSig({ to: partnerId, type: 'accept' });
+startCall(true);
+} else if (m.to === myId && m.type === 'accept' && state === 'search') {
+state = 'conn';
+partnerId = m.from;
+clearInterval(searchInt);
+startCall(false);
+} else if (m.to === myId && m.from === partnerId) {
+if (m.type === 'offer' && pc) {
+await pc.setRemoteDescription(new RTCSessionDescription(m.offer));
+const ans = await pc.createAnswer();
+await pc.setLocalDescription(ans);
+sendSig({ to: partnerId, type: 'answer', answer: ans });
+} else if (m.type === 'answer' && pc) {
+await pc.setRemoteDescription(new RTCSessionDescription(m.answer));
+} else if (m.type === 'cand' && pc) {
+try { await pc.addIceCandidate(new RTCIceCandidate(m.cand)); } catch (e) {}
+} else if (m.type === 'chat') {
+addMsg(m.text, 'partner');
+} else if (m.type === 'bye') {
+stopAll(true);
 $('homeTitle').textContent = 'Собеседник отключился';
-$('homeSub').textContent = 'Нажмите «Найти / Далее», чтобы найти нового собеседника';
-playTone(280, 0.2);
 }
 }
 }
 }
-} catch (err) {
-activeChannelIdx = (activeChannelIdx + 1) % CHANNELS.length;
+} catch (e) {}
+setTimeout(poll, 1000);
 }
-setTimeout(pollNetwork, 1000);
-}
-pollNetwork();
-})();
+poll();
 
 
