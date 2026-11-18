@@ -50,15 +50,28 @@ let isMuted = false;
 let searchTimer = null;
 let clockInterval = null;
 let searchSeconds = 0;
-let inboxBuffer = [];
 const processedIds = new Set();
 
 const rtcConfig = {
     iceServers: [
         { urls: 'stun:://google.com' },
         { urls: 'stun:://google.com' },
-        { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-        { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
+        { urls: 'stun:://cloudflare.com' },
+        {
+            urls: 'turn:openrelay.metered.ca:80',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+        },
+        {
+            urls: 'turn:openrelay.metered.ca:443',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+        },
+        {
+            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+        }
     ]
 };
 
@@ -118,16 +131,17 @@ async function kvSet(key, data) {
 async function sendSignal(target, payload) {
     const msgId = myId + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
     const current = (await kvGet('in_' + target)) || [];
-    const fresh = current.filter(m => Date.now() - m.ts < 15000);
+    const fresh = Array.isArray(current) ? current.filter(m => Date.now() - m.ts < 20000) : [];
     fresh.push({ msgId, from: myId, ts: Date.now(), ...payload });
-    await kvSet('in_' + target, fresh.slice(-15));
+    await kvSet('in_' + target, fresh.slice(-20));
 }
 
 async function checkQueue() {
     if (state !== 'searching') return;
     const now = Date.now();
     let list = (await kvGet('queue_ru')) || [];
-    list = list.filter(item => item && item.id !== myId && (now - item.ts < 9000));
+    if (!Array.isArray(list)) list = [];
+    list = list.filter(item => item && item.id && item.id !== myId && (now - item.ts < 10000));
 
     if (list.length > 0) {
         const candidate = list[0];
@@ -159,7 +173,7 @@ async function pollInbox() {
             }
         }
     } catch (e) {}
-    setTimeout(pollInbox, 1000);
+    setTimeout(pollInbox, 900);
 }
 
 async function handleIncomingData(data) {
@@ -271,7 +285,7 @@ function closeCall(notifyPartner = true) {
 
 btnNext.onclick = async function() {
     closeCall(true);
-    tryInitAudio();
+    await tryInitAudio();
 
     state = 'searching';
     btnStop.disabled = false;
@@ -280,7 +294,7 @@ btnNext.onclick = async function() {
     addMessage('Ищем свободного собеседника...', 'sys');
 
     checkQueue();
-    searchTimer = setInterval(checkQueue, 1800);
+    searchTimer = setInterval(checkQueue, 1500);
 };
 
 btnStop.onclick = function() {
@@ -291,18 +305,20 @@ btnStop.onclick = function() {
 };
 
 btnMute.onclick = function() {
-    if (!localStream) return;
-    isMuted = !isMuted;
-    localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
-    btnMute.textContent = isMuted ? 'Включить микрофон' : 'Выключить микрофон';
-    btnMute.classList.toggle('muted', isMuted);
+if (!localStream) return;
+isMuted = !isMuted;
+localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+btnMute.textContent = isMuted ? 'Включить микрофон' : 'Выключить микрофон';
+btnMute.classList.toggle('muted', isMuted);
 };
-
 chatForm.onsubmit = async function(e) {
-    e.preventDefault();
-    const text = msgInput.value.trim();
+e.preventDefault();
+const text = msgInput.value.trim();
 if (!text || state !== 'connected' || !partnerId) return;
 addMessage(text, 'me');
 sendSignal(partnerId, { type: 'chat', text });
 msgInput.value = '';
 };
+window.addEventListener('beforeunload', () => {
+if (partnerId) sendSignal(partnerId, { type: 'bye' });
+});
