@@ -25,7 +25,7 @@ body{background:#0f1115 url('./bg.png') center/cover fixed;color:#fff;display:fl
 .m.sys{color:#788292;align-self:center;font-size:.8rem}
 .form{display:flex;border-top:1px solid #222630}
 .form input{flex:1;background:none;border:none;padding:12px;color:#fff;outline:none;font-size:16px}
-.form button{background:none;border:none;color:#00e676;font-weight:bold;padding:0 18px;font-size:1.2rem}
+.form button{background:none;border:none;color:#00e676;font-weight:bold;padding:0 18px;font-size:1.2rem;cursor:pointer}
 .btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
 .btn{padding:15px 10px;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer}
 .btn:disabled{opacity:.4}
@@ -33,7 +33,7 @@ body{background:#0f1115 url('./bg.png') center/cover fixed;color:#fff;display:fl
 #bStop{background:#ff5252;color:#fff}
 #bMute{grid-column:span 2;background:#262b38;color:#fff}
 .ck{position:fixed;top:12px;left:15px;right:15px;max-width:440px;margin:auto;background:#181b22;border:1px solid #00e676;border-radius:14px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;z-index:999;font-size:.82rem}
-.ck button{background:#262b38;color:#fff;border:none;border-radius:50%;width:30px;height:30px}
+.ck button{background:#262b38;color:#fff;border:none;border-radius:50%;width:30px;height:30px;cursor:pointer}
 </style>
 </head>
 <body>
@@ -49,6 +49,81 @@ body{background:#0f1115 url('./bg.png') center/cover fixed;color:#fff;display:fl
   <div class="btns"><button type="button" class="btn" id="bNext">Найти / Далее</button><button type="button" class="btn" id="bStop" disabled>Стоп</button><button type="button" class="btn" id="bMute" disabled>Выключить микрофон</button></div>
   <audio id="aud" autoplay playsinline></audio>
 </div>
-<script src="./app.js?v=1"></script>
+
+<script>
+const $=id=>document.getElementById(id);
+const ROOM='https://ntfy.sh';
+const me='u_'+Math.random().toString(36).slice(2,10);
+let pid=null,st='idle',mic=null,pc=null,muted=false,tInt=null,sInt=null,sec=0;
+const seen=new Set();
+
+if(document.cookie.includes('lk_ok=1'))$('ck').style.display='none';
+$('ckX').onclick=()=>{document.cookie='lk_ok=1;max-age=2592000;path=/';$('ck').style.display='none'};
+
+const log=(t,c='sys')=>{const d=document.createElement('div');d.className='m '+c;d.textContent=t;$('msgs').appendChild(d);$('msgs').scrollTop=99999};
+const view=v=>{
+  clearInterval(tInt);sec=0;
+  $('vIdle').classList.toggle('on',v==='idle');
+  $('vQueue').classList.toggle('on',v==='queue');
+  $('vCall').classList.toggle('on',v==='call');
+  if(v==='queue'||v==='call'){
+    const el=$(v==='queue'?'tQueue':'tCall');
+    const pref=v==='queue'?'Поиск: ':'● Разговор: ';
+    el.textContent=pref+'00:00';
+    tInt=setInterval(()=>{sec++;el.textContent=pref+String(Math.floor(sec/60)).padStart(2,'0')+':'+String(sec%60).padStart(2,'0')},1000);
+  }
+};
+const chatOn=on=>{$('inp').disabled=!on;$('bSend').disabled=!on};
+const send=data=>{const mid=me+'_'+Date.now()+Math.random();fetch(ROOM,{method:'POST',body:JSON.stringify({mid,from:me,ts:Date.now(),...data})}).catch(()=>{})};
+
+const stop=msg=>{
+  clearInterval(sInt);if(pid)send({to:pid,type:'bye'});
+  pid=null;st='idle';view('idle');chatOn(false);
+  if(pc){try{pc.close()}catch(e){}pc=null}
+  if(msg){$('bStop').disabled=true;$('stTxt').textContent=msg;log(msg)}
+};
+
+const call=async init=>{
+  st='call';view('call');chatOn(true);$('msgs').innerHTML='';log('Собеседник найден! 👋');
+  pc=new RTCPeerConnection({iceServers:[{urls:'stun:://google.com'},{urls:'turn:openrelay.metered.ca:443',username:'openrelayproject',credential:'openrelayproject'}]});
+  if(mic)mic.getTracks().forEach(t=>pc.addTrack(t,mic));
+  pc.ontrack=e=>{$('aud').srcObject=new MediaStream([e.track]);$('aud').play().catch(()=>{})};
+  pc.onicecandidate=e=>{if(e.candidate&&pid)send({to:pid,type:'c',c:e.candidate})};
+  if(init){const o=await pc.createOffer();await pc.setLocalDescription(o);send({to:pid,type:'o',o})}
+};
+
+$('bNext').onclick=()=>{
+  stop(false);st='search';$('bStop').disabled=false;$('msgs').innerHTML='';view('queue');log('Ищем собеседника...');
+  if(!mic&&navigator.mediaDevices)navigator.mediaDevices.getUserMedia({audio:true}).then(s=>{mic=s;$('bMute').disabled=false}).catch(()=>log('Микрофон отключен'));
+  send({type:'seek'});sInt=setInterval(()=>{if(st==='search')send({type:'seek'})},1500);
+};
+$('bStop').onclick=()=>stop('Поиск остановлен');
+$('bMute').onclick=()=>{if(!mic)return;muted=!muted;mic.getAudioTracks().forEach(t=>t.enabled=!muted);$('bMute').textContent=muted?'Включить микрофон':'Выключить микрофон'};
+$('cForm').onsubmit=e=>{e.preventDefault();const v=$('inp').value.trim();if(!v||!pid)return;log(v,'me');send({to:pid,type:'txt',v});$('inp').value=''};
+
+const poll=async()=>{
+  try{
+    const r=await fetch(ROOM+'/json?poll=1&since=12s');
+    if(r.ok){
+      const lines=(await r.text()).trim().split('\n');
+      for(const l of lines){
+        if(!l)continue;const w=JSON.parse(l);if(!w.message)continue;const m=JSON.parse(w.message);
+        if(!m||m.from===me||seen.has(m.mid)||Date.now()-m.ts>15000)continue;seen.add(m.mid);
+        if(m.type==='seek'&&st==='search'&&me>m.from){st='conn';pid=m.from;clearInterval(sInt);send({to:pid,type:'ok'});call(true)}
+        else if(m.to===me&&m.type==='ok'&&st==='search'){st='conn';pid=m.from;clearInterval(sInt);call(false)}
+        else if(m.to===me&&m.from===pid){
+          if(m.type==='o'&&pc){await pc.setRemoteDescription(new RTCSessionDescription(m.o));const a=await pc.createAnswer();await pc.setLocalDescription(a);send({to:pid,type:'a',a})}
+          else if(m.type==='a'&&pc)await pc.setRemoteDescription(new RTCSessionDescription(m.a));
+          else if(m.type==='c'&&pc)try{await pc.addIceCandidate(new RTCIceCandidate(m.c))}catch(e){}
+          else if(m.type==='txt')log(m.v,'he');
+          else if(m.type==='bye')stop('Собеседник отключился');
+        }
+      }
+    }
+  }catch(e){}
+  setTimeout(poll,1000);
+};
+poll();
+</script>
 </body>
 </html>
