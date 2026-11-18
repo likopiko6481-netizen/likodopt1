@@ -1,5 +1,3 @@
-const DB_URL = 'https://kvdb.io';
-
 function setCookie(name, value, days) {
     const d = new Date();
     d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
@@ -40,39 +38,45 @@ const btnStop = document.getElementById('btnStop');
 const btnMute = document.getElementById('btnMute');
 const remoteAudio = document.getElementById('remoteAudio');
 
-const myId = 'u_' + Math.random().toString(36).slice(2, 10) + '_' + Date.now().toString(36).slice(-4);
+const SLOT_PREFIX = 'likodopt_ru_slot_';
+const MAX_SLOTS = 15;
 
-let partnerId = null;
-let state = 'idle';
+let peer = null;
+let currentCall = null;
+let dataConn = null;
 let localStream = null;
-let pc = null;
 let isMuted = false;
-let searchTimer = null;
+let state = 'idle'; // idle | searching | connected
 let clockInterval = null;
 let searchSeconds = 0;
-const processedIds = new Set();
 
-const rtcConfig = {
-    iceServers: [
-        { urls: 'stun:://google.com' },
-        { urls: 'stun:://google.com' },
-        { urls: 'stun:://cloudflare.com' },
-        {
-            urls: 'turn:openrelay.metered.ca:80',
-            username: 'openrelayproject',
-            credential: 'openrelayproject'
-        },
-        {
-            urls: 'turn:openrelay.metered.ca:443',
-            username: 'openrelayproject',
-            credential: 'openrelayproject'
-        },
-        {
-            urls: 'turn:openrelay.metered.ca:443?transport=tcp',
-            username: 'openrelayproject',
-            credential: 'openrelayproject'
-        }
-    ]
+const peerConfig = {
+    host: '://peerjs.com',
+    port: 443,
+    path: '/',
+    secure: true,
+    config: {
+        iceServers: [
+            { urls: 'stun:://google.com' },
+            { urls: 'stun:://google.com' },
+            { urls: 'stun:://cloudflare.com' },
+            {
+                urls: 'turn:openrelay.metered.ca:80',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+            },
+            {
+                urls: 'turn:openrelay.metered.ca:443',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+            },
+            {
+                urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+            }
+        ]
+    }
 };
 
 function showQueueWindow(show) {
@@ -109,108 +113,12 @@ function setChatEnabled(enabled) {
     if (!enabled) msgInput.value = '';
 }
 
-async function kvGet(key) {
-    try {
-        const res = await fetch(DB_URL + '/' + key + '?t=' + Date.now());
-        if (!res.ok) return null;
-        return await res.json();
-    } catch (e) {
-        return null;
-    }
-}
-
-async function kvSet(key, data) {
-    try {
-        await fetch(DB_URL + '/' + key, {
-            method: 'PUT',
-            body: JSON.stringify(data)
-        });
-    } catch (e) {}
-}
-
-async function sendSignal(target, payload) {
-    const msgId = myId + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-    const current = (await kvGet('in_' + target)) || [];
-    const fresh = Array.isArray(current) ? current.filter(m => Date.now() - m.ts < 20000) : [];
-    fresh.push({ msgId, from: myId, ts: Date.now(), ...payload });
-    await kvSet('in_' + target, fresh.slice(-20));
-}
-
-async function checkQueue() {
-    if (state !== 'searching') return;
-    const now = Date.now();
-    let list = (await kvGet('queue_ru')) || [];
-    if (!Array.isArray(list)) list = [];
-    list = list.filter(item => item && item.id && item.id !== myId && (now - item.ts < 10000));
-
-    if (list.length > 0) {
-        const candidate = list[0];
-        if (myId > candidate.id) {
-            state = 'connecting';
-            partnerId = candidate.id;
-            clearInterval(searchTimer);
-            await kvSet('queue_ru', list.slice(1));
-            await sendSignal(partnerId, { type: 'accept' });
-            await startWebRTC(true);
-            return;
-        }
-    }
-
-    list.push({ id: myId, ts: now });
-    await kvSet('queue_ru', list);
-}
-
-async function pollInbox() {
-    try {
-        const messages = await kvGet('in_' + myId);
-        netStatusEl.textContent = 'Онлайн: В сети';
-        if (Array.isArray(messages) && messages.length > 0) {
-            await kvSet('in_' + myId, []);
-            for (const msg of messages) {
-                if (!msg || !msg.msgId || processedIds.has(msg.msgId)) continue;
-                processedIds.add(msg.msgId);
-                await handleIncomingData(msg);
-            }
-        }
-    } catch (e) {}
-    setTimeout(pollInbox, 900);
-}
-
-async function handleIncomingData(data) {
-    if (!data || data.from === myId) return;
-
-    if (data.type === 'accept' && state === 'searching') {
-        state = 'connecting';
-        partnerId = data.from;
-        clearInterval(searchTimer);
-        await startWebRTC(false);
-    } else if (data.from === partnerId) {
-        if (data.type === 'offer' && pc) {
-            await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
-            const answer = await pc.createAnswer();
-            await pc.setLocalDescription(answer);
-            await sendSignal(partnerId, { type: 'answer', answer });
-            onCallEstablished();
-        } else if (data.type === 'answer' && pc) {
-            await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
-            onCallEstablished();
-        } else if (data.type === 'candidate' && pc) {
-            try { await pc.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch (e) {}
-        } else if (data.type === 'chat') {
-            addMessage(data.text, 'partner');
-        } else if (data.type === 'bye') {
-            closeCall(false);
-            statusEl.textContent = 'Собеседник отключился';
-            addMessage('Собеседник покинул чат. Нажмите «Далее»', 'sys');
-        }
-    }
-}
-
-pollInbox();
-
 async function tryInitAudio() {
     if (localStream) return;
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        addMessage('Микрофон недоступен — работает текстовый чат', 'sys');
+        return;
+    }
     try {
         localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
         btnMute.disabled = false;
@@ -219,72 +127,150 @@ async function tryInitAudio() {
     }
 }
 
-function onCallEstablished() {
+function onConnected() {
     if (state === 'connected') return;
     state = 'connected';
     showQueueWindow(false);
     statusEl.textContent = 'Собеседник на связи!';
     messagesEl.innerHTML = '';
-    addMessage('Собеседник найден! Поздоровайтесь 👋', 'sys');
+    addMessage('Соединение установлено! Поздоровайтесь 👋', 'sys');
     partnerAvatar.classList.add('speaking');
     setChatEnabled(true);
 }
 
-async function startWebRTC(isInitiator) {
-    showQueueWindow(false);
-    statusEl.textContent = 'Соединяем с собеседником...';
-
-    pc = new RTCPeerConnection(rtcConfig);
-    if (localStream) {
-        localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-    }
-
-    pc.ontrack = function(ev) {
-        const stream = new MediaStream();
-        stream.addTrack(ev.track);
-        remoteAudio.srcObject = stream;
-        remoteAudio.play().catch(() => {});
-        onCallEstablished();
-    };
-
-    pc.onicecandidate = function(ev) {
-        if (ev.candidate && partnerId) {
-            sendSignal(partnerId, { type: 'candidate', candidate: ev.candidate });
+function bindDataConn(conn) {
+    dataConn = conn;
+    conn.on('open', onConnected);
+    conn.on('data', function(text) {
+        if (typeof text === 'string') addMessage(text, 'partner');
+    });
+    conn.on('close', function() {
+        if (state === 'connected') {
+            closeAll();
+            statusEl.textContent = 'Собеседник отключился';
+            addMessage('Собеседник покинул чат. Нажмите «Далее»', 'sys');
         }
-    };
-
-    pc.onconnectionstatechange = function() {
-        if (pc && (pc.connectionState === 'connected' || pc.connectionState === 'completed')) {
-            onCallEstablished();
-        }
-    };
-
-    if (isInitiator) {
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        await sendSignal(partnerId, { type: 'offer', offer });
-    }
+    });
 }
 
-function closeCall(notifyPartner = true) {
-    clearInterval(searchTimer);
-    showQueueWindow(false);
-    if (notifyPartner && partnerId) {
-        sendSignal(partnerId, { type: 'bye' });
-    }
-    partnerId = null;
+function bindMediaCall(call) {
+    currentCall = call;
+    call.on('stream', function(remoteStream) {
+        onConnected();
+        remoteAudio.srcObject = remoteStream;
+        remoteAudio.play().catch(() => {});
+    });
+    call.on('close', function() {
+        if (state === 'connected') {
+            closeAll();
+            statusEl.textContent = 'Собеседник отключился';
+            addMessage('Собеседник покинул чат. Нажмите «Далее»', 'sys');
+        }
+    });
+}
+
+function closeAll() {
     state = 'idle';
+    showQueueWindow(false);
     partnerAvatar.classList.remove('speaking');
     setChatEnabled(false);
-    if (pc) {
-        try { pc.close(); } catch (e) {}
-        pc = null;
-    }
+
+    if (currentCall) { try { currentCall.close(); } catch (e) {} currentCall = null; }
+    if (dataConn) { try { dataConn.close(); } catch (e) {} dataConn = null; }
+    if (peer) { try { peer.destroy(); } catch (e) {} peer = null; }
     remoteAudio.srcObject = null;
 }
 
+// Ищем занятую ячейку, чтобы позвонить, или занимаем свободную
+function trySlot(slotNum) {
+    if (state !== 'searching') return;
+
+    if (slotNum > MAX_SLOTS) {
+        // Если все ячейки заняты — создаем случайную и ждем
+        createWaitingPeer(SLOT_PREFIX + Math.floor(Math.random() * MAX_SLOTS + 1));
+        return;
+    }
+
+    const targetSlotId = SLOT_PREFIX + slotNum;
+    const tempPeer = new Peer(peerConfig);
+
+    tempPeer.on('open', function() {
+        const conn = tempPeer.connect(targetSlotId, { reliable: true });
+        let answered = false;
+
+        const timeout = setTimeout(function() {
+            if (!answered && state === 'searching') {
+                // Никто не ответил в этой ячейке — значит она свободна! Занимаем её
+                try { tempPeer.destroy(); } catch (e) {}
+                createWaitingPeer(targetSlotId);
+            }
+        }, 1200);
+
+        conn.on('open', function() {
+            answered = true;
+            clearTimeout(timeout);
+            peer = tempPeer;
+            bindDataConn(conn);
+            if (localStream) {
+                const call = peer.call(targetSlotId, localStream);
+                if (call) bindMediaCall(call);
+            }
+        });
+
+        conn.on('error', function() {
+            if (!answered && state === 'searching') {
+                answered = true;
+                clearTimeout(timeout);
+                try { tempPeer.destroy(); } catch (e) {}
+                createWaitingPeer(targetSlotId);
+            }
+        });
+    });
+
+    tempPeer.on('error', function() {
+        if (state === 'searching') {
+            try { tempPeer.destroy(); } catch (e) {}
+            trySlot(slotNum + 1);
+        }
+    });
+}
+
+function createWaitingPeer(slotId) {
+    if (state !== 'searching') return;
+    peer = new Peer(slotId, peerConfig);
+
+    peer.on('open', function() {
+        netStatusEl.textContent = 'Онлайн: В сети';
+    });
+
+    peer.on('connection', function(incomingConn) {
+        if (state !== 'searching') {
+            incomingConn.close();
+            return;
+        }
+        bindDataConn(incomingConn);
+    });
+
+    peer.on('call', function(incomingCall) {
+        if (state !== 'searching' && state !== 'connected') {
+            incomingCall.close();
+            return;
+        }
+        incomingCall.answer(localStream || undefined);
+        bindMediaCall(incomingCall);
+    });
+
+    peer.on('error', function(err) {
+        if (err.type === 'unavailable-id' && state === 'searching') {
+            // Пока мы занимали ячейку, её успел занять другой — пробуем следующую
+            try { peer.destroy(); } catch (e) {}
+            trySlot(Math.floor(Math.random() * MAX_SLOTS) + 1);
+        }
+    });
+}
+
 btnNext.onclick = async function() {
-    closeCall(true);
+    closeAll();
     await tryInitAudio();
 
     state = 'searching';
@@ -293,32 +279,31 @@ btnNext.onclick = async function() {
     showQueueWindow(true);
     addMessage('Ищем свободного собеседника...', 'sys');
 
-    checkQueue();
-    searchTimer = setInterval(checkQueue, 1500);
+    trySlot(1);
 };
 
 btnStop.onclick = function() {
-    closeCall(true);
+    closeAll();
     btnStop.disabled = true;
     statusEl.textContent = 'Поиск остановлен';
     addMessage('Вы вышли из очереди', 'sys');
 };
 
 btnMute.onclick = function() {
-if (!localStream) return;
-isMuted = !isMuted;
-localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
-btnMute.textContent = isMuted ? 'Включить микрофон' : 'Выключить микрофон';
-btnMute.classList.toggle('muted', isMuted);
+    if (!localStream) return;
+    isMuted = !isMuted;
+    localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+    btnMute.textContent = isMuted ? 'Включить микрофон' : 'Выключить микрофон';
+    btnMute.classList.toggle('muted', isMuted);
 };
-chatForm.onsubmit = async function(e) {
-e.preventDefault();
-const text = msgInput.value.trim();
-if (!text || state !== 'connected' || !partnerId) return;
-addMessage(text, 'me');
-sendSignal(partnerId, { type: 'chat', text });
-msgInput.value = '';
+
+chatForm.onsubmit = function(e) {
+    e.preventDefault();
+    const text = msgInput.value.trim();
+    if (!text || state !== 'connected' || !dataConn || !dataConn.open) return;
+    addMessage(text, 'me');
+    dataConn.send(text);
+    msgInput.value = '';
 };
-window.addEventListener('beforeunload', () => {
-if (partnerId) sendSignal(partnerId, { type: 'bye' });
-});
+
+window.addEventListener('beforeunload', closeAll);
