@@ -15,11 +15,13 @@ function getCookie(name) {
 }
 
 const cookieBanner = document.getElementById('cookieBanner');
-if (!getCookie('likodopt_cookie_closed')) cookieBanner.classList.add('show');
-document.getElementById('closeCookieBtn').onclick = function() {
-    setCookie('likodopt_cookie_closed', '1', 30);
-    cookieBanner.classList.remove('show');
-};
+if (cookieBanner) {
+    if (!getCookie('likodopt_cookie_closed')) cookieBanner.classList.add('show');
+    document.getElementById('closeCookieBtn').onclick = function() {
+        setCookie('likodopt_cookie_closed', '1', 30);
+        cookieBanner.classList.remove('show');
+    };
+}
 
 const idleView = document.getElementById('idleView');
 const queueView = document.getElementById('queueView');
@@ -36,25 +38,35 @@ const btnStop = document.getElementById('btnStop');
 const btnMute = document.getElementById('btnMute');
 const remoteAudio = document.getElementById('remoteAudio');
 
-const TOPIC = 'likodopt_ru_room_7741';
-const myId = 'u_' + Math.random().toString(36).slice(2, 10);
+const ROOM_URL = 'https://ntfy.sh';
+const myId = 'u_' + Math.random().toString(36).slice(2, 10) + '_' + Date.now().toString(36).slice(-4);
 
 let partnerId = null;
-let state = 'idle';
+let state = 'idle'; // idle | searching | connecting | connected
 let localStream = null;
 let pc = null;
 let isMuted = false;
 let searchTimer = null;
 let clockInterval = null;
 let searchSeconds = 0;
-let lastMsgId = '';
+let eventSource = null;
+const processedEvents = new Set();
 
 const rtcConfig = {
     iceServers: [
         { urls: 'stun:://google.com' },
         { urls: 'stun:://google.com' },
-        { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-        { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
+        { urls: 'stun:://google.com' },
+        {
+            urls: 'turn:openrelay.metered.ca:80',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+        },
+        {
+            urls: 'turn:openrelay.metered.ca:443',
+            username: 'openrelayproject',
+            credential: 'openrelayproject'
+        }
     ]
 };
 
@@ -93,60 +105,94 @@ function setChatEnabled(enabled) {
 }
 
 async function sendSignal(payload) {
+    const msgId = myId + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
     try {
-        await fetch('https://ntfy.sh' + TOPIC, {
+        await fetch(ROOM_URL, {
             method: 'POST',
-            body: JSON.stringify({ from: myId, ts: Date.now(), ...payload })
+            body: JSON.stringify({ msgId, from: myId, ts: Date.now(), ...payload })
         });
-    } catch (e) {}
-}
-
-async function pollMessages() {
-    try {
-        const url = 'https://ntfy.sh' + TOPIC + '/json?poll=1&since=10s' + (lastMsgId ? '&id=' + lastMsgId : '');
-        const res = await fetch(url);
-        if (res.ok) {
-            netStatusEl.textContent = 'Онлайн: В сети';
-            const text = await res.text();
-            const lines = text.trim().split('\n');
-            for (let i = 0; i < lines.length; i++) {
-                if (!lines[i]) continue;
-                const wrapper = JSON.parse(lines[i]);
-                if (wrapper.id) lastMsgId = wrapper.id;
-                if (!wrapper.message) continue;
-                const data = JSON.parse(wrapper.message);
-                await processSignal(data);
-            }
-        }
     } catch (e) {
-        netStatusEl.textContent = 'Сеть (проверьте VPN)';
+        netStatusEl.textContent = 'Ошибка сети';
     }
-    setTimeout(pollMessages, 1200);
 }
 
-async function processSignal(data) {
-    if (!data || data.from === myId) return;
+function connectStream() {
+    if (eventSource) {
+        try { eventSource.close(); } catch (e) {}
+    }
+
+    // Подключаемся к живому потоку без старых сообщений
+    eventSource = new EventSource(ROOM_URL + '/sse?since=none');
+
+    eventSource.onopen = function() {
+        netStatusEl.textContent = 'Онлайн: В сети';
+    };
+
+    eventSource.onmessage = async function(ev) {
+        let wrapper, data;
+        try {
+            wrapper = JSON.parse(ev.data);
+            if (!wrapper.message) return;
+            data = JSON.parse(wrapper.message);
+        } catch (e) { return; }
+
+        if (!data || data.from === myId) return;
+        if (data.msgId && processedEvents.has(data.msgId)) return;
+        if (data.msgId) processedEvents.add(data.msgId);
+
+        // Защита от устаревших сообщений старше 15 секунд
+        if (data.ts && (Date.now() - data.ts > 15000)) return;
+
+        await handleIncomingData(data);
+    };
+
+    eventSource.onerror = function() {
+        netStatusEl.textContent = 'Переподключение...';
+    };
+}
+
+async function handleIncomingData(data) {
+    // 1. Кто-то ищет собеседника, и мы тоже в поиске
     if (data.type === 'seek' && state === 'searching') {
         if (myId > data.from) {
-            await startCallWith(data.from, true);
-            sendSignal({ to: data.from, type: 'accept' });
+            state = 'connecting';
+            partnerId = data.from;
+            clearInterval(searchTimer);
+            await sendSignal({ to: partnerId, type: 'accept' });
+            await startWebRTC(true);
         }
-    } else if (data.to === myId) {
-        if (data.type === 'accept' && state === 'searching') {
-            await startCallWith(data.from, false);
-        } else if (data.from === partnerId) {
-            if (data.type === 'signal') await handleWebRTC(data.signal);
-            else if (data.type === 'chat') addMessage(data.text, 'partner');
-            else if (data.type === 'bye') {
-                closeCall();
-                statusEl.textContent = 'Собеседник отключился';
-                addMessage('Собеседник покинул чат. Нажмите «Далее»', 'sys');
-            }
+    }
+    // 2. Нас выбрали в пару
+    else if (data.to === myId && data.type === 'accept' && state === 'searching') {
+        state = 'connecting';
+        partnerId = data.from;
+        clearInterval(searchTimer);
+        await startWebRTC(false);
+    }
+    // 3. Сообщения от нашего текущего собеседника
+    else if (data.to === myId && data.from === partnerId) {
+        if (data.type === 'offer' && pc) {
+            await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
+            const answer = await pc.createAnswer();
+            await pc.setLocalDescription(answer);
+            await sendSignal({ to: partnerId, type: 'answer', answer });
+            onCallEstablished();
+        } else if (data.type === 'answer' && pc) {
+            await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
+            onCallEstablished();
+        } else if (data.type === 'candidate' && pc) {
+            try { await pc.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch (e) {}
+        } else if (data.type === 'chat') {
+            addMessage(data.text, 'partner');
+        } else if (data.type === 'bye') {
+            closeCall(false);
+            statusEl.textContent = 'Собеседник отключился';
+            addMessage('Собеседник покинул чат. Нажмите «Далее»', 'sys');
         }
     }
 }
 
-pollMessages();
+connectStream();
 
 async function tryInitAudio() {
     if (localStream) return;
@@ -157,86 +203,95 @@ async function tryInitAudio() {
     try {
         localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
         btnMute.disabled = false;
-        addMessage('Микрофон подключен', 'sys');
     } catch (err) {
         addMessage('Доступ к микрофону закрыт — доступен только текст', 'sys');
     }
 }
 
-function closeCall() {
-    clearInterval(searchTimer);
-    showQueueWindow(false);
-    if (partnerId) sendSignal({ to: partnerId, type: 'bye' });
-    partnerId = null;
-    state = 'idle';
-    partnerAvatar.classList.remove('speaking');
-    setChatEnabled(false);
-    if (pc) { try { pc.close(); } catch (e) {} pc = null; }
-    remoteAudio.srcObject = null;
-}
-
-async function startCallWith(target, isInitiator) {
-    clearInterval(searchTimer);
-    showQueueWindow(false);
-    partnerId = target;
+function onCallEstablished() {
+    if (state === 'connected') return;
     state = 'connected';
+    showQueueWindow(false);
     statusEl.textContent = 'Собеседник на связи!';
     messagesEl.innerHTML = '';
-    addMessage('Соединение установлено. Поздоровайтесь!', 'sys');
+    addMessage('Собеседник найден! Поздоровайтесь 👋', 'sys');
     partnerAvatar.classList.add('speaking');
     setChatEnabled(true);
+}
+
+async function startWebRTC(isInitiator) {
+    showQueueWindow(false);
+    statusEl.textContent = 'Соединяем с собеседником...';
 
     pc = new RTCPeerConnection(rtcConfig);
-    if (localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+    if (localStream) {
+        localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+    }
 
     pc.ontrack = function(ev) {
         const stream = new MediaStream();
         stream.addTrack(ev.track);
         remoteAudio.srcObject = stream;
         remoteAudio.play().catch(() => {});
+        onCallEstablished();
     };
 
     pc.onicecandidate = function(ev) {
-        if (ev.candidate) sendSignal({ to: partnerId, type: 'signal', signal: { candidate: ev.candidate } });
+        if (ev.candidate && partnerId) {
+            sendSignal({ to: partnerId, type: 'candidate', candidate: ev.candidate });
+        }
+    };
+
+    pc.onconnectionstatechange = function() {
+        if (pc && (pc.connectionState === 'connected' || pc.connectionState === 'completed')) {
+            onCallEstablished();
+        }
     };
 
     if (isInitiator) {
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
-        sendSignal({ to: partnerId, type: 'signal', signal: { offer } });
+        await sendSignal({ to: partnerId, type: 'offer', offer });
     }
 }
 
-async function handleWebRTC(sig) {
-    if (!pc) return;
-    if (sig.offer) {
-        await pc.setRemoteDescription(new RTCSessionDescription(sig.offer));
-        const answer = await pc.createAnswer();
-        await pc.setLocalDescription(answer);
-        sendSignal({ to: partnerId, type: 'signal', signal: { answer } });
-    } else if (sig.answer) {
-        await pc.setRemoteDescription(new RTCSessionDescription(sig.answer));
-    } else if (sig.candidate) {
-        await pc.addIceCandidate(new RTCIceCandidate(sig.candidate));
+function closeCall(notifyPartner = true) {
+    clearInterval(searchTimer);
+    showQueueWindow(false);
+    if (notifyPartner && partnerId) {
+        sendSignal({ to: partnerId, type: 'bye' });
     }
+    partnerId = null;
+    state = 'idle';
+    partnerAvatar.classList.remove('speaking');
+    setChatEnabled(false);
+    if (pc) {
+        try { pc.close(); } catch (e) {}
+        pc = null;
+    }
+    remoteAudio.srcObject = null;
 }
 
-btnNext.onclick = function() {
-    closeCall();
+btnNext.onclick = async function() {
+    closeCall(true);
+    await tryInitAudio();
+
     state = 'searching';
     btnStop.disabled = false;
     messagesEl.innerHTML = '';
     showQueueWindow(true);
-    addMessage('Вы вошли в очередь поиска собеседника...', 'sys');
-    tryInitAudio();
+    addMessage('Ищем свободного собеседника...', 'sys');
+
     sendSignal({ type: 'seek' });
     searchTimer = setInterval(function() {
-        if (state === 'searching') sendSignal({ type: 'seek' });
-    }, 1800);
+        if (state === 'searching') {
+            sendSignal({ type: 'seek' });
+        }
+    }, 1500);
 };
 
 btnStop.onclick = function() {
-    closeCall();
+    closeCall(true);
     btnStop.disabled = true;
     statusEl.textContent = 'Поиск остановлен';
     addMessage('Вы вышли из очереди', 'sys');
@@ -246,15 +301,14 @@ btnMute.onclick = function() {
     if (!localStream) return;
     isMuted = !isMuted;
     localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
-    btnMute.textContent = isMuted ? 'Включить микрофон' : 'Выключить микрофон';
-    btnMute.classList.toggle('muted', isMuted);
+btnMute.textContent = isMuted ? 'Включить микрофон' : 'Выключить микрофон';
+btnMute.classList.toggle('muted', isMuted);
 };
-
 chatForm.onsubmit = function(e) {
-    e.preventDefault();
-    const text = msgInput.value.trim();
-    if (!text || state !== 'connected' || !partnerId) return;
-    addMessage(text, 'me');
-    sendSignal({ to: partnerId, type: 'chat', text });
-    msgInput.value = '';
+e.preventDefault();
+const text = msgInput.value.trim();
+if (!text || state !== 'connected' || !partnerId) return;
+addMessage(text, 'me');
+sendSignal({ to: partnerId, type: 'chat', text });
+msgInput.value = '';
 };
