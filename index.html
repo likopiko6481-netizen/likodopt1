@@ -13,32 +13,20 @@
         .logo { font-size: 1.5rem; font-weight: 800; color: #00e676; letter-spacing: 1px; }
         .online-badge { background: #232834; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; color: #a0aab8; display: flex; align-items: center; }
         .online-dot { width: 8px; height: 8px; background: #00e676; border-radius: 50%; margin-right: 6px; }
-        
         .voice-box { background: rgba(18, 20, 26, 0.88); border-radius: 18px; padding: 22px 15px; text-align: center; margin-bottom: 15px; border: 1px solid #222630; min-height: 165px; display: flex; flex-direction: column; justify-content: center; }
-        
-        /* 1. Начальное окно */
         .avatar { width: 72px; height: 72px; border-radius: 50%; background: #232834; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
         #status { font-size: 1rem; color: #cfd8e3; font-weight: 500; }
-
-        /* 2. Окно ожидания очереди */
-        .queue-window { display: none; flex-direction: column; align-items: center; }
-        .queue-window.active { display: flex; }
+        .queue-window, .call-window { display: none; flex-direction: column; align-items: center; }
+        .queue-window.active, .call-window.active { display: flex; }
         .radar { position: relative; width: 72px; height: 72px; border-radius: 50%; background: rgba(0, 230, 118, 0.12); border: 2px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin-bottom: 12px; }
         .radar::before { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid #00e676; animation: pulseRing 2s infinite ease-out; }
         @keyframes pulseRing { 0% { transform: scale(0.95); opacity: 0.8; } 100% { transform: scale(1.55); opacity: 0; } }
         .queue-title { font-size: 1.05rem; font-weight: 700; color: #00e676; margin-bottom: 4px; }
         .queue-sub { font-size: 0.85rem; color: #a0aab8; margin-bottom: 10px; }
         .timer-pill { background: #232834; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; border: 1px solid #323846; }
-
-        /* 3. Окно активного разговора (когда собеседник найден) */
-        .call-window { display: none; flex-direction: column; align-items: center; animation: fadeIn 0.3s ease; }
-        .call-window.active { display: flex; }
-        @keyframes fadeIn { from { opacity: 0; transform: translateY(6px); } to { opacity: 1; transform: translateY(0); } }
-        .partner-card { width: 76px; height: 76px; border-radius: 50%; background: #1c382c; border: 2px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; margin-bottom: 10px; box-shadow: 0 0 20px rgba(0, 230, 118, 0.35); animation: voiceGlow 2s infinite alternate; }
-        @keyframes voiceGlow { from { box-shadow: 0 0 10px rgba(0, 230, 118, 0.25); } to { box-shadow: 0 0 24px rgba(0, 230, 118, 0.55); } }
+        .partner-card { width: 76px; height: 76px; border-radius: 50%; background: #1c382c; border: 2px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; margin-bottom: 10px; box-shadow: 0 0 20px rgba(0, 230, 118, 0.35); }
         .call-title { font-size: 1.1rem; font-weight: 800; color: #fff; margin-bottom: 4px; }
         .call-badge { display: inline-flex; align-items: center; gap: 6px; background: rgba(0, 230, 118, 0.15); color: #00e676; padding: 4px 12px; border-radius: 20px; font-size: 0.82rem; font-weight: 700; border: 1px solid rgba(0, 230, 118, 0.3); }
-
         .chat-box { background: rgba(18, 20, 26, 0.88); border-radius: 14px; height: 175px; display: flex; flex-direction: column; margin-bottom: 15px; border: 1px solid #222630; overflow: hidden; }
         #messages { flex: 1; padding: 12px; overflow-y: auto; font-size: 0.9rem; display: flex; flex-direction: column; gap: 8px; }
         .msg { padding: 8px 12px; border-radius: 10px; max-width: 82%; word-wrap: break-word; }
@@ -49,7 +37,6 @@
         .chat-input input { flex: 1; background: transparent; border: none; padding: 12px; color: #fff; outline: none; font-size: 0.9rem; }
         .chat-input button { background: transparent; border: none; color: #00e676; font-weight: bold; padding: 0 18px; font-size: 1.1rem; cursor: pointer; }
         .chat-input button:disabled { color: #555; }
-        
         .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
         .btn { padding: 14px; border: none; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; }
         .btn:disabled { opacity: 0.4; cursor: not-allowed; }
@@ -57,9 +44,7 @@
         #btnStop { background: #ff5252; color: #fff; }
         #btnMute { grid-column: span 2; background: #262b38; color: #fff; font-weight: 600; }
         #btnMute.muted { background: #ff9800; color: #000; }
-
-        .cookie-banner { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); width: calc(100% - 30px); max-width: 460px; background: rgba(24, 27, 34, 0.96); border: 1px solid rgba(0, 230, 118, 0.35); border-radius: 16px; padding: 14px 16px; display: none; align-items: center; justify-content: space-between; gap: 12px; z-index: 999; }
-        .cookie-banner.show { display: flex; }
+        .cookie-banner { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); width: calc(100% - 30px); max-width: 460px; background: rgba(24, 27, 34, 0.96); border: 1px solid rgba(0, 230, 118, 0.35); border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; z-index: 999; }
         .cookie-text { font-size: 0.88rem; color: #e6ecf5; line-height: 1.4; }
         .cookie-text span { color: #00e676; font-weight: 700; }
         .cookie-close { background: #262b38; color: #a0aab8; border: 1px solid #353b4d; border-radius: 50%; width: 34px; height: 34px; min-width: 34px; display: flex; align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; }
@@ -69,25 +54,20 @@
 <div class="app">
     <div class="header">
         <div class="logo">LIKODOPT</div>
-        <div class="online-badge"><span class="online-dot"></span><span id="netStatus">Онлайн: В сети</span></div>
+        <div class="online-badge"><span class="online-dot"></span><span>Онлайн: В сети</span></div>
     </div>
 
     <div class="voice-box">
-        <!-- 1. Начальное окно -->
         <div id="idleView">
             <div class="avatar">🎙️</div>
             <div id="status">Нажмите «Найти / Далее»</div>
         </div>
-
-        <!-- 2. Окно очереди поиска -->
         <div class="queue-window" id="queueView">
             <div class="radar">🔍</div>
             <div class="queue-title">Вы в очереди ожидания</div>
             <div class="queue-sub">Подбираем свободного собеседника...</div>
             <div class="timer-pill">Время поиска: <span id="searchTimerText">00:00</span></div>
         </div>
-
-        <!-- 3. Окно разговора (когда собеседник найден) -->
         <div class="call-window" id="callView">
             <div class="partner-card">🎧</div>
             <div class="call-title">Собеседник на связи</div>
@@ -97,16 +77,16 @@
 
     <div class="chat-box">
         <div id="messages"></div>
-        <form class="chat-input" id="chatForm">
+        <form class="chat-input" id="chatForm" onsubmit="sendText(event)">
             <input type="text" id="msgInput" placeholder="Написать сообщение..." disabled autocomplete="off">
             <button type="submit" id="btnSend" disabled>➤</button>
         </form>
     </div>
 
     <div class="controls">
-        <button type="button" class="btn" id="btnNext">Найти / Далее</button>
-        <button type="button" class="btn" id="btnStop" disabled>Стоп</button>
-        <button type="button" class="btn" id="btnMute" disabled>Выключить микрофон</button>
+        <button type="button" class="btn" id="btnNext" onclick="startSearch()">Найти / Далее</button>
+        <button type="button" class="btn" id="btnStop" onclick="stopSearch()" disabled>Стоп</button>
+        <button type="button" class="btn" id="btnMute" onclick="toggleMute()" disabled>Выключить микрофон</button>
     </div>
 
     <audio id="remoteAudio" autoplay playsinline></audio>
@@ -114,9 +94,135 @@
 
 <div class="cookie-banner" id="cookieBanner">
     <div class="cookie-text">🍪 Мы используем ваши файлы <span>Cookie</span> для улучшения работы сайта.</div>
-    <button type="button" class="cookie-close" id="closeCookieBtn">✕</button>
+    <button type="button" class="cookie-close" onclick="closeCookies()">✕</button>
 </div>
 
-<script src="./script.js?v=70"></script>
-</body>
-</html>
+<script>
+const DB = 'https://kvdb.io';
+const myId = 'u_' + Math.random().toString(36).slice(2, 10);
+let partnerId = null, state = 'idle', stream = null, pc = null, muted = false, sTimer = null, cTimer = null, sec = 0;
+const seen = new Set();
+
+if (document.cookie.includes('lk_ok=1')) document.getElementById('cookieBanner').style.display = 'none';
+function closeCookies() {
+    document.cookie = 'lk_ok=1;max-age=2592000;path=/';
+    document.getElementById('cookieBanner').style.display = 'none';
+}
+
+function showView(v) {
+    clearInterval(cTimer); sec = 0;
+    document.getElementById('idleView').style.display = v === 'idle' ? 'block' : 'none';
+    document.getElementById('queueView').classList.toggle('active', v === 'queue');
+    document.getElementById('callView').classList.toggle('active', v === 'call');
+    if (v === 'queue' || v === 'call') {
+        const el = document.getElementById(v === 'queue' ? 'searchTimerText' : 'callTimerText');
+        el.textContent = '00:00';
+        cTimer = setInterval(() => {
+            sec++;
+            el.textContent = String(Math.floor(sec/60)).padStart(2,'0') + ':' + String(sec%60).padStart(2,'0');
+        }, 1000);
+    }
+}
+
+function log(t, c) {
+    const d = document.createElement('div'); d.className = 'msg ' + c; d.textContent = t;
+    const m = document.getElementById('messages'); m.appendChild(d); m.scrollTop = m.scrollHeight;
+}
+
+function chatOn(on) {
+    document.getElementById('msgInput').disabled = !on;
+    document.getElementById('btnSend').disabled = !on;
+}
+
+async function getJ(k) { try { const r = await fetch(DB+'/'+k+'?t='+Date.now()); return r.ok ? r.json() : null; } catch(e) { return null; } }
+async function setJ(k, d) { try { await fetch(DB+'/'+k, { method: 'PUT', body: JSON.stringify(d) }); } catch(e) {} }
+async function send(to, data) {
+    const cur = (await getJ('in_'+to)) || [];
+const arr = Array.isArray(cur) ? cur.filter(x => Date.now()-x.ts < 15000) : [];
+arr.push({ id: myId+''+Date.now()+Math.random(), from: myId, ts: Date.now(), ...data });
+await setJ('in'+to, arr.slice(-15));
+}
+function startSearch() {
+stopSearch(false);
+state = 'searching';
+document.getElementById('btnStop').disabled = false;
+document.getElementById('messages').innerHTML = '';
+showView('queue');
+log('Ищем свободного собеседника...', 'sys');
+if (!stream && navigator.mediaDevices) {
+navigator.mediaDevices.getUserMedia({audio:true}).then(s => { stream = s; document.getElementById('btnMute').disabled = false; }).catch(()=>{});
+}
+findLoop();
+sTimer = setInterval(findLoop, 1500);
+}
+function stopSearch(updateText = true) {
+clearInterval(sTimer);
+if (partnerId) send(partnerId, { type: 'bye' });
+partnerId = null; state = 'idle'; showView('idle'); chatOn(false);
+if (pc) { try { pc.close(); } catch(e) {} pc = null; }
+if (updateText) {
+document.getElementById('btnStop').disabled = true;
+document.getElementById('status').textContent = 'Поиск остановлен';
+log('Вы вышли из очереди', 'sys');
+}
+}
+function toggleMute() {
+if (!stream) return;
+muted = !muted;
+stream.getAudioTracks().forEach(t => t.enabled = !muted);
+const b = document.getElementById('btnMute');
+b.textContent = muted ? 'Включить микрофон' : 'Выключить микрофон';
+b.classList.toggle('muted', muted);
+}
+function sendText(e) {
+e.preventDefault();
+const inp = document.getElementById('msgInput');
+const txt = inp.value.trim();
+if (!txt || !partnerId) return;
+log(txt, 'me'); send(partnerId, { type: 'chat', text: txt }); inp.value = '';
+}
+async function findLoop() {
+if (state !== 'searching') return;
+let q = (await getJ('q_ru')) || [];
+if (!Array.isArray(q)) q = [];
+q = q.filter(x => x && x.id !== myId && Date.now()-x.ts < 8000);
+if (q.length > 0 && myId > q[0].id) {
+state = 'connecting'; partnerId = q[0].id; clearInterval(sTimer);
+await setJ('q_ru', q.slice(1));
+await send(partnerId, { type: 'accept' });
+initCall(true); return;
+}
+q.push({ id: myId, ts: Date.now() });
+await setJ('q_ru', q);
+}
+async function initCall(init) {
+state = 'connected'; showView('call'); chatOn(true);
+document.getElementById('messages').innerHTML = '';
+log('Собеседник найден! Поздоровайтесь 👋', 'sys');
+pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:google.com' }, { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }] });
+if (stream) stream.getTracks().forEach(t => pc.addTrack(t, stream));
+pc.ontrack = e => { const s = new MediaStream([e.track]); const a = document.getElementById('remoteAudio'); a.srcObject = s; a.play().catch(()=>{}); };
+pc.onicecandidate = e => { if (e.candidate && partnerId) send(partnerId, { type: 'cand', cand: e.candidate }); };
+if (init) {
+const off = await pc.createOffer(); await pc.setLocalDescription(off);
+await send(partnerId, { type: 'offer', offer: off });
+}
+}
+setInterval(async () => {
+const msgs = await getJ('in_'+myId);
+if (!Array.isArray(msgs) || !msgs.length) return;
+await setJ('in_'+myId, []);
+for (const m of msgs) {
+if (!m || seen.has(m.id)) continue; seen.add(m.id);
+if (m.type === 'accept' && state === 'searching') { partnerId = m.from; clearInterval(sTimer); initCall(false); }
+else if (m.from === partnerId) {
+if (m.type === 'offer' && pc) { await pc.setRemoteDescription(new RTCSessionDescription(m.offer)); const ans = await pc.createAnswer(); await pc.setLocalDescription(ans); send(partnerId, { type: 'answer', answer: ans }); }
+else if (m.type === 'answer' && pc) await pc.setRemoteDescription(new RTCSessionDescription(m.answer));
+else if (m.type === 'cand' && pc) { try { await pc.addIceCandidate(new RTCIceCandidate(m.cand)); } catch(e) {} }
+else if (m.type === 'chat') log(m.text, 'partner');
+else if (m.type === 'bye') { stopSearch(true); document.getElementById('status').textContent = 'Собеседник отключился'; }
+}
+}
+}, 1000);
+
+
