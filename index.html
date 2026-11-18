@@ -84,8 +84,9 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
   <div class="controls">
     <button type="button" class="btn" id="btnNext" onclick="onNext()">Найти / Далее</button>
     <button type="button" class="btn" id="btnStop" onclick="onStop()" disabled>Стоп</button>
-    <button type="button" class="btn" id="btnMute" onclick="onMute()">Выключить микрофон</button>
+    <button type="button" class="btn" id="btnMute" onclick="onMute()" disabled>Выключить микрофон</button>
   </div>
+  <audio id="remoteAudio" autoplay playsinline></audio>
 </div>
 
 <div class="cookie-banner" id="cookieBanner">
@@ -94,62 +95,142 @@ body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-
 </div>
 
 <script>
-let timer = null, sec = 0, muted = false;
-if (document.cookie.includes('lk_ck=1')) document.getElementById('cookieBanner').style.display = 'none';
+const FB = 'ВСТАВЬТЕ_ССЫЛКУ_FIREBASE';
 
-function closeCk() {
-  document.cookie = 'lk_ck=1;max-age=2592000;path=/';
-  document.getElementById('cookieBanner').style.display = 'none';
+const me = 'u_' + Math.random().toString(36).slice(2, 10);
+let pid = null, st = 'idle', stream = null, pc = null, timer = null, searchLoop = null, sec = 0, muted = false;
+const seen = new Set();
+
+if (document.cookie.includes('lk_ck=1')) document.getElementById('cookieBanner').style.display = 'none';
+function closeCk() { document.cookie = 'lk_ck=1;max-age=2592000;path=/'; document.getElementById('cookieBanner').style.display = 'none'; }
+
+function log(text, cls = 'sys') {
+  const d = document.createElement('div'); d.className = 'msg ' + cls; d.textContent = text;
+  const m = document.getElementById('messages'); m.appendChild(d); m.scrollTop = m.scrollHeight;
 }
 
-function log(text) {
-  const d = document.createElement('div');
-  d.className = 'msg sys';
-  d.textContent = text;
-  const m = document.getElementById('messages');
-  m.appendChild(d);
-  m.scrollTop = m.scrollHeight;
+function setScreen(mode) {
+  clearInterval(timer); sec = 0;
+  document.getElementById('idleView').style.display = mode === 'idle' ? 'block' : 'none';
+  document.getElementById('queueView').classList.toggle('active', mode === 'queue');
+  document.getElementById('callView').classList.toggle('active', mode === 'call');
+  if (mode === 'queue' || mode === 'call') {
+    const el = document.getElementById(mode === 'queue' ? 'searchTimerText' : 'callTimerText');
+    el.textContent = '00:00';
+    timer = setInterval(() => {
+      sec++;
+      el.textContent = String(Math.floor(sec/60)).padStart(2,'0') + ':' + String(sec%60).padStart(2,'0');
+    }, 1000);
+  }
+}
+
+function chatOn(on) {
+  document.getElementById('msgInput').disabled = !on;
+  document.getElementById('btnSend').disabled = !on;
+}
+
+async function postSig(to, data) {
+  if (!FB.startsWith('http')) return;
+  try { await fetch(FB + '/in/' + to + '.json', { method: 'POST', body: JSON.stringify({ from: me, ts: Date.now(), ...data }) }); } catch (e) {}
 }
 
 function onNext() {
-  clearInterval(timer);
-  sec = 0;
-  document.getElementById('idleView').style.display = 'none';
-  document.getElementById('callView').classList.remove('active');
-  document.getElementById('queueView').classList.add('active');
+  onStop(false);
+  st = 'search';
   document.getElementById('btnStop').disabled = false;
-  document.getElementById('searchTimerText').textContent = '00:00';
   document.getElementById('messages').innerHTML = '';
+  setScreen('queue');
   log('Вы вошли в очередь ожидания собеседника...');
-  
-  timer = setInterval(function() {
-    sec++;
-    const m = String(Math.floor(sec / 60)).padStart(2, '0');
-    const s = String(sec % 60).padStart(2, '0');
-    document.getElementById('searchTimerText').textContent = m + ':' + s;
-  }, 1000);
+
+  if (!stream && navigator.mediaDevices) {
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(s => { stream = s; document.getElementById('btnMute').disabled = false; }).catch(() => {});
+  }
+
+  if (!FB.startsWith('http')) { log('Укажите ссылку Firebase в коде index.html!'); return; }
+  findStep();
+  searchLoop = setInterval(findStep, 1500);
 }
 
-function onStop() {
-  clearInterval(timer);
-  document.getElementById('queueView').classList.remove('active');
-  document.getElementById('callView').classList.remove('active');
-  document.getElementById('idleView').style.display = 'block';
-  document.getElementById('btnStop').disabled = true;
-  document.getElementById('status').textContent = 'Поиск остановлен';
-  log('Вы вышли из очереди');
+function onStop(showMsg = true) {
+  clearInterval(searchLoop);
+  if (FB.startsWith('http')) fetch(FB + '/q/' + me + '.json', { method: 'DELETE' }).catch(() => {});
+  if (pid) postSig(pid, { type: 'bye' });
+  pid = null; st = 'idle'; setScreen('idle'); chatOn(false);
+  if (pc) { try { pc.close(); } catch (e) {} pc = null; }
+  if (showMsg) {
+    document.getElementById('btnStop').disabled = true;
+    document.getElementById('status').textContent = 'Поиск остановлен';
+    log('Вы вышли из очереди');
+  }
 }
 
 function onMute() {
+  if (!stream) return;
   muted = !muted;
-  const b = document.getElementById('btnMute');
-  b.textContent = muted ? 'Включить микрофон' : 'Выключить микрофон';
-  b.classList.toggle('muted', muted);
+stream.getAudioTracks().forEach(t => t.enabled = !muted);
+const b = document.getElementById('btnMute');
+b.textContent = muted ? 'Включить микрофон' : 'Выключить микрофон';
+b.classList.toggle('muted', muted);
 }
-
 function sendMsg(e) {
-  e.preventDefault();
+e.preventDefault();
+const inp = document.getElementById('msgInput');
+const txt = inp.value.trim();
+if (!txt || !pid) return;
+log(txt, 'me'); postSig(pid, { type: 'chat', text: txt }); inp.value = '';
 }
-</script>
-</body>
-</html>
+async function findStep() {
+if (st !== 'search') return;
+try {
+await fetch(FB + '/q/' + me + '.json', { method: 'PUT', body: JSON.stringify({ id: me, ts: Date.now() }) });
+const res = await fetch(FB + '/q.json');
+const q = await res.json();
+if (!q || st !== 'search') return;
+for (const k of Object.keys(q)) {
+if (k !== me && q[k] && (Date.now() - q[k].ts < 9000) && me > k) {
+st = 'conn'; pid = k; clearInterval(searchLoop);
+await fetch(FB + '/q/' + me + '.json', { method: 'DELETE' });
+await fetch(FB + '/q/' + pid + '.json', { method: 'DELETE' });
+await postSig(pid, { type: 'accept' });
+startCall(true);
+return;
+}
+}
+} catch (e) {}
+}
+async function startCall(init) {
+st = 'call'; setScreen('call'); chatOn(true);
+document.getElementById('messages').innerHTML = '';
+log('Собеседник найден! Вы в комнате общения 👋');
+pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:google.com' }, { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }] });
+if (stream) stream.getTracks().forEach(t => pc.addTrack(t, stream));
+pc.ontrack = e => { const a = document.getElementById('remoteAudio'); a.srcObject = new MediaStream([e.track]); a.play().catch(() => {}); };
+pc.onicecandidate = e => { if (e.candidate && pid) postSig(pid, { type: 'cand', cand: e.candidate }); };
+if (init) {
+const off = await pc.createOffer(); await pc.setLocalDescription(off);
+await postSig(pid, { type: 'offer', offer: off });
+}
+}
+setInterval(async () => {
+if (!FB.startsWith('http')) return;
+try {
+const res = await fetch(FB + '/in/' + me + '.json');
+const msgs = await res.json();
+if (!msgs) return;
+await fetch(FB + '/in/' + me + '.json', { method: 'DELETE' });
+for (const k of Object.keys(msgs)) {
+if (seen.has(k)) continue; seen.add(k);
+const m = msgs[k];
+if (m.type === 'accept' && st === 'search') { pid = m.from; clearInterval(searchLoop); startCall(false); }
+else if (m.from === pid) {
+if (m.type === 'offer' && pc) { await pc.setRemoteDescription(new RTCSessionDescription(m.offer)); const ans = await pc.createAnswer(); await pc.setLocalDescription(ans); postSig(pid, { type: 'answer', answer: ans }); }
+else if (m.type === 'answer' && pc) await pc.setRemoteDescription(new RTCSessionDescription(m.answer));
+else if (m.type === 'cand' && pc) { try { await pc.addIceCandidate(new RTCIceCandidate(m.cand)); } catch (e) {} }
+else if (m.type === 'chat') log(m.text, 'partner');
+else if (m.type === 'bye') { onStop(true); document.getElementById('status').textContent = 'Собеседник отключился'; }
+}
+}
+} catch (e) {}
+}, 1000);
+
+
