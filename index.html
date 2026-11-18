@@ -1,269 +1,210 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" translate="no">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="google" content="notranslate">
-<title>Likodopt — Голосовая чат-рулетка</title>
+<title>Likodopt</title>
 <style>
-* { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-body { font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; background: url('./bg.png') no-repeat center center fixed, url('./bg.jpg') no-repeat center center fixed, #0f1115; background-size: cover; color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 15px; }
-.app { background: rgba(24, 27, 34, 0.94); width: 100%; max-width: 460px; border-radius: 20px; padding: 22px; box-shadow: 0 12px 40px rgba(0,0,0,0.65); border: 1px solid #262a35; position: relative; z-index: 10; }
-.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
-.logo { font-size: 1.5rem; font-weight: 800; color: #00e676; letter-spacing: 1px; }
-.online-badge { background: #232834; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; color: #a0aab8; display: flex; align-items: center; }
-.online-dot { width: 8px; height: 8px; background: #00e676; border-radius: 50%; margin-right: 6px; }
-.voice-box { background: rgba(18, 20, 26, 0.9); border-radius: 16px; padding: 20px 15px; text-align: center; margin-bottom: 15px; border: 1px solid #222630; min-height: 155px; display: flex; flex-direction: column; justify-content: center; }
-.avatar { width: 70px; height: 70px; border-radius: 50%; background: #232834; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
-.avatar.speaking { box-shadow: 0 0 0 6px rgba(0, 230, 118, 0.35); background: #1c382c; border: 2px solid #00e676; }
-#status { font-size: 1rem; color: #cfd8e3; font-weight: 500; }
-.queue-window, .call-window { display: none; flex-direction: column; align-items: center; }
-.queue-window.active, .call-window.active { display: flex; }
-.radar { position: relative; width: 70px; height: 70px; border-radius: 50%; background: rgba(0, 230, 118, 0.12); border: 2px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin-bottom: 10px; pointer-events: none; }
-.radar::before { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid #00e676; animation: pulseRing 2s infinite ease-out; pointer-events: none; }
-@keyframes pulseRing { 0% { transform: scale(0.95); opacity: 0.8; } 100% { transform: scale(1.55); opacity: 0; } }
-.queue-title { font-size: 1.05rem; font-weight: 700; color: #00e676; margin-bottom: 4px; }
-.queue-sub { font-size: 0.85rem; color: #a0aab8; margin-bottom: 8px; }
-.timer-pill { background: #232834; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; border: 1px solid #323846; }
-.chat-box { background: rgba(18, 20, 26, 0.9); border-radius: 14px; height: 170px; display: flex; flex-direction: column; margin-bottom: 15px; border: 1px solid #222630; overflow: hidden; }
-#messages { flex: 1; padding: 12px; overflow-y: auto; font-size: 0.9rem; display: flex; flex-direction: column; gap: 8px; }
-.msg { padding: 8px 12px; border-radius: 10px; max-width: 82%; word-wrap: break-word; }
-.msg.me { background: #00e676; color: #000; align-self: flex-end; font-weight: 500; }
-.msg.partner { background: #262b38; color: #fff; align-self: flex-start; }
-.msg.sys { background: transparent; color: #788292; align-self: center; font-size: 0.8rem; text-align: center; }
-.chat-input { display: flex; border-top: 1px solid #222630; }
-.chat-input input { flex: 1; background: transparent; border: none; padding: 12px; color: #fff; outline: none; font-size: 16px; }
-.chat-input button { background: transparent; border: none; color: #00e676; font-weight: bold; padding: 0 18px; font-size: 1.2rem; cursor: pointer; touch-action: manipulation; }
-.chat-input button:disabled { color: #555; }
-.controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; position: relative; z-index: 30; }
-.btn { padding: 16px 10px; border: none; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; touch-action: manipulation; -webkit-appearance: none; user-select: none; }
-.btn:active { transform: scale(0.96); }
-.btn:disabled { opacity: 0.4; cursor: not-allowed; }
-#btnNext { background: #00e676; color: #000; }
-#btnStop { background: #ff5252; color: #fff; }
-#btnMute { grid-column: span 2; background: #262b38; color: #fff; font-weight: 600; }
-#btnMute.muted { background: #ff9800; color: #000; }
-.cookie-banner { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); width: calc(100% - 30px); max-width: 460px; background: rgba(24, 27, 34, 0.98); border: 1px solid rgba(0, 230, 118, 0.4); border-radius: 14px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; z-index: 999; box-shadow: 0 8px 25px rgba(0,0,0,0.8); }
-.cookie-text { font-size: 0.82rem; color: #e6ecf5; line-height: 1.35; }
-.cookie-text span { color: #00e676; font-weight: 700; }
-.cookie-close { background: #262b38; color: #fff; border: 1px solid #353b4d; border-radius: 50%; width: 32px; height: 32px; min-width: 32px; display: flex; align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; touch-action: manipulation; }
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent}
+body{font-family:sans-serif;background:url('./bg.png') center/cover fixed,url('./bg.jpg') center/cover fixed,#0f1115;color:#fff;display:flex;justify-content:center;align-items:center;min-height:100vh;padding:15px}
+.app{background:rgba(24,27,34,.95);width:100%;max-width:440px;border-radius:20px;padding:22px;border:1px solid #262a35;box-shadow:0 10px 35px rgba(0,0,0,.7)}
+.top{display:flex;justify-content:space-between;align-items:center;margin-bottom:18px}
+.logo{font-size:1.5rem;font-weight:800;color:#00e676;letter-spacing:1px}
+.badge{background:#232834;padding:6px 12px;border-radius:20px;font-size:.85rem;color:#a0aab8;display:flex;align-items:center}
+.dot{width:8px;height:8px;background:#00e676;border-radius:50%;margin-right:6px}
+.box{background:#12141a;border-radius:16px;padding:22px 15px;text-align:center;margin-bottom:15px;border:1px solid #222630;min-height:155px;display:flex;flex-direction:column;justify-content:center;align-items:center}
+.view{display:none;flex-direction:column;align-items:center;width:100%}
+.view.on{display:flex}
+.ava{width:70px;height:70px;border-radius:50%;background:#232834;margin-bottom:10px;display:flex;align-items:center;justify-content:center;font-size:2rem}
+.ava.green{background:#1c382c;border:2px solid #00e676;box-shadow:0 0 20px rgba(0,230,118,.4)}
+.radar{width:70px;height:70px;border-radius:50%;background:rgba(0,230,118,.12);border:2px solid #00e676;margin-bottom:10px;display:flex;align-items:center;justify-content:center;font-size:1.8rem;animation:pulse 1.5s infinite}
+@keyframes pulse{0%{box-shadow:0 0 0 0 rgba(0,230,118,.6)}100%{box-shadow:0 0 0 18px rgba(0,230,118,0)}}
+.t1{font-size:1.05rem;font-weight:700;margin-bottom:4px}
+.t2{font-size:.85rem;color:#a0aab8;margin-bottom:8px}
+.pill{background:#232834;padding:4px 12px;border-radius:12px;font-size:.85rem;font-weight:600;border:1px solid #323846}
+.chat{background:#12141a;border-radius:14px;height:165px;display:flex;flex-direction:column;margin-bottom:15px;border:1px solid #222630;overflow:hidden}
+#msgs{flex:1;padding:12px;overflow-y:auto;font-size:.9rem;display:flex;flex-direction:column;gap:8px}
+.m{padding:8px 12px;border-radius:10px;max-width:82%;word-wrap:break-word}
+.m.me{background:#00e676;color:#000;align-self:flex-end;font-weight:500}
+.m.he{background:#262b38;color:#fff;align-self:flex-start}
+.m.sys{color:#788292;align-self:center;font-size:.8rem;text-align:center}
+.form{display:flex;border-top:1px solid #222630}
+.form input{flex:1;background:none;border:none;padding:12px;color:#fff;outline:none;font-size:16px}
+.form button{background:none;border:none;color:#00e676;font-weight:bold;padding:0 18px;font-size:1.2rem;cursor:pointer}
+.form button:disabled{color:#555}
+.btns{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{padding:15px 10px;border:none;border-radius:12px;font-size:1rem;font-weight:700;cursor:pointer}
+.btn:disabled{opacity:.4;cursor:not-allowed}
+#bNext{background:#00e676;color:#000}
+#bStop{background:#ff5252;color:#fff}
+#bMute{grid-column:span 2;background:#262b38;color:#fff}
+#bMute.muted{background:#ff9800;color:#000}
+.ck{position:fixed;top:12px;left:50%;transform:translateX(-50%);width:calc(100% - 30px);max-width:440px;background:#181b22;border:1px solid #00e676;border-radius:14px;padding:10px 14px;display:flex;align-items:center;justify-content:space-between;gap:10px;z-index:999}
+.ck button{background:#262b38;color:#fff;border:1px solid #353b4d;border-radius:50%;width:32px;height:32px;min-width:32px;font-size:1rem;cursor:pointer}
 </style>
 </head>
 <body>
 
-<div class="cookie-banner" id="cookieBanner">
-  <div class="cookie-text">🍪 Мы используем ваши файлы <span>Cookie</span> для улучшения работы сайта.</div>
-  <button type="button" class="cookie-close" onclick="closeCk()">✕</button>
+<div class="ck" id="ck">
+  <span style="font-size:.82rem;color:#e6ecf5">🍪 Мы используем ваши файлы <b style="color:#00e676">Cookie</b> для улучшения работы сайта.</span>
+  <button type="button" id="ckX">✕</button>
 </div>
 
 <div class="app">
-  <div class="header">
+  <div class="top">
     <div class="logo">LIKODOPT</div>
-    <div class="online-badge"><span class="online-dot"></span>Онлайн: В сети</div>
+    <div class="badge"><span class="dot"></span>Онлайн: В сети</div>
   </div>
 
-  <div class="voice-box">
-    <div id="idleView">
-      <div class="avatar">🎙️</div>
-      <div id="status">Нажмите «Найти / Далее»</div>
+  <div class="box">
+    <div class="view on" id="vIdle">
+      <div class="ava">🎙️</div>
+      <div class="t1" id="stTxt">Нажмите «Найти / Далее»</div>
     </div>
-    <div class="queue-window" id="queueView">
+    <div class="view" id="vQueue">
       <div class="radar">🔍</div>
-      <div class="queue-title">Вы в очереди ожидания</div>
-      <div class="queue-sub">Подбираем свободного собеседника...</div>
-      <div class="timer-pill">Время поиска: <span id="searchTimerText">00:00</span></div>
+      <div class="t1" style="color:#00e676">Вы в очереди ожидания</div>
+      <div class="t2">Подбираем свободного собеседника...</div>
+      <div class="pill">Поиск: <span id="tQueue">00:00</span></div>
     </div>
-    <div class="call-window" id="callView">
-      <div class="avatar speaking">🎧</div>
-      <div class="queue-title" style="color:#fff">Собеседник на связи</div>
-      <div class="timer-pill" style="color:#00e676">● Разговор: <span id="callTimerText">00:00</span></div>
+    <div class="view" id="vCall">
+      <div class="ava green">🎧</div>
+      <div class="t1">Собеседник на связи</div>
+      <div class="pill" style="color:#00e676">● Разговор: <span id="tCall">00:00</span></div>
     </div>
   </div>
 
-  <div class="chat-box">
-    <div id="messages"></div>
-    <form class="chat-input" id="chatForm" onsubmit="sendMsg(event)">
-      <input type="text" id="msgInput" placeholder="Написать сообщение..." disabled autocomplete="off">
-      <button type="submit" id="btnSend" disabled>➤</button>
+  <div class="chat">
+    <div id="msgs"></div>
+    <form class="form" id="cForm">
+      <input type="text" id="inp" placeholder="Написать сообщение..." disabled autocomplete="off">
+      <button type="submit" id="bSend" disabled>➤</button>
     </form>
   </div>
 
-  <div class="controls">
-    <button type="button" class="btn" id="btnNext" onclick="onNext()">Найти / Далее</button>
-    <button type="button" class="btn" id="btnStop" onclick="onStop(true)" disabled>Стоп</button>
-    <button type="button" class="btn" id="btnMute" onclick="onMute()" disabled>Выключить микрофон</button>
+  <div class="btns">
+    <button type="button" class="btn" id="bNext">Найти / Далее</button>
+    <button type="button" class="btn" id="bStop" disabled>Стоп</button>
+    <button type="button" class="btn" id="bMute" disabled>Выключить микрофон</button>
   </div>
-  <audio id="remoteAudio" autoplay playsinline></audio>
+  <audio id="aud" autoplay playsinline></audio>
 </div>
 
 <script>
-const ROOM = 'https://ntfy.sh';
-const me = 'u_' + Math.random().toString(36).slice(2, 10);
-let pid = null, st = 'idle', stream = null, pc = null, timer = null, searchLoop = null, sec = 0, muted = false;
-const seen = new Set();
+(function(){
+  const $ = id => document.getElementById(id);
+  const ROOM = 'https://ntfy.sh';
+  const me = 'u_' + Math.random().toString(36).slice(2, 10);
+  let pid = null, st = 'idle', mic = null, pc = null, muted = false, tInt = null, sInt = null, sec = 0;
+  const seen = new Set();
 
-const ckBanner = document.getElementById('cookieBanner');
-if (document.cookie.includes('lk_ck=1')) ckBanner.style.display = 'none';
-function closeCk() {
-  document.cookie = 'lk_ck=1;max-age=2592000;path=/';
-  ckBanner.style.display = 'none';
-}
+  if (document.cookie.includes('lk_ok=1')) $('ck').style.display = 'none';
+  $('ckX').onclick = () => { document.cookie = 'lk_ok=1;max-age=2592000;path=/'; $('ck').style.display = 'none'; };
 
-function log(text, cls = 'sys') {
-  const d = document.createElement('div'); d.className = 'msg ' + cls; d.textContent = text;
-  const m = document.getElementById('messages'); m.appendChild(d); m.scrollTop = m.scrollHeight;
-}
+  const log = (t, c = 'sys') => {
+    const d = document.createElement('div'); d.className = 'm ' + c; d.textContent = t;
+    $('msgs').appendChild(d); $('msgs').scrollTop = 99999;
+  };
 
-function setScreen(mode) {
-  clearInterval(timer); sec = 0;
-  document.getElementById('idleView').style.display = mode === 'idle' ? 'block' : 'none';
-  document.getElementById('queueView').classList.toggle('active', mode === 'queue');
-  document.getElementById('callView').classList.toggle('active', mode === 'call');
-  if (mode === 'queue' || mode === 'call') {
-    const el = document.getElementById(mode === 'queue' ? 'searchTimerText' : 'callTimerText');
-    el.textContent = '00:00';
-    timer = setInterval(function() {
-      sec++;
-      el.textContent = String(Math.floor(sec/60)).padStart(2,'0') + ':' + String(sec%60).padStart(2,'0');
-    }, 1000);
-  }
-}
+  const view = v => {
+    clearInterval(tInt); sec = 0;
+    $('vIdle').classList.toggle('on', v === 'idle');
+    $('vQueue').classList.toggle('on', v === 'queue');
+    $('vCall').classList.toggle('on', v === 'call');
+    if (v === 'queue' || v === 'call') {
+      const el = $(v === 'queue' ? 'tQueue' : 'tCall');
+      el.textContent = '00:00';
+      tInt = setInterval(() => {
+        sec++;
+        el.textContent = String(Math.floor(sec/60)).padStart(2,'0') + ':' + String(sec%60).padStart(2,'0');
+      }, 1000);
+    }
+  };
 
-function chatOn(on) {
-  document.getElementById('msgInput').disabled = !on;
-  document.getElementById('btnSend').disabled = !on;
-}
+  const chatOn = on => { $('inp').disabled = !on; $('bSend').disabled = !on; };
 
-async function sendSig(data) {
-  const mid = me + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-  try {
-    await fetch(ROOM, {
-      method: 'POST',
-      body: JSON.stringify({ mid: mid, from: me, ts: Date.now(), ...data })
-    });
-  } catch (e) {}
-}
+  const send = data => {
+    const mid = me + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+    fetch(ROOM, { method: 'POST', body: JSON.stringify({ mid, from: me, ts: Date.now(), ...data }) }).catch(() => {});
+  };
 
-function onNext() {
-  onStop(false);
-  st = 'search';
-  document.getElementById('btnStop').disabled = false;
-  document.getElementById('messages').innerHTML = '';
-  setScreen('queue');
-  log('Вы вошли в очередь ожидания собеседника...');
+  const stop = (msg) => {
+    clearInterval(sInt);
+    if (pid) send({ to: pid, type: 'bye' });
+    pid = null; st = 'idle'; view('idle'); chatOn(false);
+    if (pc) { try { pc.close(); } catch (e) {} pc = null; }
+    if (msg) { $('bStop').disabled = true; $('stTxt').textContent = msg; log(msg); }
+  };
 
-  if (!stream && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(s) {
-      stream = s;
-      document.getElementById('btnMute').disabled = false;
-    }).catch(function() {
-      log('Микрофон недоступен — работает текстовый чат');
-    });
-  }
+  const call = async (init) => {
+    st = 'call'; view('call'); chatOn(true); $('msgs').innerHTML = '';
+    log('Собеседник найден! Вы в комнате общения 👋');
+    pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:://google.com' }, { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }] });
+    if (mic) mic.getTracks().forEach(t => pc.addTrack(t, mic));
+    pc.ontrack = e => { $('aud').srcObject = new MediaStream([e.track]); $('aud').play().catch(() => {}); };
+    pc.onicecandidate = e => { if (e.candidate && pid) send({ to: pid, type: 'c', c: e.candidate }); };
+    if (init) {
+      const o = await pc.createOffer(); await pc.setLocalDescription(o);
+      send({ to: pid, type: 'o', o });
+    }
+  };
 
-  sendSig({ type: 'seek' });
-  searchLoop = setInterval(function() {
-    if (st === 'search') sendSig({ type: 'seek' });
-  }, 1500);
-}
+  $('bNext').onclick = () => {
+    stop(false); st = 'search'; $('bStop').disabled = false; $('msgs').innerHTML = '';
+    view('queue'); log('Вы вошли в очередь ожидания собеседника...');
+    if (!mic && navigator.mediaDevices) {
+      navigator.mediaDevices.getUserMedia({ audio: true }).then(s => { mic = s; $('bMute').disabled = false; }).catch(() => log('Микрофон отключен — доступен чат'));
+    }
+    send({ type: 'seek' });
+    sInt = setInterval(() => { if (st === 'search') send({ type: 'seek' }); }, 1500);
+  };
 
-function onStop(showMsg) {
-  clearInterval(searchLoop);
-  if (pid) sendSig({ to: pid, type: 'bye' });
-pid = null; st = 'idle'; setScreen('idle'); chatOn(false);
-if (pc) { try { pc.close(); } catch (e) {} pc = null; }
-if (showMsg) {
-document.getElementById('btnStop').disabled = true;
-document.getElementById('status').textContent = 'Поиск остановлен';
-log('Вы вышли из очереди');
-}
-}
-function onMute() {
-if (!stream) return;
-muted = !muted;
-stream.getAudioTracks().forEach(function(t) { t.enabled = !muted; });
-const b = document.getElementById('btnMute');
-b.textContent = muted ? 'Включить микрофон' : 'Выключить микрофон';
-b.classList.toggle('muted', muted);
-}
-function sendMsg(e) {
-e.preventDefault();
-const inp = document.getElementById('msgInput');
-const txt = inp.value.trim();
-if (!txt || !pid) return;
-log(txt, 'me');
-sendSig({ to: pid, type: 'chat', text: txt });
-inp.value = '';
-}
-async function startCall(init) {
-st = 'call'; setScreen('call'); chatOn(true);
-document.getElementById('messages').innerHTML = '';
-log('Собеседник найден! Вы в комнате общения 👋');
-pc = new RTCPeerConnection({
-iceServers: [
-{ urls: 'stun:google.com' },
-{ urls: 'stun:google.com' },
-{ urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
-]
-});
-if (stream) stream.getTracks().forEach(function(t) { pc.addTrack(t, stream); });
-pc.ontrack = function(e) {
-const a = document.getElementById('remoteAudio');
-a.srcObject = new MediaStream([e.track]);
-a.play().catch(function() {});
-};
-pc.onicecandidate = function(e) {
-if (e.candidate && pid) sendSig({ to: pid, type: 'cand', cand: e.candidate });
-};
-if (init) {
-const off = await pc.createOffer();
-await pc.setLocalDescription(off);
-await sendSig({ to: pid, type: 'offer', offer: off });
-}
-}
-async function poll() {
-try {
-const res = await fetch(ROOM + '/json?poll=1&since=12s');
-if (res.ok) {
-const txt = await res.text();
-const lines = txt.trim().split('\n');
-for (let i = 0; i < lines.length; i++) {
-if (!lines[i]) continue;
-const w = JSON.parse(lines[i]);
-if (!w.message) continue;
-const m = JSON.parse(w.message);
-if (!m || m.from === me || seen.has(m.mid)) continue;
-seen.add(m.mid);
-if (Date.now() - m.ts > 15000) continue;
-if (m.type === 'seek' && st === 'search' && me > m.from) {
-st = 'conn'; pid = m.from; clearInterval(searchLoop);
-await sendSig({ to: pid, type: 'accept' });
-startCall(true);
-} else if (m.to === me && m.type === 'accept' && st === 'search') {
-st = 'conn'; pid = m.from; clearInterval(searchLoop);
-startCall(false);
+  $('bStop').onclick = () => stop('Поиск остановлен');
+
+  $('bMute').onclick = () => {
+    if (!mic) return;
+    muted = !muted; mic.getAudioTracks().forEach(t => t.enabled = !muted);
+    $('bMute').textContent = muted ? 'Включить микрофон' : 'Выключить микрофон';
+    $('bMute').classList.toggle('muted', muted);
+  };
+
+  $('cForm').onsubmit = e => {
+    e.preventDefault();
+    const v = $('inp').value.trim();
+    if (!v || !pid) return;
+    log(v, 'me'); send({ to: pid, type: 'txt', v }); $('inp').value = '';
+  };
+
+  const poll = async () => {
+    try {
+      const r = await fetch(ROOM + '/json?poll=1&since=12s');
+      if (r.ok) {
+        const lines = (await r.text()).trim().split('\n');
+        for (const l of lines) {
+          if (!l) continue;
+          const w = JSON.parse(l);
+          if (!w.message) continue;
+          const m = JSON.parse(w.message);
+          if (!m || m.from === me || seen.has(m.mid) || Date.now() - m.ts > 15000) continue;
+          seen.add(m.mid);
+          if (m.type === 'seek' && st === 'search' && me > m.from) {
+            st = 'conn'; pid = m.from; clearInterval(sInt); send({ to: pid, type: 'ok' }); call(true);
+          } else if (m.to === me && m.type === 'ok' && st === 'search') {
+            st = 'conn'; pid = m.from; clearInterval(sInt); call(false);
 } else if (m.to === me && m.from === pid) {
-if (m.type === 'offer' && pc) {
-await pc.setRemoteDescription(new RTCSessionDescription(m.offer));
-const ans = await pc.createAnswer();
-await pc.setLocalDescription(ans);
-sendSig({ to: pid, type: 'answer', answer: ans });
-} else if (m.type === 'answer' && pc) {
-await pc.setRemoteDescription(new RTCSessionDescription(m.answer));
-} else if (m.type === 'cand' && pc) {
-try { await pc.addIceCandidate(new RTCIceCandidate(m.cand)); } catch (e) {}
-} else if (m.type === 'chat') {
-log(m.text, 'partner');
-} else if (m.type === 'bye') {
-onStop(true);
-document.getElementById('status').textContent = 'Собеседник отключился';
-}
+if (m.type === 'o' && pc) { await pc.setRemoteDescription(new RTCSessionDescription(m.o)); const a = await pc.createAnswer(); await pc.setLocalDescription(a); send({ to: pid, type: 'a', a }); }
+else if (m.type === 'a' && pc) await pc.setRemoteDescription(new RTCSessionDescription(m.a));
+else if (m.type === 'c' && pc) try { await pc.addIceCandidate(new RTCIceCandidate(m.c)); } catch (e) {}
+else if (m.type === 'txt') log(m.v, 'he');
+else if (m.type === 'bye') stop('Собеседник отключился');
 }
 }
 }
 } catch (e) {}
 setTimeout(poll, 1000);
-}
+};
 poll();
+})();
 
 
