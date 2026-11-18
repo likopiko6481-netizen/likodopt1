@@ -182,6 +182,48 @@ const HTML_PAGE = `<!DOCTYPE html>
             font-weight: 600;
         }
         #btnMute.muted { background: #ff9800; color: #000; }
+
+        /* Плашка уведомления о cookie */
+        .cookie-banner {
+            position: fixed;
+            bottom: 16px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 30px);
+            max-width: 460px;
+            background: rgba(24, 27, 34, 0.96);
+            border: 1px solid #2f3545;
+            border-radius: 16px;
+            padding: 14px 18px;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: 14px;
+            box-shadow: 0 10px 30px rgba(0, 0, 0, 0.75);
+            z-index: 999;
+        }
+        .cookie-banner.show {
+            display: flex;
+        }
+        .cookie-text {
+            font-size: 0.82rem;
+            color: #cfd8e3;
+            line-height: 1.35;
+        }
+        .cookie-btn {
+            background: #00e676;
+            color: #000;
+            border: none;
+            border-radius: 10px;
+            padding: 10px 16px;
+            font-size: 0.85rem;
+            font-weight: 700;
+            cursor: pointer;
+            white-space: nowrap;
+        }
+        .cookie-btn:active {
+            transform: scale(0.96);
+        }
     </style>
 </head>
 <body>
@@ -214,102 +256,137 @@ const HTML_PAGE = `<!DOCTYPE html>
     <audio id="remoteAudio" autoplay playsinline></audio>
 </div>
 
+<div class="cookie-banner" id="cookieBanner">
+    <div class="cookie-text">Мы используем файлы cookie для сохранения вашей анонимной сессии и стабильной работы голосовой связи.</div>
+    <button class="cookie-btn" id="acceptCookies">Принять</button>
+</div>
+
 <script>
+    // --- Работа с файлами Cookie ---
+    function setCookie(name, value, days) {
+        const d = new Date();
+        d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
+        document.cookie = name + "=" + encodeURIComponent(value) + ";expires=" + d.toUTCString() + ";path=/;SameSite=Lax";
+    }
+
+    function getCookie(name) {
+        const prefix = name + "=";
+        const parts = document.cookie.split(';');
+        for (let i = 0; i < parts.length; i++) {
+            let c = parts[i].trim();
+            if (c.indexOf(prefix) === 0) {
+                return decodeURIComponent(c.substring(prefix.length));
+            }
+        }
+        return null;
+    }
+
+    const cookieBanner = document.getElementById('cookieBanner');
+    const acceptCookiesBtn = document.getElementById('acceptCookies');
+
+    if (!getCookie('likodopt_cookies_ok')) {
+        cookieBanner.classList.add('show');
+    }
+
+    acceptCookiesBtn.addEventListener('click', () => {
+        setCookie('likodopt_cookies_ok', '1', 30);
+        cookieBanner.classList.remove('show');
+    });
+
+    // Сохраняем или читаем идентификатор сессии из cookie
+    let sessionUid = getCookie('likodopt_uid');
+    if (!sessionUid) {
+        sessionUid = 'lk_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
+        setCookie('likodopt_uid', sessionUid, 7);
+    }
+
+    // --- Основная логика чат-рулетки ---
     const statusEl = document.getElementById('status');
     const onlineCountEl = document.getElementById('onlineCount');
     const connDot = document.getElementById('connDot');
     const partnerAvatar = document.getElementById('partnerAvatar');
     const messagesEl = document.getElementById('messages');
     const chatForm = document.getElementById('chatForm');
-    const msgInput = document.getElementById('msgInput');
-    const btnSend = document.getElementById('btnSend');
-    const btnNext = document.getElementById('btnNext');
-    const btnStop = document.getElementById('btnStop');
-    const btnMute = document.getElementById('btnMute');
-    const remoteAudio = document.getElementById('remoteAudio');
-
-    let peer = null;
-    let myPeerId = null;
-    let currentCall = null;
-    let dataConn = null;
-    let localStream = null;
-    let isMuted = false;
-    let isSearching = false;
-    let searchTimer = null;
-
-    function addMessage(text, type) {
-        const div = document.createElement('div');
-        div.className = 'msg ' + type;
-        div.textContent = text;
-        messagesEl.appendChild(div);
-        messagesEl.scrollTop = messagesEl.scrollHeight;
-    }
-
-    function setChatEnabled(enabled) {
-        msgInput.disabled = !enabled;
-        btnSend.disabled = !enabled;
-        if (!enabled) msgInput.value = '';
-    }
-
-    function initPeer() {
-        const isHttps = window.location.protocol === 'https:';
-        peer = new Peer({
-            host: window.location.hostname,
-            port: window.location.port || (isHttps ? 443 : 80),
-            path: '/peerjs',
-            key: 'peerjs',
-            secure: isHttps,
-            config: {
-                iceServers: [
-                    { urls: 'stun:://google.com' },
-                    { urls: 'stun:://google.com' },
-                    {
-                        urls: 'turn:openrelay.metered.ca:80',
-                        username: 'openrelayproject',
-                        credential: 'openrelayproject'
-                    }
-                ]
-            }
-        });
-
-        peer.on('open', (id) => {
-            myPeerId = id;
-            connDot.classList.add('connected');
-            btnNext.disabled = false;
-            statusEl.textContent = 'Нажмите «Найти / Далее»';
-            pingServer();
-            setInterval(pingServer, 5000);
-        });
-
-        peer.on('call', (incomingCall) => {
-            if (!isSearching && currentCall) {
-                incomingCall.close();
-                return;
-            }
-            stopSearchLoop();
-            incomingCall.answer(localStream);
-            setupCall(incomingCall);
-        });
-
-        peer.on('connection', (incomingConn) => {
-            setupData(incomingConn);
-        });
-
-        peer.on('disconnected', () => {
-            connDot.classList.remove('connected');
-            statusEl.textContent = 'Переподключение к серверу...';
-            peer.reconnect();
-        });
-
-        peer.on('error', (err) => {
-            statusEl.textContent = 'Ошибка связи: ' + err.type;
-        });
-    }
-
-    async function pingServer() {
-        if (!myPeerId) return;
-        try {
-            await fetch('/ping?peerId=' + encodeURIComponent(myPeerId));
+const msgInput = document.getElementById('msgInput');
+const btnSend = document.getElementById('btnSend');
+const btnNext = document.getElementById('btnNext');
+const btnStop = document.getElementById('btnStop');
+const btnMute = document.getElementById('btnMute');
+const remoteAudio = document.getElementById('remoteAudio');
+let peer = null;
+let myPeerId = null;
+let currentCall = null;
+let dataConn = null;
+let localStream = null;
+let isMuted = false;
+let isSearching = false;
+let searchTimer = null;
+function addMessage(text, type) {
+const div = document.createElement('div');
+div.className = 'msg ' + type;
+div.textContent = text;
+messagesEl.appendChild(div);
+messagesEl.scrollTop = messagesEl.scrollHeight;
+}
+function setChatEnabled(enabled) {
+msgInput.disabled = !enabled;
+btnSend.disabled = !enabled;
+if (!enabled) msgInput.value = '';
+}
+function initPeer() {
+const isHttps = window.location.protocol === 'https:';
+peer = new Peer({
+host: window.location.hostname,
+port: window.location.port || (isHttps ? 443 : 80),
+path: '/peerjs',
+key: 'peerjs',
+secure: isHttps,
+config: {
+iceServers: [
+{ urls: 'stun:google.com' },
+{ urls: 'stun:google.com' },
+{
+urls: 'turn:openrelay.metered.ca:80',
+username: 'openrelayproject',
+credential: 'openrelayproject'
+}
+]
+}
+});
+peer.on('open', (id) => {
+myPeerId = id;
+setCookie('likodopt_last_peer', id, 1);
+connDot.classList.add('connected');
+btnNext.disabled = false;
+statusEl.textContent = 'Нажмите «Найти / Далее»';
+pingServer();
+setInterval(pingServer, 5000);
+});
+peer.on('call', (incomingCall) => {
+if (!isSearching && currentCall) {
+incomingCall.close();
+return;
+}
+stopSearchLoop();
+incomingCall.answer(localStream);
+setupCall(incomingCall);
+});
+peer.on('connection', (incomingConn) => {
+setupData(incomingConn);
+});
+peer.on('disconnected', () => {
+connDot.classList.remove('connected');
+statusEl.textContent = 'Переподключение к серверу...';
+peer.reconnect();
+});
+peer.on('error', (err) => {
+statusEl.textContent = 'Ошибка связи: ' + err.type;
+});
+}
+async function pingServer() {
+if (!myPeerId) return;
+try {
+await fetch('/ping?peerId=' + encodeURIComponent(myPeerId) + '&uid=' + encodeURIComponent(sessionUid));
 const res = await fetch('/online-count');
 const data = await res.json();
 if (data.count !== undefined) onlineCountEl.textContent = data.count;
