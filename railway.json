@@ -1,0 +1,15 @@
+{
+  "build": {
+    "builder": "nixpacks",
+    "config": {
+      "environment": {
+        "ENABLE_WEBSOCKETS": "true",
+        "NODE_ENV": "production"
+      }
+    }
+  },
+  "deploy": {
+    "startTimeout": 180,
+    "healthcheckPath": "/health"
+  }
+}
