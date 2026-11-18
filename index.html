@@ -1,3 +1,102 @@
+<!DOCTYPE html>
+<html lang="ru" translate="no">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="google" content="notranslate">
+    <title>LIKODOPT — Голосовая чат-рулетка</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+        body { background: radial-gradient(circle at top, #171c26 0%, #0b0d12 100%); color: #f1f5f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }
+        .app-container { background: #14171f; width: 100%; max-width: 460px; border-radius: 24px; padding: 24px; border: 1px solid #262b38; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75); display: flex; flex-direction: column; gap: 16px; }
+        .header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid #262b38; }
+        .logo { font-size: 1.5rem; font-weight: 900; color: #00e676; letter-spacing: 1px; }
+        .status-badge { background: #1e2330; padding: 6px 12px; border-radius: 20px; font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; gap: 7px; border: 1px solid #2e3548; }
+        .status-dot { width: 9px; height: 9px; border-radius: 50%; background: #00e676; }
+        .stage-box { background: #0e1016; border-radius: 18px; padding: 24px 16px; border: 1px solid #262b38; min-height: 190px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        .screen { display: none; flex-direction: column; align-items: center; width: 100%; }
+        .screen.active { display: flex; }
+        .avatar-circle { width: 76px; height: 76px; border-radius: 50%; background: #1e2330; border: 2px solid #2e3548; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; margin-bottom: 12px; }
+        .radar-ring { width: 76px; height: 76px; border-radius: 50%; background: rgba(0, 230, 118, 0.12); border: 2px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin-bottom: 12px; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.6); } 100% { box-shadow: 0 0 0 20px rgba(0, 230, 118, 0); } }
+        .partner-avatar { width: 76px; height: 76px; border-radius: 50%; background: #163326; border: 3px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; margin-bottom: 12px; }
+        .stage-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; }
+        .stage-subtitle { font-size: 0.85rem; color: #94a3b8; margin-bottom: 12px; }
+        .timer-badge { background: #1e2330; border: 1px solid #333b50; padding: 5px 14px; border-radius: 12px; font-size: 0.85rem; font-weight: 700; }
+        .chat-wrapper { background: #0e1016; border-radius: 16px; border: 1px solid #262b38; display: flex; flex-direction: column; height: 170px; overflow: hidden; }
+        #messages { flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; font-size: 0.9rem; }
+        .msg { padding: 8px 12px; border-radius: 12px; max-width: 82%; word-wrap: break-word; }
+        .msg.me { background: #00e676; color: #000; align-self: flex-end; font-weight: 600; }
+        .msg.partner { background: #232836; color: #fff; align-self: flex-start; }
+        .msg.sys { color: #94a3b8; align-self: center; font-size: 0.8rem; text-align: center; }
+        .chat-form { display: flex; border-top: 1px solid #262b38; }
+        .chat-form input { flex: 1; background: transparent; border: none; padding: 12px; color: #fff; outline: none; font-size: 0.95rem; }
+        .chat-form button { background: transparent; border: none; color: #00e676; font-weight: 800; padding: 0 18px; font-size: 1.2rem; cursor: pointer; }
+        .chat-form button:disabled { color: #475569; cursor: not-allowed; }
+        .controls-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .btn { padding: 15px 12px; border: none; border-radius: 14px; font-size: 0.98rem; font-weight: 700; cursor: pointer; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        #btnNext { background: #00e676; color: #000; }
+        #btnStop { background: #ff5252; color: #fff; }
+        #btnMute { grid-column: span 2; background: #232836; color: #fff; border: 1px solid #32394d; }
+        #btnMute.muted { background: #ff9800; color: #000; }
+        .cookie-banner { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); width: calc(100% - 32px); max-width: 460px; background: #14171f; border: 1px solid #00e676; border-radius: 16px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; z-index: 9999; box-shadow: 0 12px 35px rgba(0, 0, 0, 0.85); }
+        .cookie-banner.hidden { display: none; }
+        .cookie-text { font-size: 0.84rem; color: #e2e8f0; }
+        .cookie-text b { color: #00e676; }
+        .cookie-close-btn { background: #232836; color: #fff; border: 1px solid #363e54; border-radius: 50%; width: 32px; height: 32px; min-width: 32px; font-size: 1rem; cursor: pointer; }
+    </style>
+</head>
+<body>
+
+<div class="app-container">
+    <div class="header">
+        <div class="logo">LIKODOPT</div>
+        <div class="status-badge">
+            <span class="status-dot"></span>
+            <span>Онлайн: В сети</span>
+        </div>
+    </div>
+
+    <div class="stage-box">
+        <div class="screen active" id="screenHome">
+            <div class="avatar-circle">🎙️</div>
+            <div class="stage-title" id="homeTitle">Нажмите «Найти / Далее»</div>
+            <div class="stage-subtitle" id="homeSub">Голосовая и текстовая чат-рулетка</div>
+        </div>
+
+        <div class="screen" id="screenSearch">
+            <div class="radar-ring">🔍</div>
+            <div class="stage-title" style="color: #00e676;">Поиск собеседника...</div>
+            <div class="stage-subtitle">Вы в очереди ожидания. Подбираем свободного человека</div>
+            <div class="timer-badge">Время поиска: <span id="searchTimer">00:00</span></div>
+        </div>
+
+        <div class="screen" id="screenCall">
+            <div class="partner-avatar">🎧</div>
+            <div class="stage-title">Собеседник на связи!</div>
+            <div class="stage-subtitle" style="color: #00e676;">Вы находитесь в комнате разговора</div>
+            <div class="timer-badge" style="color: #00e676;">● Разговор: <span id="callTimer">00:00</span></div>
+        </div>
+    </div>
+
+    <div class="chat-wrapper">
+        <div id="messages"></div>
+        <form class="chat-form" id="chatForm">
+            <input type="text" id="msgInput" placeholder="Написать сообщение..." disabled autocomplete="off">
+            <button type="submit" id="btnSend" disabled>➤</button>
+        </form>
+    </div>
+
+    <div class="controls-grid">
+        <button type="button" class="btn" id="btnNext">Найти / Далее</button>
+        <button type="button" class="btn" id="btnStop" disabled>Стоп</button>
+        <button type="button" class="btn" id="btnMute" disabled>Выключить микрофон</button>
+    </div>
+
+    <audio id="remoteAudio" autoplay playsinline></audio>
+</div>
+
 <div class="cookie-banner" id="cookieBanner">
     <div class="cookie-text">🍪 Мы используем ваши файлы <b>Cookie</b> для улучшения работы сайта.</div>
     <button type="button" class="cookie-close-btn" id="btnCloseCookie">✕</button>
@@ -73,140 +172,125 @@
         switchScreen('search');
         addMsg('Вы вошли в очередь поиска собеседника...');
 
-        if (!localStream && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-            navigator.mediaDevices.getUserMedia({ audio: true })
-                .then(s => {
-                    localStream = s;
-                    $('btnMute').disabled = false;
-                })
-                .catch(() => addMsg('Микрофон недоступен — работает текстовый чат'));
-        }
+if (!localStream && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+navigator.mediaDevices.getUserMedia({ audio: true })
+.then(s => {
+localStream = s;
+$('btnMute').disabled = false;
+})
+.catch(() => addMsg('Микрофон недоступен — работает текстовый чат'));
+}
+sendSig({ type: 'seek' });
+searchInt = setInterval(() => {
+if (state === 'search') sendSig({ type: 'seek' });
+}, 1500);
+};
+$('btnStop').onclick = function() {
+stopAll(true);
+};
+function stopAll(showStop) {
+clearInterval(searchInt);
+if (partnerId) sendSig({ to: partnerId, type: 'bye' });
+partnerId = null;
+state = 'home';
+setChat(false);
+if (pc) {
+try { pc.close(); } catch (e) {}
+pc = null;
+}
+if (showStop) {
+$('btnStop').disabled = true;
+$('homeTitle').textContent = 'Поиск остановлен';
+switchScreen('home');
+addMsg('Вы вышли из очереди');
+}
+}
+$('btnMute').onclick = function() {
+if (!localStream) return;
+isMuted = !isMuted;
+localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+this.textContent = isMuted ? 'Включить микрофон' : 'Выключить микрофон';
+this.classList.toggle('muted', isMuted);
+};
+$('chatForm').onsubmit = function(e) {
+e.preventDefault();
+const txt = $('msgInput').value.trim();
+if (!txt || !partnerId) return;
+addMsg(txt, 'me');
+sendSig({ to: partnerId, type: 'chat', text: txt });
+$('msgInput').value = '';
+};
+async function startCall(init) {
+state = 'call';
+switchScreen('call');
+setChat(true);
+$('messages').innerHTML = '';
+addMsg('Собеседник найден! Вы в комнате общения 👋');
+pc = new RTCPeerConnection({
+iceServers: [
+{ urls: 'stun:google.com' },
+{ urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
+]
+});
+if (localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
+pc.ontrack = e => {
+$('remoteAudio').srcObject = new MediaStream([e.track]);
+$('remoteAudio').play().catch(() => {});
+};
+pc.onicecandidate = e => {
+if (e.candidate && partnerId) sendSig({ to: partnerId, type: 'cand', cand: e.candidate });
+};
+if (init) {
+const off = await pc.createOffer();
+await pc.setLocalDescription(off);
+sendSig({ to: partnerId, type: 'offer', offer: off });
+}
+}
+async function poll() {
+try {
+const res = await fetch(CHANNEL + '/json?poll=1&since=12s');
+if (res.ok) {
+const lines = (await res.text()).trim().split('\n');
+for (const l of lines) {
+if (!l) continue;
+const w = JSON.parse(l);
+if (!w.message) continue;
+const m = JSON.parse(w.message);
+if (!m || m.from === myId || seen.has(m.mid) || Date.now() - m.ts > 15000) continue;
+seen.add(m.mid);
+if (m.type === 'seek' && state === 'search' && myId > m.from) {
+state = 'conn';
+partnerId = m.from;
+clearInterval(searchInt);
+sendSig({ to: partnerId, type: 'accept' });
+startCall(true);
+} else if (m.to === myId && m.type === 'accept' && state === 'search') {
+state = 'conn';
+partnerId = m.from;
+clearInterval(searchInt);
+startCall(false);
+} else if (m.to === myId && m.from === partnerId) {
+if (m.type === 'offer' && pc) {
+await pc.setRemoteDescription(new RTCSessionDescription(m.offer));
+const ans = await pc.createAnswer();
+await pc.setLocalDescription(ans);
+sendSig({ to: partnerId, type: 'answer', answer: ans });
+} else if (m.type === 'answer' && pc) {
+await pc.setRemoteDescription(new RTCSessionDescription(m.answer));
+} else if (m.type === 'cand' && pc) {
+try { await pc.addIceCandidate(new RTCIceCandidate(m.cand)); } catch (e) {}
+} else if (m.type === 'chat') {
+addMsg(m.text, 'partner');
+} else if (m.type === 'bye') {
+stopAll(true);
+$('homeTitle').textContent = 'Собеседник отключился';
+}
+}
+}
+}
+} catch (e) {}
+setTimeout(poll, 1000);
+}
+poll();
 
-        sendSig({ type: 'seek' });
-        searchInt = setInterval(() => {
-            if (state === 'search') sendSig({ type: 'seek' });
-        }, 1500);
-    };
 
-    $('btnStop').onclick = function() {
-        stopAll(true);
-    };
-
-    function stopAll(showStop) {
-        clearInterval(searchInt);
-        if (partnerId) sendSig({ to: partnerId, type: 'bye' });
-        partnerId = null;
-        state = 'home';
-        setChat(false);
-        if (pc) {
-            try { pc.close(); } catch (e) {}
-            pc = null;
-        }
-        if (showStop) {
-            $('btnStop').disabled = true;
-            $('homeTitle').textContent = 'Поиск остановлен';
-            switchScreen('home');
-            addMsg('Вы вышли из очереди');
-        }
-    }
-
-    $('btnMute').onclick = function() {
-        if (!localStream) return;
-        isMuted = !isMuted;
-        localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
-        this.textContent = isMuted ? 'Включить микрофон' : 'Выключить микрофон';
-        this.classList.toggle('muted', isMuted);
-    };
-
-    $('chatForm').onsubmit = function(e) {
-        e.preventDefault();
-        const txt = $('msgInput').value.trim();
-        if (!txt || !partnerId) return;
-        addMsg(txt, 'me');
-        sendSig({ to: partnerId, type: 'chat', text: txt });
-        $('msgInput').value = '';
-    };
-
-    async function startCall(init) {
-        state = 'call';
-        switchScreen('call');
-        setChat(true);
-        $('messages').innerHTML = '';
-        addMsg('Собеседник найден! Вы в комнате общения 👋');
-
-        pc = new RTCPeerConnection({
-            iceServers: [
-                { urls: 'stun:://google.com' },
-                { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
-            ]
-        });
-
-        if (localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
-
-        pc.ontrack = e => {
-            $('remoteAudio').srcObject = new MediaStream([e.track]);
-            $('remoteAudio').play().catch(() => {});
-        };
-
-        pc.onicecandidate = e => {
-            if (e.candidate && partnerId) sendSig({ to: partnerId, type: 'cand', cand: e.candidate });
-        };
-
-        if (init) {
-            const off = await pc.createOffer();
-            await pc.setLocalDescription(off);
-            sendSig({ to: partnerId, type: 'offer', offer: off });
-        }
-    }
-
-    async function poll() {
-        try {
-            const res = await fetch(CHANNEL + '/json?poll=1&since=12s');
-            if (res.ok) {
-                const lines = (await res.text()).trim().split('\n');
-                for (const l of lines) {
-                    if (!l) continue;
-                    const w = JSON.parse(l);
-                    if (!w.message) continue;
-                    const m = JSON.parse(w.message);
-                    if (!m || m.from === myId || seen.has(m.mid) || Date.now() - m.ts > 15000) continue;
-                    seen.add(m.mid);
-
-                    if (m.type === 'seek' && state === 'search' && myId > m.from) {
-                        state = 'conn';
-                        partnerId = m.from;
-                        clearInterval(searchInt);
-                        sendSig({ to: partnerId, type: 'accept' });
-                        startCall(true);
-                    } else if (m.to === myId && m.type === 'accept' && state === 'search') {
-                        state = 'conn';
-                        partnerId = m.from;
-                        clearInterval(searchInt);
-                        startCall(false);
-                    } else if (m.to === myId && m.from === partnerId) {
-                        if (m.type === 'offer' && pc) {
-                            await pc.setRemoteDescription(new RTCSessionDescription(m.offer));
-                            const ans = await pc.createAnswer();
-                            await pc.setLocalDescription(ans);
-                            sendSig({ to: partnerId, type: 'answer', answer: ans });
-                        } else if (m.type === 'answer' && pc) {
-                            await pc.setRemoteDescription(new RTCSessionDescription(m.answer));
-                        } else if (m.type === 'cand' && pc) {
-                            try { await pc.addIceCandidate(new RTCIceCandidate(m.cand)); } catch (e) {}
-                        } else if (m.type === 'chat') {
-                            addMsg(m.text, 'partner');
-                        } else if (m.type === 'bye') {
-                            stopAll(true);
-                            $('homeTitle').textContent = 'Собеседник отключился';
-                        }
-                    }
-                }
-            }
-        } catch (e) {}
-        setTimeout(poll, 1000);
-    }
-
-    poll();
-</script>
-</body>
-</html>
