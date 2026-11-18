@@ -506,3 +506,420 @@ LIKODOPT
 
 Онлайн: В сети
 
+🎙️
+Готовы к общению?
+Выберите тему разговора или сразу нажмите «Найти / Далее»
+
+Любая тема
+Поболтать
+Игры
+Музыка
+
+🔍
+Поиск собеседника...
+Вы находитесь в живой очереди. Подбираем свободного человека
+Время в очереди: 00:00
+🎧
+Собеседник на связи!
+Вы находитесь в комнате разговора
+
+● Разговор: 00:00
+
+
+
+
+
+Собеседник печатает...
+
+👋
+😂
+🔥
+👍
+❤️
+
+
+
+➤
+
+Найти / Далее
+Стоп
+🎙️ Выкл. микрофон
+🔊 Звук: ВКЛ
+🍪 Мы используем ваши файлы Cookie для сохранения настроек и работы сайта.
+✕
+(function() {
+const $ = id => document.getElementById(id);
+// Конфигурация узлов сигнализации (работают по стандартному HTTPS 443)
+const CHANNELS = [
+'ntfy.sh',
+'ntfy.sh'
+];
+let activeChannelIdx = 0;
+const myId = 'lk_' + Math.random().toString(36).slice(2, 10) + '_' + Date.now().toString(36).slice(-4);
+let partnerId = null;
+let state = 'home'; // home | search | connecting | call
+let localStream = null;
+let peerConnection = null;
+let isMuted = false;
+let soundEffects = true;
+let selectedTopic = 'all';
+let meetingsCount = 0;
+let timerInterval = null;
+let searchLoop = null;
+let offerRetryLoop = null;
+let typingTimeout = null;
+let secondsElapsed = 0;
+let audioCtx = null;
+let analyser = null;
+let micAnimFrame = null;
+const processedMsgIds = new Set();
+const rtcConfiguration = {
+iceServers: [
+{ urls: 'stun:google.com' },
+{ urls: 'stun:google.com' },
+{ urls: 'stun:google.com' },
+{
+urls: 'turn:openrelay.metered.ca:80',
+username: 'openrelayproject',
+credential: 'openrelayproject'
+},
+{
+urls: 'turn:openrelay.metered.ca:443',
+username: 'openrelayproject',
+credential: 'openrelayproject'
+},
+{
+urls: 'turn:openrelay.metered.ca:443?transport=tcp',
+username: 'openrelayproject',
+credential: 'openrelayproject'
+}
+]
+};
+// 1. Управление плашкой Cookie
+function initCookieBanner() {
+const isClosed = localStorage.getItem('likodopt_ck_closed') === '1' || document.cookie.includes('likodopt_ck=1');
+if (isClosed) {
+$('cookieBanner').classList.add('hidden');
+}
+$('btnCloseCookie').addEventListener('click', function() {
+localStorage.setItem('likodopt_ck_closed', '1');
+document.cookie = 'likodopt_ck=1;max-age=2592000;path=/;SameSite=Lax';
+$('cookieBanner').classList.add('hidden');
+});
+}
+initCookieBanner();
+// 2. Встроенный синтезатор звуковых сигналов (не требует внешних mp3-файлов)
+function playTone(freq, duration, type = 'sine') {
+if (!soundEffects) return;
+try {
+if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+if (audioCtx.state === 'suspended') audioCtx.resume();
+const osc = audioCtx.createOscillator();
+const gain = audioCtx.createGain();
+osc.type = type;
+osc.frequency.setValueAtTime(freq, audioCtx.currentTime);
+gain.gain.setValueAtTime(0.08, audioCtx.currentTime);
+gain.gain.exponentialRampToValueAtTime(0.001, audioCtx.currentTime + duration);
+osc.connect(gain);
+gain.connect(audioCtx.destination);
+osc.start();
+osc.stop(audioCtx.currentTime + duration);
+} catch (e) {}
+}
+// 3. Выбор темы разговора на главном экране
+document.querySelectorAll('.tag-btn').forEach(btn => {
+btn.addEventListener('click', function() {
+document.querySelectorAll('.tag-btn').forEach(b => b.classList.remove('selected'));
+this.classList.add('selected');
+selectedTopic = this.getAttribute('data-topic');
+});
+});
+// 4. Переключение между 3 экранами
+function switchScreen(screenName) {
+clearInterval(timerInterval);
+secondsElapsed = 0;
+$('screenHome').classList.toggle('active', screenName === 'home');
+$('screenSearch').classList.toggle('active', screenName === 'search');
+$('screenCall').classList.toggle('active', screenName === 'call');
+if (screenName === 'search' || screenName === 'call') {
+const timerEl = screenName === 'search' ? $('searchTimer') : $('callTimer');
+timerEl.textContent = '00:00';
+timerInterval = setInterval(() => {
+secondsElapsed++;
+const mins = String(Math.floor(secondsElapsed / 60)).padStart(2, '0');
+const secs = String(secondsElapsed % 60).padStart(2, '0');
+timerEl.textContent = mins + ':' + secs;
+}, 1000);
+}
+}
+function appendMessage(text, type = 'sys') {
+const div = document.createElement('div');
+div.className = 'msg ' + type;
+div.textContent = text;
+$('messages').appendChild(div);
+$('messages').scrollTop = $('messages').scrollHeight;
+}
+function setChatEnabled(enabled) {
+$('msgInput').disabled = !enabled;
+$('btnSend').disabled = !enabled;
+document.querySelectorAll('.react-btn').forEach(b => b.disabled = !enabled);
+if (!enabled) {
+$('msgInput').value = '';
+$('typingHint').classList.remove('visible');
+}
+}
+// 5. Анализатор громкости микрофона
+function startMicVisualizer(stream) {
+try {
+if (!audioCtx) audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+const source = audioCtx.createMediaStreamSource(stream);
+analyser = audioCtx.createAnalyser();
+analyser.fftSize = 64;
+source.connect(analyser);
+const dataArray = new Uint8Array(analyser.frequencyBinCount);
+function updateMeter() {
+if (analyser && !isMuted) {
+analyser.getByteFrequencyData(dataArray);
+let sum = 0;
+for (let i = 0; i < dataArray.length; i++) sum += dataArray[i];
+const avg = sum / dataArray.length;
+const pct = Math.min(100, Math.round((avg / 128) * 100));
+$('micBar').style.width = pct + '%';
+} else {
+$('micBar').style.width = '0%';
+}
+micAnimFrame = requestAnimationFrame(updateMeter);
+}
+cancelAnimationFrame(micAnimFrame);
+updateMeter();
+} catch (e) {}
+}
+async function initMicrophone() {
+if (localStream) return;
+if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+appendMessage('Микрофон недоступен в этом браузере — работает текстовый чат');
+return;
+}
+try {
+localStream = await navigator.mediaDevices.getUserMedia({
+audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+video: false
+});
+$('btnMute').disabled = false;
+startMicVisualizer(localStream);
+} catch (err) {
+appendMessage('Доступ к микрофону запрещён — доступен только текстовый чат');
+}
+}
+// 6. Отправка сигналов в сеть
+async function broadcastSignal(payload) {
+const msgId = myId + '' + Date.now() + '' + Math.random().toString(36).slice(2, 6);
+const bodyStr = JSON.stringify({ msgId, from: myId, ts: Date.now(), ...payload });
+const url = CHANNELS[activeChannelIdx];
+try {
+const res = await fetch(url, { method: 'POST', body: bodyStr });
+if (!res.ok) throw new Error('HTTP ' + res.status);
+} catch (e) {
+activeChannelIdx = (activeChannelIdx + 1) % CHANNELS.length;
+try { await fetch(CHANNELS[activeChannelIdx], { method: 'POST', body: bodyStr }); } catch (err) {}
+}
+}
+// 7. Кнопка «Найти / Далее»
+$('btnNext').addEventListener('click', function() {
+terminateSession(false);
+state = 'search';
+$('btnStop').disabled = false;
+$('messages').innerHTML = '';
+switchScreen('search');
+appendMessage('Вы вошли в очередь поиска собеседника...');
+playTone(520, 0.12);
+initMicrophone();
+const sendSeek = () => {
+if (state === 'search') {
+broadcastSignal({ type: 'seek', topic: selectedTopic });
+}
+};
+sendSeek();
+searchLoop = setInterval(sendSeek, 1500);
+});
+// 8. Кнопка «Стоп»
+$('btnStop').addEventListener('click', function() {
+terminateSession(true);
+playTone(320, 0.15);
+});
+function terminateSession(showStoppedUi) {
+clearInterval(searchLoop);
+clearInterval(offerRetryLoop);
+if (partnerId) {
+broadcastSignal({ to: partnerId, type: 'bye' });
+}
+partnerId = null;
+state = 'home';
+setChatEnabled(false);
+if (peerConnection) {
+try { peerConnection.close(); } catch (e) {}
+peerConnection = null;
+}
+$('remoteAudio').srcObject = null;
+if (showStoppedUi) {
+$('btnStop').disabled = true;
+$('homeTitle').textContent = 'Поиск остановлен';
+$('homeSub').textContent = 'Нажмите «Найти / Далее», чтобы вернуться в очередь';
+switchScreen('home');
+appendMessage('Вы завершили поиск и вышли из комнаты');
+}
+}
+// 9. Кнопка «Выключить микрофон» (Мут)
+$('btnMute').addEventListener('click', function() {
+if (!localStream) return;
+isMuted = !isMuted;
+localStream.getAudioTracks().forEach(track => {
+track.enabled = !isMuted;
+});
+this.textContent = isMuted ? '🔇 Вкл. микрофон' : '🎙️ Выкл. микрофон';
+this.classList.toggle('muted', isMuted);
+appendMessage(isMuted ? 'Вы выключили свой микрофон' : 'Вы включили свой микрофон');
+});
+// 10. Кнопка «Звук уведомлений»
+$('btnSound').addEventListener('click', function() {
+soundEffects = !soundEffects;
+this.textContent = soundEffects ? '🔊 Звук: ВКЛ' : '🔇 Звук: ВЫКЛ';
+});
+// 11. Текстовый чат, индикатор набора и быстрые реакции
+$('chatForm').addEventListener('submit', function(e) {
+e.preventDefault();
+const text = $('msgInput').value.trim();
+if (!text || !partnerId) return;
+appendMessage(text, 'me');
+broadcastSignal({ to: partnerId, type: 'chat', text });
+$('msgInput').value = '';
+});
+$('msgInput').addEventListener('input', function() {
+if (partnerId && state === 'call') {
+broadcastSignal({ to: partnerId, type: 'typing' });
+}
+});
+document.querySelectorAll('.react-btn').forEach(btn => {
+btn.addEventListener('click', function() {
+const text = this.getAttribute('data-react');
+if (!text || !partnerId) return;
+appendMessage(text, 'me');
+broadcastSignal({ to: partnerId, type: 'chat', text });
+});
+});
+// 12. Установка WebRTC-соединения при нахождении собеседника
+async function establishCall(isInitiator) {
+state = 'call';
+meetingsCount++;
+$('meetCount').textContent = meetingsCount;
+switchScreen('call');
+setChatEnabled(true);
+$('messages').innerHTML = '';
+appendMessage('Собеседник найден! Вы в комнате разговора 👋');
+playTone(660, 0.14);
+setTimeout(() => playTone(880, 0.18), 140);
+peerConnection = new RTCPeerConnection(rtcConfiguration);
+if (localStream) {
+localStream.getTracks().forEach(track => {
+peerConnection.addTrack(track, localStream);
+});
+}
+peerConnection.ontrack = function(event) {
+const remoteStream = new MediaStream([event.track]);
+const audioEl = $('remoteAudio');
+audioEl.srcObject = remoteStream;
+audioEl.play().catch(() => {});
+};
+peerConnection.onicecandidate = function(event) {
+if (event.candidate && partnerId) {
+broadcastSignal({ to: partnerId, type: 'ice', candidate: event.candidate });
+}
+};
+if (isInitiator) {
+const sendOffer = async () => {
+if (!peerConnection || state !== 'call') return;
+const offer = await peerConnection.createOffer();
+await peerConnection.setLocalDescription(offer);
+await broadcastSignal({ to: partnerId, type: 'offer', offer });
+};
+await sendOffer();
+clearInterval(offerRetryLoop);
+offerRetryLoop = setInterval(() => {
+if (peerConnection && peerConnection.signalingState !== 'stable') {
+sendOffer();
+} else {
+clearInterval(offerRetryLoop);
+}
+}, 2500);
+}
+}
+// 13. Фоновый приём сигналов из сети
+async function pollNetwork() {
+const url = CHANNELS[activeChannelIdx];
+try {
+const response = await fetch(url + '/json?poll=1&since=12s');
+if (response.ok) {
+$('netLabel').textContent = 'Онлайн: В сети';
+$('netDot').style.background = '#00e676';
+const rawText = await response.text();
+const lines = rawText.trim().split('\n');
+for (let i = 0; i < lines.length; i++) {
+if (!lines[i]) continue;
+const wrapper = JSON.parse(lines[i]);
+if (!wrapper.message) continue;
+const data = JSON.parse(wrapper.message);
+if (!data || data.from === myId || processedMsgIds.has(data.msgId)) continue;
+processedMsgIds.add(data.msgId);
+if (Date.now() - data.ts > 16000) continue;
+// Логика подбора пары
+if (data.type === 'seek' && state === 'search' && myId > data.from) {
+const topicMatch = (selectedTopic === 'all' || data.topic === 'all' || selectedTopic === data.topic);
+if (topicMatch) {
+state = 'connecting';
+partnerId = data.from;
+clearInterval(searchLoop);
+await broadcastSignal({ to: partnerId, type: 'accept' });
+establishCall(true);
+}
+} else if (data.to === myId && data.type === 'accept' && state === 'search') {
+state = 'connecting';
+partnerId = data.from;
+clearInterval(searchLoop);
+establishCall(false);
+} else if (data.to === myId && data.from === partnerId) {
+if (data.type === 'offer' && peerConnection) {
+await peerConnection.setRemoteDescription(new RTCSessionDescription(data.offer));
+const answer = await peerConnection.createAnswer();
+await peerConnection.setLocalDescription(answer);
+await broadcastSignal({ to: partnerId, type: 'answer', answer });
+} else if (data.type === 'answer' && peerConnection) {
+clearInterval(offerRetryLoop);
+await peerConnection.setRemoteDescription(new RTCSessionDescription(data.answer));
+} else if (data.type === 'ice' && peerConnection) {
+try { await peerConnection.addIceCandidate(new RTCIceCandidate(data.candidate)); } catch (e) {}
+} else if (data.type === 'chat') {
+$('typingHint').classList.remove('visible');
+appendMessage(data.text, 'partner');
+playTone(580, 0.08);
+} else if (data.type === 'typing') {
+$('typingHint').classList.add('visible');
+clearTimeout(typingTimeout);
+typingTimeout = setTimeout(() => $('typingHint').classList.remove('visible'), 2000);
+} else if (data.type === 'bye') {
+terminateSession(true);
+$('homeTitle').textContent = 'Собеседник отключился';
+$('homeSub').textContent = 'Нажмите «Найти / Далее», чтобы найти нового собеседника';
+playTone(280, 0.2);
+}
+}
+}
+}
+} catch (err) {
+activeChannelIdx = (activeChannelIdx + 1) % CHANNELS.length;
+}
+setTimeout(pollNetwork, 1000);
+}
+pollNetwork();
+})();
+
+
