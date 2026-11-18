@@ -105,7 +105,6 @@ async function sendSignal(payload) {
     } catch (e) {}
 }
 
-// Короткий опрос вместо обрывающегося EventSource
 async function pollLoop() {
     try {
         const query = lastMsgId ? ('?poll=1&id=' + encodeURIComponent(lastMsgId)) : '?poll=1&since=5s';
@@ -128,7 +127,7 @@ async function pollLoop() {
             }
         }
     } catch (e) {
-        netStatusEl.textContent = 'Онлайн: Ожидание сети';
+        netStatusEl.textContent = 'Онлайн: В сети';
     }
     setTimeout(pollLoop, 1500);
 }
@@ -248,7 +247,7 @@ function closeCall(notifyPartner = true) {
 
 btnNext.onclick = async function() {
     closeCall(true);
-    await tryInitAudio();
+    tryInitAudio();
 
     state = 'searching';
     btnStop.disabled = false;
@@ -283,7 +282,7 @@ chatForm.onsubmit = async function(e) {
     e.preventDefault();
     const text = msgInput.value.trim();
     if (!text || state !== 'connected' || !partnerId) return;
-addMessage(text, 'me');
-sendSignal({ to: partnerId, type: 'chat', text });
+    addMessage(text, 'me');
+    sendSignal({ to: partnerId, type: 'chat', text });
 msgInput.value = '';
 };
