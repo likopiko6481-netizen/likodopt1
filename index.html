@@ -4,7 +4,6 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>Likodopt — Голосовая чат-рулетка</title>
-    <script src="https://pubnub.com"></script>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; }
         body {
@@ -55,12 +54,10 @@
             display: inline-block;
             width: 8px;
             height: 8px;
-            background: #ff5252;
+            background: #00e676;
             border-radius: 50%;
             margin-right: 6px;
-            transition: background 0.3s;
         }
-        .online-dot.connected { background: #00e676; }
         .voice-box {
             background: rgba(18, 20, 26, 0.8);
             border-radius: 16px;
@@ -147,9 +144,7 @@
             font-size: 1rem;
             font-weight: 700;
             cursor: pointer;
-            transition: transform 0.1s, opacity 0.2s;
         }
-        .btn:active { transform: scale(0.98); }
         .btn:disabled { opacity: 0.4; cursor: not-allowed; }
         #btnNext { background: #00e676; color: #000; }
         #btnStop { background: #ff5252; color: #fff; }
@@ -169,7 +164,6 @@
             width: calc(100% - 30px);
             max-width: 460px;
             background: rgba(24, 27, 34, 0.96);
-            backdrop-filter: blur(12px);
             border: 1px solid rgba(0, 230, 118, 0.35);
             border-radius: 16px;
             padding: 14px 16px;
@@ -181,12 +175,7 @@
             z-index: 999;
         }
         .cookie-banner.show { display: flex; }
-        .cookie-text {
-            font-size: 0.88rem;
-            color: #e6ecf5;
-            line-height: 1.4;
-            font-weight: 500;
-        }
+        .cookie-text { font-size: 0.88rem; color: #e6ecf5; line-height: 1.4; }
         .cookie-text span { color: #00e676; font-weight: 700; }
         .cookie-close {
             background: #262b38;
@@ -200,13 +189,7 @@
             align-items: center;
             justify-content: center;
             font-size: 1rem;
-            font-weight: 700;
             cursor: pointer;
-        }
-        .cookie-close:hover {
-            background: #ff5252;
-            color: #fff;
-            border-color: #ff5252;
         }
     </style>
 </head>
@@ -215,12 +198,12 @@
 <div class="app">
     <div class="header">
         <div class="logo">LIKODOPT</div>
-        <div class="online-badge"><span class="online-dot" id="connDot"></span><span id="onlineText">Подключение...</span></div>
+        <div class="online-badge"><span class="online-dot"></span>Онлайн: В сети</div>
     </div>
 
     <div class="voice-box">
         <div class="avatar" id="partnerAvatar">🎙️</div>
-        <div id="status">Запуск сети...</div>
+        <div id="status">Нажмите «Найти / Далее»</div>
     </div>
 
     <div class="chat-box">
@@ -232,7 +215,7 @@
     </div>
 
     <div class="controls">
-        <button class="btn" id="btnNext" disabled>Найти / Далее</button>
+        <button class="btn" id="btnNext">Найти / Далее</button>
         <button class="btn" id="btnStop" disabled>Стоп</button>
         <button class="btn" id="btnMute" disabled>Выключить микрофон</button>
     </div>
@@ -246,12 +229,12 @@
 </div>
 
 <script>
+    // Cookie
     function setCookie(name, value, days) {
         const d = new Date();
         d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
         document.cookie = name + "=" + encodeURIComponent(value) + ";expires=" + d.toUTCString() + ";path=/;SameSite=Lax";
     }
-
     function getCookie(name) {
         const prefix = name + "=";
         const parts = document.cookie.split(';');
@@ -261,18 +244,15 @@
         }
         return null;
     }
-
     const cookieBanner = document.getElementById('cookieBanner');
-    const closeCookieBtn = document.getElementById('closeCookieBtn');
     if (!getCookie('likodopt_cookie_closed')) cookieBanner.classList.add('show');
-    closeCookieBtn.addEventListener('click', () => {
+    document.getElementById('closeCookieBtn').addEventListener('click', () => {
         setCookie('likodopt_cookie_closed', '1', 30);
         cookieBanner.classList.remove('show');
     });
 
+    // Элементы
     const statusEl = document.getElementById('status');
-    const onlineText = document.getElementById('onlineText');
-    const connDot = document.getElementById('connDot');
     const partnerAvatar = document.getElementById('partnerAvatar');
     const messagesEl = document.getElementById('messages');
     const chatForm = document.getElementById('chatForm');
@@ -283,36 +263,38 @@
     const btnMute = document.getElementById('btnMute');
     const remoteAudio = document.getElementById('remoteAudio');
 
-    const myId = 'lk_' + Math.random().toString(36).slice(2, 10);
-    const CHANNEL = 'likodopt_global_room_v1';
+    // Обмен сигналами через обычный HTTPS (порт 443, ntfy.sh)
+    const TOPIC = 'likodopt_signal_channel_ru_991';
+    const myId = 'u_' + Math.random().toString(36).slice(2, 10);
 
-    let pubnub = null;
     let partnerId = null;
     let state = 'idle';
     let localStream = null;
     let pc = null;
     let isMuted = false;
     let searchTimer = null;
+    let eventSource = null;
 
-const rtcConfig = {
-iceServers: [
-{ urls: 'stun:google.com' },
-{ urls: 'stun:google.com' },
-{
-urls: 'turn:openrelay.metered.ca:80',
-username: 'openrelayproject',
-credential: 'openrelayproject'
-},
-{
-urls: 'turn:openrelay.metered.ca:443',
-username: 'openrelayproject',
-credential: 'openrelayproject'
-}
-]
-};
-function addMessage(text, type) {
-const div = document.createElement('div');
-div.className = 'msg ' + type;
+    const rtcConfig = {
+        iceServers: [
+            { urls: 'stun:://google.com' },
+            { urls: 'stun:://google.com' },
+            {
+                urls: 'turn:openrelay.metered.ca:80',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+            },
+            {
+                urls: 'turn:openrelay.metered.ca:443',
+                username: 'openrelayproject',
+                credential: 'openrelayproject'
+            }
+        ]
+    };
+
+    function addMessage(text, type) {
+        const div = document.createElement('div');
+        div.className = 'msg ' + type;
 div.textContent = text;
 messagesEl.appendChild(div);
 messagesEl.scrollTop = messagesEl.scrollHeight;
@@ -322,45 +304,35 @@ msgInput.disabled = !enabled;
 btnSend.disabled = !enabled;
 if (!enabled) msgInput.value = '';
 }
-function sendMsg(payload) {
-if (!pubnub) return;
-pubnub.publish({
-channel: CHANNEL,
-message: { from: myId, ...payload }
+async function sendSignal(payload) {
+try {
+await fetch('ntfy.sh' + TOPIC, {
+method: 'POST',
+body: JSON.stringify({ from: myId, ...payload })
 });
+} catch (e) {}
 }
-function initNetwork() {
-if (typeof PubNub === 'undefined') {
-statusEl.textContent = 'Ошибка загрузки скрипта сети';
-return;
-}
-pubnub = new PubNub({
-publishKey: 'demo',
-subscribeKey: 'demo',
-userId: myId
-});
-pubnub.addListener({
-status: (st) => {
-if (st.category === 'PNConnectedCategory') {
-connDot.classList.add('connected');
-onlineText.textContent = 'Онлайн: В сети';
-btnNext.disabled = false;
-statusEl.textContent = 'Нажмите «Найти / Далее»';
-}
-},
-message: async (event) => {
-const data = event.message;
+function startListening() {
+if (eventSource) eventSource.close();
+eventSource = new EventSource('ntfy.sh' + TOPIC + '/sse');
+eventSource.onmessage = async (ev) => {
+let wrapper, data;
+try {
+wrapper = JSON.parse(ev.data);
+if (!wrapper.message) return;
+data = JSON.parse(wrapper.message);
+} catch (e) { return; }
 if (!data || data.from === myId) return;
 if (data.type === 'seek' && state === 'searching') {
 if (myId > data.from) {
 startCallWith(data.from, true);
-sendMsg({ to: data.from, type: 'accept' });
+sendSignal({ to: data.from, type: 'accept' });
 }
 } else if (data.to === myId) {
 if (data.type === 'accept' && state === 'searching') {
 startCallWith(data.from, false);
 } else if (data.from === partnerId) {
-if (data.type === 'signal') await handleSignal(data.signal);
+if (data.type === 'signal') await handleWebRTC(data.signal);
 else if (data.type === 'chat') addMessage(data.text, 'partner');
 else if (data.type === 'bye') {
 closeCall();
@@ -369,11 +341,9 @@ addMessage('Собеседник покинул чат. Нажмите «Дал�
 }
 }
 }
+};
 }
-});
-pubnub.subscribe({ channels: [CHANNEL] });
-}
-initNetwork();
+startListening();
 async function initAudio() {
 if (!localStream) {
 try {
@@ -388,7 +358,7 @@ throw err;
 }
 function closeCall() {
 clearInterval(searchTimer);
-if (partnerId) sendMsg({ to: partnerId, type: 'bye' });
+if (partnerId) sendSignal({ to: partnerId, type: 'bye' });
 partnerId = null;
 state = 'idle';
 partnerAvatar.classList.remove('speaking');
@@ -414,21 +384,21 @@ remoteAudio.srcObject = stream;
 remoteAudio.play().catch(() => {});
 };
 pc.onicecandidate = (ev) => {
-if (ev.candidate) sendMsg({ to: partnerId, type: 'signal', signal: { candidate: ev.candidate } });
+if (ev.candidate) sendSignal({ to: partnerId, type: 'signal', signal: { candidate: ev.candidate } });
 };
 if (isInitiator) {
 const offer = await pc.createOffer();
 await pc.setLocalDescription(offer);
-sendMsg({ to: partnerId, type: 'signal', signal: { offer } });
+sendSignal({ to: partnerId, type: 'signal', signal: { offer } });
 }
 }
-async function handleSignal(sig) {
+async function handleWebRTC(sig) {
 if (!pc) return;
 if (sig.offer) {
 await pc.setRemoteDescription(new RTCSessionDescription(sig.offer));
 const answer = await pc.createAnswer();
 await pc.setLocalDescription(answer);
-sendMsg({ to: partnerId, type: 'signal', signal: { answer } });
+sendSignal({ to: partnerId, type: 'signal', signal: { answer } });
 } else if (sig.answer) {
 await pc.setRemoteDescription(new RTCSessionDescription(sig.answer));
 } else if (sig.candidate) {
@@ -443,10 +413,10 @@ btnStop.disabled = false;
 messagesEl.innerHTML = '';
 statusEl.textContent = 'Поиск собеседника...';
 addMessage('Ожидание свободного собеседника...', 'sys');
-sendMsg({ type: 'seek' });
+sendSignal({ type: 'seek' });
 searchTimer = setInterval(() => {
-if (state === 'searching') sendMsg({ type: 'seek' });
-}, 1500);
+if (state === 'searching') sendSignal({ type: 'seek' });
+}, 1800);
 });
 btnStop.addEventListener('click', () => {
 closeCall();
@@ -466,7 +436,7 @@ e.preventDefault();
 const text = msgInput.value.trim();
 if (!text || state !== 'connected' || !partnerId) return;
 addMessage(text, 'me');
-sendMsg({ to: partnerId, type: 'chat', text });
+sendSignal({ to: partnerId, type: 'chat', text });
 msgInput.value = '';
 });
 
