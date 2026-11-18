@@ -183,7 +183,7 @@ async function startCall(init) {
   document.getElementById('msgs').innerHTML = '';
   setUI('call', 'Собеседник на связи', 'Разговор: 00:00');
   log('Собеседник найден! Поздоровайтесь 👋', 'sys');
-  pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:://google.com' }, { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }] });
+ pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:://google.com' }, { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }] });
   if (stream) stream.getTracks().forEach(t => pc.addTrack(t, stream));
   pc.ontrack = e => { const a = document.getElementById('aud'); a.srcObject = new MediaStream([e.track]); a.play().catch(()=>{}); };
   pc.onicecandidate = e => { if (e.candidate && pId) send(pId, { type: 'cand', cand: e.candidate }); };
@@ -209,5 +209,9 @@ else if (m.type === 'bye') { stopAll(true); document.getElementById('title').tex
 }
 }
 }, 1000);
+</script>
+</body>
+</html>
+
 
 
