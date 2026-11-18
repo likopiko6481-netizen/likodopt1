@@ -1,3 +1,6 @@
+// Вставьте сюда вашу ссылку из Firebase (без слеша в конце!)
+const DB_URL = 'ВСТАВЬТЕ_СЮДА_ССЫЛКУ_FIREBASE';
+
 function setCookie(name, value, days) {
     const d = new Date();
     d.setTime(d.getTime() + (days * 24 * 60 * 60 * 1000));
@@ -38,7 +41,6 @@ const btnStop = document.getElementById('btnStop');
 const btnMute = document.getElementById('btnMute');
 const remoteAudio = document.getElementById('remoteAudio');
 
-const ROOM_URL = 'https://ntfy.sh';
 const myId = 'u_' + Math.random().toString(36).slice(2, 10) + '_' + Date.now().toString(36).slice(-4);
 
 let partnerId = null;
@@ -49,8 +51,7 @@ let isMuted = false;
 let searchTimer = null;
 let clockInterval = null;
 let searchSeconds = 0;
-let lastMsgId = '';
-const processedEvents = new Set();
+const processedIds = new Set();
 
 const rtcConfig = {
     iceServers: [
@@ -95,63 +96,96 @@ function setChatEnabled(enabled) {
     if (!enabled) msgInput.value = '';
 }
 
-async function sendSignal(payload) {
-    const msgId = myId + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+// Отправка сигнала в Firebase (работает в РФ без VPN)
+async function sendSignal(target, payload) {
+    if (!DB_URL.startsWith('http')) return;
     try {
-        await fetch(ROOM_URL, {
+        await fetch(DB_URL + '/inbox/' + target + '.json', {
             method: 'POST',
-            body: JSON.stringify({ msgId, from: myId, ts: Date.now(), ...payload })
+            body: JSON.stringify({ from: myId, ts: Date.now(), ...payload })
         });
     } catch (e) {}
 }
 
-async function pollLoop() {
+// Регистрация в очереди поиска
+async function updateQueue(active) {
+    if (!DB_URL.startsWith('http')) return;
     try {
-        const query = lastMsgId ? ('?poll=1&id=' + encodeURIComponent(lastMsgId)) : '?poll=1&since=5s';
-        const res = await fetch(ROOM_URL + '/json' + query);
-        if (res.ok) {
-            netStatusEl.textContent = 'Онлайн: В сети';
-            const text = await res.text();
-            const lines = text.trim().split('\n');
-            for (let i = 0; i < lines.length; i++) {
-                if (!lines[i]) continue;
-                const wrapper = JSON.parse(lines[i]);
-                if (wrapper.id) lastMsgId = wrapper.id;
-                if (!wrapper.message) continue;
-                const data = JSON.parse(wrapper.message);
-                if (!data || data.from === myId) continue;
-                if (data.msgId && processedEvents.has(data.msgId)) continue;
-                if (data.msgId) processedEvents.add(data.msgId);
-                if (data.ts && (Date.now() - data.ts > 20000)) continue;
-                await handleIncomingData(data);
+        if (active) {
+            await fetch(DB_URL + '/queue/' + myId + '.json', {
+                method: 'PUT',
+                body: JSON.stringify({ id: myId, ts: Date.now() })
+            });
+        } else {
+            await fetch(DB_URL + '/queue/' + myId + '.json', { method: 'DELETE' });
+        }
+    } catch (e) {}
+}
+
+// Поиск свободного собеседника в Firebase
+async function checkQueue() {
+    if (state !== 'searching' || !DB_URL.startsWith('http')) return;
+    try {
+        await updateQueue(true);
+        const res = await fetch(DB_URL + '/queue.json');
+        const queue = await res.json();
+        if (!queue || state !== 'searching') return;
+
+        const now = Date.now();
+        for (const key of Object.keys(queue)) {
+            const candidate = queue[key];
+            if (key !== myId && candidate && (now - candidate.ts < 8000)) {
+                if (myId > key) {
+                    state = 'connecting';
+                    partnerId = key;
+                    clearInterval(searchTimer);
+                    await updateQueue(false);
+                    await sendSignal(partnerId, { type: 'accept' });
+                    await startWebRTC(true);
+                    return;
+                }
             }
         }
-    } catch (e) {
-        netStatusEl.textContent = 'Онлайн: В сети';
+    } catch (e) {}
+}
+
+// Чтение входящих сообщений для меня
+async function pollInbox() {
+    if (DB_URL.startsWith('http')) {
+        try {
+            const res = await fetch(DB_URL + '/inbox/' + myId + '.json');
+            if (res.ok) {
+                netStatusEl.textContent = 'Онлайн: В сети';
+                const messages = await res.json();
+                if (messages) {
+                    await fetch(DB_URL + '/inbox/' + myId + '.json', { method: 'DELETE' });
+                    for (const key of Object.keys(messages)) {
+                        if (processedIds.has(key)) continue;
+                        processedIds.add(key);
+                        await handleIncomingData(messages[key]);
+                    }
+                }
+            }
+        } catch (e) {}
     }
-    setTimeout(pollLoop, 1500);
+    setTimeout(pollInbox, 1000);
 }
 
 async function handleIncomingData(data) {
-    if (data.type === 'seek' && state === 'searching') {
-        if (myId > data.from) {
-            state = 'connecting';
-            partnerId = data.from;
-            clearInterval(searchTimer);
-            await sendSignal({ to: partnerId, type: 'accept' });
-            await startWebRTC(true);
-        }
-    } else if (data.to === myId && data.type === 'accept' && state === 'searching') {
+    if (!data || data.from === myId) return;
+
+    if (data.type === 'accept' && state === 'searching') {
         state = 'connecting';
         partnerId = data.from;
         clearInterval(searchTimer);
+        await updateQueue(false);
         await startWebRTC(false);
-    } else if (data.to === myId && data.from === partnerId) {
+    } else if (data.from === partnerId) {
         if (data.type === 'offer' && pc) {
             await pc.setRemoteDescription(new RTCSessionDescription(data.offer));
             const answer = await pc.createAnswer();
             await pc.setLocalDescription(answer);
-            await sendSignal({ to: partnerId, type: 'answer', answer });
+            await sendSignal(partnerId, { type: 'answer', answer });
             onCallEstablished();
         } else if (data.type === 'answer' && pc) {
             await pc.setRemoteDescription(new RTCSessionDescription(data.answer));
@@ -168,7 +202,7 @@ async function handleIncomingData(data) {
     }
 }
 
-pollLoop();
+pollInbox();
 
 async function tryInitAudio() {
     if (localStream) return;
@@ -211,7 +245,7 @@ async function startWebRTC(isInitiator) {
 
     pc.onicecandidate = function(ev) {
         if (ev.candidate && partnerId) {
-            sendSignal({ to: partnerId, type: 'candidate', candidate: ev.candidate });
+            sendSignal(partnerId, { type: 'candidate', candidate: ev.candidate });
         }
     };
 
@@ -224,15 +258,16 @@ async function startWebRTC(isInitiator) {
     if (isInitiator) {
         const offer = await pc.createOffer();
         await pc.setLocalDescription(offer);
-        await sendSignal({ to: partnerId, type: 'offer', offer });
+        await sendSignal(partnerId, { type: 'offer', offer });
     }
 }
 
 function closeCall(notifyPartner = true) {
     clearInterval(searchTimer);
+    updateQueue(false);
     showQueueWindow(false);
     if (notifyPartner && partnerId) {
-        sendSignal({ to: partnerId, type: 'bye' });
+        sendSignal(partnerId, { type: 'bye' });
     }
     partnerId = null;
     state = 'idle';
@@ -246,43 +281,43 @@ function closeCall(notifyPartner = true) {
 }
 
 btnNext.onclick = async function() {
+    if (!DB_URL.startsWith('http')) {
+        alert('Вставьте ссылку на Firebase в первую строку script.js!');
+        return;
+    }
     closeCall(true);
-    tryInitAudio();
+    await tryInitAudio();
 
     state = 'searching';
     btnStop.disabled = false;
-    messagesEl.innerHTML = '';
-    showQueueWindow(true);
-    addMessage('Ищем свободного собеседника...', 'sys');
-
-    sendSignal({ type: 'seek' });
-    searchTimer = setInterval(function() {
-        if (state === 'searching') {
-            sendSignal({ type: 'seek' });
-        }
-    }, 1800);
+messagesEl.innerHTML = '';
+showQueueWindow(true);
+addMessage('Ищем свободного собеседника...', 'sys');
+checkQueue();
+searchTimer = setInterval(checkQueue, 1500);
 };
-
 btnStop.onclick = function() {
-    closeCall(true);
-    btnStop.disabled = true;
-    statusEl.textContent = 'Поиск остановлен';
-    addMessage('Вы вышли из очереди', 'sys');
+closeCall(true);
+btnStop.disabled = true;
+statusEl.textContent = 'Поиск остановлен';
+addMessage('Вы вышли из очереди', 'sys');
 };
-
 btnMute.onclick = function() {
-    if (!localStream) return;
-    isMuted = !isMuted;
-    localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
-    btnMute.textContent = isMuted ? 'Включить микрофон' : 'Выключить микрофон';
-    btnMute.classList.toggle('muted', isMuted);
+if (!localStream) return;
+isMuted = !isMuted;
+localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+btnMute.textContent = isMuted ? 'Включить микрофон' : 'Выключить микрофон';
+btnMute.classList.toggle('muted', isMuted);
 };
-
 chatForm.onsubmit = async function(e) {
-    e.preventDefault();
-    const text = msgInput.value.trim();
-    if (!text || state !== 'connected' || !partnerId) return;
-    addMessage(text, 'me');
-    sendSignal({ to: partnerId, type: 'chat', text });
+e.preventDefault();
+const text = msgInput.value.trim();
+if (!text || state !== 'connected' || !partnerId) return;
+addMessage(text, 'me');
+sendSignal(partnerId, { type: 'chat', text });
 msgInput.value = '';
 };
+window.addEventListener('beforeunload', () => {
+updateQueue(false);
+if (partnerId) sendSignal(partnerId, { type: 'bye' });
+});
