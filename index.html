@@ -1,290 +1,460 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="ru" translate="no">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>LIKODOPT</title>
-<style>
-  * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
-  body {
-    background: #0b0d12 url('./bg.png') center/cover no-repeat fixed;
-    background-image: url('./bg.png'), url('./bg.jpg'), url('./bg.jpeg'), url('./bg.webp');
-    color: #fff;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    padding: 15px;
-  }
-  .app {
-    background: rgba(20, 23, 31, 0.94);
-    width: 100%;
-    max-width: 440px;
-    border-radius: 22px;
-    padding: 20px;
-    border: 1px solid #333;
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .top { display: flex; justify-content: space-between; align-items: center; }
-  .logo { font-size: 1.4rem; font-weight: 900; color: #00e676; }
-  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .mbtn { padding: 10px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; background: #1e2330; color: #94a3b8; }
-  .mbtn.on { background: #00e676; color: #000; }
-  .box { background: #0e1016; border-radius: 16px; padding: 20px; text-align: center; min-height: 150px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-  .grid6 { display: none; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 100%; margin-bottom: 8px; }
-  .seat { background: #1a1f2b; border: 1px solid #2c3345; border-radius: 10px; padding: 8px 4px; font-size: 0.75rem; color: #64748b; }
-  .seat.busy { background: #163326; border-color: #00e676; color: #fff; }
-  .chat { background: #0e1016; border-radius: 14px; height: 140px; display: flex; flex-direction: column; overflow: hidden; }
-  #msgs { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; font-size: 0.88rem; }
-  .m { padding: 6px 10px; border-radius: 10px; max-width: 82%; }
-  .me { background: #00e676; color: #000; align-self: flex-end; font-weight: 600; }
-  .he { background: #232836; align-self: flex-start; }
-  .sys { color: #94a3b8; align-self: center; font-size: 0.78rem; }
-  form { display: flex; border-top: 1px solid #222; }
-  input { flex: 1; background: none; border: none; padding: 10px; color: #fff; outline: none; }
-  .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
-  .btn { padding: 14px; border: none; border-radius: 12px; font-size: 0.95rem; font-weight: 700; cursor: pointer; }
-  .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  #b1 { background: #00e676; color: #000; }
-  #b2 { background: #ff5252; color: #fff; }
-  #b3 { grid-column: span 2; background: #232836; color: #fff; }
-  .ck { position: fixed; top: 10px; left: 10px; right: 10px; max-width: 440px; margin: auto; background: #14171f; border: 1px solid #00e676; border-radius: 12px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; z-index: 9999; font-size: 0.82rem; }
-</style>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <meta name="google" content="notranslate">
+  <title>LIKODOPT — Чат-рулетка</title>
+  <style>
+    * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
+    body {
+      background: #0b0d12 url('./bg.png') center/cover no-repeat fixed;
+      background-image: url('./bg.png'), url('./bg.jpg'), url('./bg.jpeg'), url('./bg.webp');
+      color: #f1f5f9;
+      display: flex;
+      justify-content: center;
+      align-items: center;
+      min-height: 100vh;
+      padding: 15px;
+    }
+    .app {
+      background: rgba(20, 23, 31, 0.95);
+      width: 100%;
+      max-width: 450px;
+      border-radius: 22px;
+      padding: 20px;
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85);
+      display: flex;
+      flex-direction: column;
+      gap: 12px;
+      position: relative;
+      z-index: 10;
+    }
+    .header { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 10px; }
+    .logo { font-size: 1.45rem; font-weight: 900; color: #00e676; letter-spacing: 1px; }
+    .online { background: #1e2330; padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; color: #00e676; border: 1px solid #2e3548; }
+
+    .mode-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: #0e1016; padding: 5px; border-radius: 14px; border: 1px solid #262b38; }
+    .mode-btn { padding: 11px; border: none; border-radius: 10px; font-size: 0.88rem; font-weight: 700; cursor: pointer; background: transparent; color: #94a3b8; }
+    .mode-btn.active { background: #00e676; color: #000; }
+
+    /* Экранный блок */
+    .stage { background: #0e1016; border-radius: 18px; padding: 22px 15px; border: 1px solid #262b38; min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+    .view { display: none; flex-direction: column; align-items: center; width: 100%; }
+    .view.active { display: flex; }
+
+    .avatar { width: 74px; height: 74px; border-radius: 50%; background: #1e2330; border: 2px solid #2e3548; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin-bottom: 12px; }
+    .avatar.radar { background: rgba(0, 230, 118, 0.15); border-color: #00e676; animation: pulse 1.3s infinite; }
+    .avatar.connected { background: #163326; border: 3px solid #00e676; box-shadow: 0 0 20px rgba(0, 230, 118, 0.4); }
+    @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.7); } 100% { box-shadow: 0 0 0 22px rgba(0, 230, 118, 0); } }
+
+    .title { font-size: 1.12rem; font-weight: 700; margin-bottom: 5px; }
+    .sub { font-size: 0.84rem; color: #94a3b8; margin-bottom: 10px; }
+    .pill { background: #1e2330; border: 1px solid #333b50; padding: 6px 14px; border-radius: 12px; font-size: 0.85rem; font-weight: 700; }
+
+    .group-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; margin-bottom: 10px; }
+    .seat { background: #1a1f2b; border: 1px solid #2c3345; border-radius: 12px; padding: 10px 4px; font-size: 0.76rem; color: #64748b; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+    .seat.busy { background: #163326; border-color: #00e676; color: #fff; font-weight: 600; }
+
+    /* Чат */
+    .chat { background: #0e1016; border-radius: 16px; border: 1px solid #262b38; height: 150px; display: flex; flex-direction: column; overflow: hidden; }
+    #messages { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; font-size: 0.88rem; }
+    .msg { padding: 7px 12px; border-radius: 11px; max-width: 82%; word-wrap: break-word; }
+    .msg.me { background: #00e676; color: #000; align-self: flex-end; font-weight: 600; }
+    .msg.partner { background: #232836; color: #fff; align-self: flex-start; }
+    .msg.sys { color: #94a3b8; align-self: center; font-size: 0.78rem; text-align: center; }
+    .chat-form { display: flex; border-top: 1px solid #262b38; }
+    .chat-form input { flex: 1; background: transparent; border: none; padding: 11px; color: #fff; outline: none; font-size: 16px; }
+    .chat-form button { background: transparent; border: none; color: #00e676; font-weight: 800; padding: 0 16px; font-size: 1.2rem; cursor: pointer; }
+    .chat-form button:disabled { color: #475569; cursor: not-allowed; }
+
+    /* Кнопки управления */
+    .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+    .btn { padding: 15px 10px; border: none; border-radius: 14px; font-size: 0.96rem; font-weight: 700; cursor: pointer; }
+    .btn:active:not(:disabled) { transform: scale(0.97); }
+    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+    #btnNext { background: #00e676; color: #000; }
+    #btnStop { background: #ff5252; color: #fff; }
+    #btnMute { grid-column: span 2; background: #232836; color: #fff; border: 1px solid #32394d; }
+    #btnMute.muted { background: #ff9800; color: #000; }
+
+    /* Плашка Cookie */
+    .cookie-bar { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); width: calc(100% - 30px); max-width: 450px; background: #14171f; border: 1px solid #00e676; border-radius: 14px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; z-index: 9999; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85); }
+    .cookie-bar button { background: #232836; color: #fff; border: 1px solid #363e54; border-radius: 50%; width: 32px; height: 32px; min-width: 32px; font-size: 1rem; cursor: pointer; }
+  </style>
 </head>
 <body>
 
-<div class="ck" id="ck">
-  <span>🍪 Мы используем файлы <b style="color:#00e676">Cookie</b></span>
-  <button type="button" onclick="document.getElementById('ck').style.display='none'" style="background:#333;color:#fff;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer">✕</button>
-</div>
-
-<div class="app">
-  <div class="top">
-    <span class="logo">LIKODOPT</span>
-    <span style="font-size:0.8rem;color:#00e676">● В сети</span>
+  <div class="cookie-bar" id="cookieBar">
+    <span style="font-size: 0.82rem; color: #e2e8f0;">🍪 Мы используем файлы <b style="color: #00e676;">Cookie</b> для работы сайта.</span>
+    <button type="button" onclick="closeCookie()">✕</button>
   </div>
 
-  <div class="modes">
-    <button type="button" class="mbtn on" id="ms" onclick="setM('solo')">👤 Соло (1 на 1)</button>
-    <button type="button" class="mbtn" id="mg" onclick="setM('group')">👥 Групповой (до 6)</button>
+  <div class="app">
+    <div class="header">
+      <div class="logo">LIKODOPT</div>
+      <div class="online">● В сети</div>
+    </div>
+
+    <div class="mode-switch">
+      <button type="button" class="mode-btn active" id="btnModeSolo" onclick="switchMode('solo')">👤 Соло (1 на 1)</button>
+      <button type="button" class="mode-btn" id="btnModeGroup" onclick="switchMode('group')">👥 Групповой (до 6)</button>
+    </div>
+
+    <div class="stage">
+      <!-- Окно 1: Главный экран -->
+      <div class="view active" id="viewHome">
+        <div class="avatar" id="homeIcon">🎙️</div>
+        <div class="title" id="homeTitle">Режим: Соло (1 на 1)</div>
+        <div class="sub" id="homeSub">Нажмите «Найти / Далее» для начала</div>
+      </div>
+
+      <!-- Окно 2: Поисковое окно собеседника -->
+      <div class="view" id="viewSearch">
+        <div class="avatar radar">🔍</div>
+        <div class="title" style="color: #00e676;">Поиск собеседника...</div>
+        <div class="sub">Идёт подбор свободного человека</div>
+        <div class="pill">Время поиска: <span id="searchTimer">00:00</span></div>
+      </div>
+
+      <!-- Окно 3: Собеседник найден (Соло) -->
+      <div class="view" id="viewCall">
+        <div class="avatar connected">🎧</div>
+        <div class="title">Собеседник на связи!</div>
+        <div class="sub" style="color: #00e676;">Вы в комнате разговора 1 на 1</div>
+        <div class="pill" style="color: #00e676;">● Разговор: <span id="callTimer">00:00</span></div>
+      </div>
+
+      <!-- Окно 4: Групповая комната на 6 человек -->
+      <div class="view" id="viewGroup">
+        <div class="group-grid" id="groupGrid"></div>
+        <div class="pill" style="color: #00e676;">● Комната (<span id="groupCount">1</span>/6) • <span id="groupTimer">00:00</span></div>
+      </div>
+    </div>
+
+    <div class="chat">
+      <div id="messages"></div>
+      <form class="chat-form" onsubmit="sendChat(event)">
+        <input type="text" id="msgInput" placeholder="Написать сообщение..." disabled autocomplete="off">
+        <button type="submit" id="btnSend" disabled>➤</button>
+      </form>
+    </div>
+
+    <div class="controls">
+      <button type="button" class="btn" id="btnNext" onclick="startSearch()">Найти / Далее</button>
+      <button type="button" class="btn" id="btnStop" onclick="stopSession(true)" disabled>Стоп</button>
+      <button type="button" class="btn" id="btnMute" onclick="toggleMute()">Выключить микрофон</button>
+    </div>
+
+    <div id="audioContainer"></div>
   </div>
 
-  <div class="box">
-    <div id="ico" style="font-size:2rem;margin-bottom:8px">🎙️</div>
-    <div class="grid6" id="g6"></div>
-    <div id="t1" style="font-weight:700;margin-bottom:4px">Режим: Соло (1 на 1)</div>
-    <div id="t2" style="font-size:0.82rem;color:#94a3b8">Нажмите «Найти / Далее»</div>
-  </div>
+  <script>
+    var SIGNAL_SERVER = 'https://ntfy.sh';
+    var myId = 'u_' + Math.random().toString(36).slice(2, 9);
+    var myName = 'Участник #' + Math.floor(100 + Math.random() * 899);
 
-  <div class="chat">
-    <div id="msgs"></div>
-    <form onsubmit="sendMsg(event)">
-      <input id="inp" placeholder="Сообщение..." disabled>
-      <button id="bs" disabled style="background:none;border:none;color:#00e676;padding:0 15px;font-weight:bold;cursor:pointer">➤</button>
-    </form>
-  </div>
+    var currentMode = 'solo';
+    var currentState = 'home';
+    var soloPartnerId = null;
+    var localStream = null;
+    var isMuted = false;
+    var clockInterval = null;
+    var searchInterval = null;
+    var seconds = 0;
 
-  <div class="btns">
-    <button type="button" class="btn" id="b1" onclick="goFind()">Найти / Далее</button>
-    <button type="button" class="btn" id="b2" onclick="goStop(true)" disabled>Стоп</button>
-    <button type="button" class="btn" id="b3" onclick="goMute()">Выключить микрофон</button>
-  </div>
-  <div id="auds"></div>
-</div>
+    var peerConnections = {};
+    var groupMembers = {};
+    var seenIds = {};
 
-<script>
-const URL_SIG = 'https://ntfy.sh';
-const me = 'u_' + Math.random().toString(36).slice(2, 9);
-const myName = 'Участник #' + Math.floor(100 + Math.random() * 899);
-
-let mode = 'solo', st = 'home', pid = null, mic = null, mute = false, tmr = null, srch = null, sec = 0;
-const peers = {}, grp = {}, seen = new Set();
-
-function setM(m) {
-  if (st !== 'home') goStop(false);
-  mode = m;
-  document.getElementById('ms').className = m === 'solo' ? 'mbtn on' : 'mbtn';
-  document.getElementById('mg').className = m === 'group' ? 'mbtn on' : 'mbtn';
-  document.getElementById('ico').style.display = 'block';
-  document.getElementById('ico').textContent = m === 'solo' ? '🎙️' : '👥';
-  document.getElementById('g6').style.display = 'none';
-  document.getElementById('t1').textContent = m === 'solo' ? 'Режим: Соло (1 на 1)' : 'Режим: Групповой (до 6)';
-  document.getElementById('t2').textContent = 'Нажмите «Найти / Далее»';
-}
-
-function log(t, c) {
-  const d = document.createElement('div');
-  d.className = 'm ' + (c || 'sys');
-  d.textContent = t;
-  const box = document.getElementById('msgs');
-  box.appendChild(d);
-  box.scrollTop = box.scrollHeight;
-}
-
-function draw6() {
-  const g = document.getElementById('g6');
-  g.innerHTML = '';
-  const ids = Object.keys(grp);
-  for (let i = 0; i < 6; i++) {
-    const s = document.createElement('div');
-    if (ids[i]) {
-      s.className = 'seat busy';
-      s.textContent = ids[i] === me ? '🎙️ Вы' : '🎧 ' + grp[ids[i]];
-    } else {
-      s.className = 'seat';
-      s.textContent = '➕ Свободно';
+    function el(id) {
+      return document.getElementById(id);
     }
-    g.appendChild(s);
-  }
-  document.getElementById('t1').textContent = 'Комната (' + ids.length + '/6)';
+
+    if (localStorage.getItem('likodopt_ck') === '1') {
+      el('cookieBar').style.display = 'none';
+    }
+
+    function closeCookie() {
+      localStorage.setItem('likodopt_ck', '1');
+      el('cookieBar').style.display = 'none';
+    }
+
+    function showView(viewName) {
+      clearInterval(clockInterval);
+      seconds = 0;
+
+      el('viewHome').classList.remove('active');
+      el('viewSearch').classList.remove('active');
+      el('viewCall').classList.remove('active');
+      el('viewGroup').classList.remove('active');
+
+      var map = { home: 'viewHome', search: 'viewSearch', call: 'viewCall', group: 'viewGroup' };
+      el(map[viewName]).classList.add('active');
+
+      if (viewName === 'search' || viewName === 'call' || viewName === 'group') {
+var timerID = viewName === 'поиск' ? 'searchTimer' : (viewName === 'вызов' ? 'callTimer' : 'groupTimer');
+el(timerID).textContent = '00:00';
+clockInterval = setInterval(функция() {
+секунды++;
+var m = строка (Математический этаж(секунды / 60)).padStart(2, '0');
+var s = строка (секунды % 60).padStart(2, '0');
+el(timerID).textContent = m + ':' + s;
+}, 1000) ;
 }
-
-function post(data) {
-  const id = me + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-  fetch(URL_SIG, { method: 'POST', body: JSON.stringify({ id, f: me, name: myName, t: Date.now(), ...data }) }).catch(() => {});
 }
-
-function goFind() {
-  goStop(false);
-  document.getElementById('b2').disabled = false;
-  document.getElementById('msgs').innerHTML = '';
-  clearInterval(tmr); sec = 0;
-
-  if (!mic && navigator.mediaDevices) {
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
-      mic = s;
-      if (mute) mic.getAudioTracks().forEach(tr => tr.enabled = false);
-    }).catch(() => log('Микрофон отключен — работает чат'));
-  }
-
-  if (mode === 'solo') {
-    st = 'search';
-    document.getElementById('ico').textContent = '🔍';
-    document.getElementById('t1').textContent = 'Поиск собеседника...';
-    document.getElementById('t2').textContent = 'Время поиска: 00:00';
-    log('Ищем собеседника (1 на 1)...');
-    tmr = setInterval(() => {
-      sec++;
-      document.getElementById('t2').textContent = 'Время поиска: ' + String(Math.floor(sec/60)).padStart(2,'0') + ':' + String(sec%60).padStart(2,'0');
-    }, 1000);
-    post({ tp: 'seek1' });
-    srch = setInterval(() => { if (st === 'search') post({ tp: 'seek1' }); }, 1500);
-  } else {
-    st = 'group';
-    document.getElementById('ico').style.display = 'none';
-    document.getElementById('g6').style.display = 'grid';
-    document.getElementById('inp').disabled = false;
-    document.getElementById('bs').disabled = false;
-    grp[me] = myName;
-    draw6();
-    log('Вы вошли в групповую комнату (до 6 мест)');
-    tmr = setInterval(() => {
-      sec++;
-      document.getElementById('t2').textContent = 'В комнате: ' + String(Math.floor(sec/60)).padStart(2,'0') + ':' + String(sec%60).padStart(2,'0');
-    }, 1000);
-    post({ tp: 'seek6' });
-    srch = setInterval(() => { if (st === 'group' && Object.keys(grp).length < 6) post({ tp: 'seek6' }); }, 2000);
-  }
+function switchMode(newMode) {
+if (currentState !== 'home') stopSession(false);
+currentMode = newMode;
+el('btnModeSolo').classList.toggle('active', currentMode === 'solo');
+el('btnModeGroup').classList.toggle('active', currentMode === 'group');
+el('homeIcon').textContent = currentMode === 'solo' ? '🎙️' : '👥';
+el('homeTitle').textContent = currentMode === 'solo' ? 'Режим: Соло (1 на 1)' : 'Режим: Групповой (до 6 чел.)';
+el('homeSub').textContent = currentMode === 'solo' ? 'Один на один со случайным собеседником' : 'Общая голосовая комната до 6 человек';
+showView('home');
 }
-
-function goStop(ui) {
-  clearInterval(srch); clearInterval(tmr);
-  if (pid) post({ to: pid, tp: 'bye' });
-  if (st === 'group') Object.keys(grp).forEach(u => { if (u !== me) post({ to: u, tp: 'bye6' }); });
-  Object.keys(peers).forEach(u => { try { peers[u].close(); } catch(e) {} delete peers[u]; });
-  for (const k in grp) delete grp[k];
-  pid = null; st = 'home';
-  document.getElementById('inp').disabled = true;
-  document.getElementById('bs').disabled = true;
-  if (ui) {
-    document.getElementById('b2').disabled = true;
-    setM(mode);
-    document.getElementById('t1').textContent = 'Поиск остановлен';
-    log('Вы вышли из комнаты');
-  }
+функция addChatMessage(text, type) {
+var div = document.createElement('div');
+div.className = 'msg ' + (тип || 'sys');
+div.textContent = text;
+var box = el('сообщения');
+box.appendChild(div);
+box.scrollTop = box.scrollHeight;
 }
-
-function goMute() {
-  mute = !mute;
-  if (mic) mic.getAudioTracks().forEach(tr => tr.enabled = !mute);
-  document.getElementById('b3').textContent = mute ? 'Включить микрофон' : 'Выключить микрофон';
+функция setChatEnabled(включена) {
+el('msgInput').disabled = !включена;
+el('btnSend').disabled = !включена;
+если (!включено) el('msgInput').value = ";
 }
-
-function sendMsg(e) {
-  e.preventDefault();
-  const inp = document.getElementById('inp');
-  const v = inp.value.trim();
-  if (!v) return;
-  if (st === 'call' && pid) { log(v, 'me'); post({ to: pid, tp: 'txt', v }); inp.value = ''; }
-  else if (st === 'group') { log(v, 'me'); Object.keys(grp).forEach(u => { if (u !== me) post({ to: u, tp: 'gtxt', v }); }); inp.value = ''; }
+функция renderGroupSeats() {
+var grid = el('groupGrid');
+grid.innerHTML = ";
+var ids = Object.keys(GroupMembers);
+el('groupCount').textContent = ids.length;
+для (var i = 0; i < 6; i++) {
+var seat = document.createElement('div');
+if (ids[i]) {
+var uid = ids[i];
+seat.className = 'место занято';
+seat.innerHTML = " + (uid === myId ? '🎙️' : '🎧') + " + ( uid === myId ? 'Вы' : groupMembers[uid]) + ";
+} else {
+seat.className = 'seat';
+seat.innerHTML = '➕Свободно';
 }
-
-async function rtc(to, init, kind) {
-  if (peers[to]) try { peers[to].close(); } catch(e) {}
-  const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:://google.com' }, { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }] });
-  peers[to] = pc;
-  if (mic) mic.getTracks().forEach(tr => pc.addTrack(tr, mic));
-  pc.ontrack = e => {
-пусть a = document.getElementById('a_' + to);
-if (!a) { a = document.createElement('audio'); a.id = 'a_' + to; a.автозапуск = true; document.getElementById('auds').appendChild(a); }
-a.srcObject = новый медиапоток ([например,дорожка]);
-a.play().catch(() => {});
-};
-pc.onicecandidate = e => { if (например,кандидат) post({ to, tp: 'c', c: e.кандидат }); };
-if (инициализация) { const o = ожидание pc.createOffer(); ожидание pc.setLocalDescription(o); post({ to, tp: 'o', o, kind }); }
+grid.appendChild(seat);
 }
-асинхронная функция poll() {
+}
+function sendSignal(data) {
+var id = myId + '' + Date.now() + '' + Math.random().toString(36).slice(2, 6);
+data.id = id;
+data.from = myId;
+data.name = myName;
+data.ts = Date.now();
 try {
-const r = await fetch(URL_SIG + '/json?poll=1&since=12s');
-if (r.ok) {
-const lines = (await r.text()).trim().split('\n');
-for (const l строк) {
-if (!l) continue;
-const w = JSON.parse(l);
-if (!w.message) continue;
-const m = JSON.parse( w.сообщение);
-if (!m || m.f === я || видел.имеет(m.id ) || Дата.сейчас() - m.t > 16000) продолжить;
-видно.добавить(m.id);
-if (m.tp === 'seek1' && st === 'search' && me > m.f) {
-st = 'call'; pid = m.f; clearInterval(srch); clearInterval(tmr); sec = 0;
-document.getElementById('ico').textContent = '🎧';
-document.getElementById('t1').textContent = 'Собеседник на связи!';
-document.getElementById('inp').disabled = false; document.getElementById('bs').disabled = false;
-document.getElementById('msgs').innerHTML = ''; log('Собеседник найден! 👋');
-tmr = setInterval(() => { sec++; document.getElementById('t2').textContent = 'Разговор: ' + String(Математический этаж(сек/60)).padStart(2,'0') + ':' + Строка(сек.%60).padStart(2,'0'); }, 1000);
-post({ to: pid, tp: 'ok1' }); rtc(pid, true, 'solo');
-} иначе, если (m.to === я && m.tp === 'ok1' && st === 'поиск') {
-st = 'вызов'; pid = m.f; clearInterval(srch); clearInterval(tmr); sec = 0;
-document.getElementById('ico').textContent = '🎧';
-document.getElementById('t1').textContent = 'Собеседник на связи!';
-document.getElementById('inp').disabled = false; document.getElementById('bs').disabled = false;
-document.getElementById('msgs').innerHTML = ''; log('Собеседник найден! 👋');
-tmr = setInterval(() => { sec++; document.getElementById('t2').textContent = 'Разговор: ' + Строка (Математический этаж(сек/60)).Начальный этап(2,'0') + ':' + Строка(сек.%60).padStart(2,'0'); }, 1000);
-rtc(pid, false, 'solo');
-} иначе, если (m.tp === 'seek6' && st === 'group' && !grp[m.f] && Object.ключи(grp).length < 6) {
-grp[m.f] = m.name || 'Участник'; draw6(); log(grp[m.f] + ' зашёл в комнату');
-if (me > m.f) rtc(m.f, true, 'group');
-} else if (m.to === me) {
-if (m.tp === 'o') {
-if (m.kind === 'group' && st === 'group' && !grp[m.f] && Object.keys(grp).длина < 6) { стеклопластик [м.f] = m.name || 'Участник'; draw6(); }
-ожидает rtc(m.f, false, m.kind);
-ожидает одноранговые узлы[m.f].setRemoteDescription(новое RTCSessionDescription(m.o));
-const a = ожидает одноранговые узлы[m.f].createAnswer(); ожидает одноранговые узлы[m.f].setLocalDescription(a);
-post({ to: m.f, tp: 'a', a });
-} else if (m.tp === 'a' && одноранговые узлы[m.f]) ожидают одноранговые узлы[m.f].setRemoteDescription(новое RTCSessionDescription(m.a));
-иначе, если (m.tp === 'c' && peers[m.f]) попробуйте { await peers[m.f].addIceCandidate(новый RTCIceCandidate(m.c)); } catch(e) {}
-else if (m.tp === 'txt' && m.f === pid) войти(m.v, 'he');
-иначе, если (m.tp === 'gtxt' && st === 'group' && grp[m.f]) войти(grp[m.f] + ': ' + m.v, 'he');
-иначе, если (m.tp === 'bye' && m.f === pid) { GoStop(true); document.getElementById('t1').textContent = 'Собеседник отключился'; }
-иначе, если (m.tp === 'bye6' && st === 'group' && grp[m.f]) { log(grp[m.f] + ' вышел'); удалить grp[m.f]; if (одноранговые узлы[m.f]) одноранговые узлы[m.f].close(); удалить одноранговые узлы[m.f]; draw6(); }
+fetch(SIGNAL_SERVER, { method: 'POST', body: JSON.stringify(data) }).catch(function() {});
+} catch (e) {}
+}
+function closePeer(uid) {
+if (peerConnections[uid]) {
+try { peerConnections[uid].close(); } catch (e) {}
+delete peerConnections[uid];
+}
+var aud = document.getElementById('aud_' + uid);
+if (aud) aud.remove();
+}
+function startSearch() {
+stopSession(false);
+el('btnStop').disabled = false;
+el('messages').innerHTML = '';
+if (!localStream && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+navigator.mediaDevices.getUserMedia({ audio: true })
+.then(function(stream) {
+localStream = stream;
+if (isMuted) {
+localStream.getAudioTracks().forEach(function(t) { t.enabled = false; });
+}
+})
+.catch(function() {
+addChatMessage('Микрофон недоступен — работает текстовый чат', 'sys');
+});
+}
+if (currentMode === 'solo') {
+currentState = 'search';
+showView('search');
+addChatMessage('Поиск собеседника запущен...', 'sys');
+sendSignal({ type: 'seek_solo' });
+searchInterval = setInterval(function() {
+if (currentState === 'search') sendSignal({ type: 'seek_solo' });
+}, 1500);
+} else {
+currentState = 'group';
+showView('group');
+setChatEnabled(true);
+groupMembers[myId] = myName;
+renderGroupSeats();
+addChatMessage('Вы вошли в групповую комнату (до 6 мест)', 'sys');
+sendSignal({ type: 'seek_group' });
+searchInterval = setInterval(function() {
+if (currentState === 'group' && Object.keys(groupMembers).length < 6) {
+sendSignal({ type: 'seek_group' });
+}
+}, 2000);
 }
 }
+function stopSession(showStoppedUi) {
+clearInterval(searchInterval);
+if (soloPartnerId) sendSignal({ to: soloPartnerId, type: 'bye_solo' });
+if (currentState === 'group') {
+Object.keys(groupMembers).forEach(function(uid) {
+if (uid !== myId) sendSignal({ to: uid, type: 'bye_group' });
+});
+}
+Object.keys(peerConnections).forEach(closePeer);
+groupMembers = {};
+soloPartnerId = null;
+currentState = 'home';
+setChatEnabled(false);
+if (showStoppedUi) {
+el('btnStop').disabled = true;
+el('homeTitle').textContent = 'Поиск остановлен';
+showView('home');
+addChatMessage('Вы вышли из комнаты', 'sys');
+}
+}
+function toggleMute() {
+isMuted = !isMuted;
+if (localStream) {
+localStream.getAudioTracks().forEach(function(t) { t.enabled = !isMuted; });
+}
+var btn = el('btnMute');
+btn.textContent = isMuted ? 'Включить микрофон' : 'Выключить микрофон';
+btn.classList.toggle('muted', isMuted);
+}
+function sendChat(e) {
+e.preventDefault();
+var text = el('msgInput').value.trim();
+if (!text) return;
+if (currentState === 'call' && soloPartnerId) {
+addChatMessage(text, 'me');
+sendSignal({ to: soloPartnerId, type: 'chat_solo', text: text });
+el('msgInput').value = '';
+} else if (currentState === 'group') {
+addChatMessage(text, 'me');
+Object.keys(groupMembers).forEach(function(uid) {
+if (uid !== myId) sendSignal({ to: uid, type: 'chat_group', text: text });
+});
+el('msgInput').value = '';
+}
+}
+async function startWebRTC(targetId, isInitiator, kind) {
+closePeer(targetId);
+var pc = new RTCPeerConnection({
+iceServers: [
+{ urls: 'stun:google.com' },
+{ urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
+]
+});
+peerConnections[targetId] = pc;
+if (localStream) {
+localStream.getTracks().forEach(function(t) { pc.addTrack(t, localStream); });
+}
+pc.ontrack = function(event) {
+var aud = document.getElementById('aud_' + targetId);
+if (!aud) {
+aud = document.createElement('audio');
+aud.id = 'aud_' + targetId;
+aud.autoplay = true;
+aud.playsInline = true;
+el('audioContainer').appendChild(aud);
+}
+aud.srcObject = new MediaStream([event.track]);
+aud.play().catch(function() {});
+};
+pc.onicecandidate = function(event) {
+if (event.candidate) sendSignal({ to: targetId, type: 'ice', candidate: event.candidate });
+};
+if (isInitiator) {
+var offer = await pc.createOffer();
+await pc.setLocalDescription(offer);
+sendSignal({ to: targetId, type: 'offer', offer: offer, kind: kind });
+}
+}
+async function pollSignals() {
+try {
+var res = await fetch(SIGNAL_SERVER + '/json?poll=1&since=12s');
+if (res.ok) {
+var text = await res.text();
+var lines = text.trim().split('\n');
+for (var i = 0; i < lines.length; i++) {
+if (!lines[i]) continue;
+var wrap = JSON.parse(lines[i]);
+if (!wrap.message) continue;
+var msg = JSON.parse(wrap.message);
+if (!msg || msg.from === myId || seenIds[msg.id] || Date.now() - msg.ts > 16000) continue;
+seenIds[msg.id] = true;
+if (msg.type === 'seek_solo' && currentState === 'search' && myId > msg.from) {
+currentState = 'call';
+soloPartnerId = msg.from;
+clearInterval(searchInterval);
+sendSignal({ кому: soloPartnerId, введите: 'accept_solo' });
+ShowView('вызов');
+setChatEnabled(true);
+el('сообщения').innerHTML = " ;
+addChatMessage('Собеседник найден! Поздоровайтесь 👋', 'sys');
+startWebRTC(soloPartnerId, true, 'solo');
+} иначе, если (msg.to === myId && msg.type === 'accept_solo' && currentState === 'поиск') {
+currentState = 'вызов';
+soloPartnerId = сообщение.from;
+clearInterval(поисковый запрос);
+ShowView('вызов');
+setChatEnabled(true);
+el('сообщения').innerHTML = ";
+addChatMessage('Собеседник найден! Поздоровайтесь 👋', 'sys');
+startWebRTC(soloPartnerId, false, 'solo');
+} else if (msg.type === 'seek_group' && currentState === 'group' && !groupMembers[msg.from] && Object.keys(groupMembers).длина < 6) {
+Члены группы[сообщение от] = msg.name || 'Участник';
+renderGroupSeats();
+addChatMessage(GroupMembers[msg.from] + ' зашёл в комнату', 'sys');
+if (myId > msg.from) startWebRTC(msg.from, true, 'group');
+} else if (msg.to === myId) {
+if (сообщение.type === 'предложение') {
+if (сообщение.kind === 'группа' && currentState === 'группа' && !groupMembers[msg.from] && Object.keys(groupMembers).длина < 6) {
+Члены группы[сообщение от] = msg.name || 'Участник';
+renderGroupSeats();
+addChatMessage(GroupMembers[msg.from] + ' зашёл в комнату', 'sys');
+}
+ожидает startWebRTC(msg.from, false, msg.kind);
+var pc = PeerConnections[msg.from];
+if (pc) {
+ожидает pc.setRemoteDescription(новое RTCSessionDescription(msg.offer));
+var answer = ожидает pc. createAnswer();
+ожидает pc.setLocalDescription(ответа);
+sendSignal({ кому: msg.from, введите: 'ответ', answer: ответ });
+}
+} else if (msg.type === 'ответ' && PeerConnections[msg.from]) {
+ожидает PeerConnections[msg.from].setRemoteDescription(новое RTCSessionDescription(msg.answer));
+} else if (msg.type === ' ice' && PeerConnections[msg.from]) {
+try { await PeerConnections[msg.from].addIceCandidate(новый RTCIceCandidate(msg.candidate)); } catch (e) {}
+} else if (msg.type === 'chat_solo' && msg.from === soloPartnerId) {
+addChatMessage(сообщение .text, 'партнер');
+} else if (сообщение.type === 'chat_group' && currentState === 'group' && GroupMembers[сообщение.from]) {
+addChatMessage((msg.name || 'Участник') + ': ' + msg.text, 'партнер');
+} else if (msg.введите === 'bye_solo' && msg.from === soloPartnerId) {
+stopSession(true);
+el('homeTitle').textContent = 'Собеседник отключился';
+} else if (сообщение.type === 'bye_group' && currentState === 'group' && GroupMembers[сообщение.from]) {
+addChatMessage(Члены группы[сообщение.from] + ' вышел из комнаты', 'sys');
+удалить членов группы[сообщение.from];
+closePeer(сообщение .from);
+renderGroupSeats();
+}
+}
+
 }
 } catch (e) {}
-setTimeout(опрос, 1000);
+setTimeout(pollSignals, 1000);
 }
-poll();
+pollSignals();
 
 
