@@ -1,320 +1,398 @@
-var $ = function(id) { return document.getElementById(id); };
-var me = 'u_' + Math.random().toString(36).slice(2, 9);
-var myName = 'Участник #' + Math.floor(100 + Math.random() * 899);
+(function () {
+  'use strict';
 
-var mode = 'solo';
-var state = 'home';
-var soloPid = null;
-var mic = null;
-var muted = false;
-var timer = null;
-var searchLoop = null;
-var sec = 0;
-
-var peers = {};
-var lobby = {};
-var grp = {};
-var seen = {};
-
-// 1. Закрытие Cookie
-if (localStorage.getItem('lk_ck') === '1') $('ckBox').style.display = 'none';
-$('ckClose').onclick = function() {
-  localStorage.setItem('lk_ck', '1');
-  $('ckBox').style.display = 'none';
-};
-
-// 2. Переключение экранов
-function show(id) {
-  ['sHome', 'sWait', 'sCall', 'sGroup'].forEach(function(s) { $(s).classList.remove('on'); });
-  $(id).classList.add('on');
-}
-
-function addLog(text, cls) {
-  var d = document.createElement('div');
-  d.className = 'm ' + (cls || 'sys');
-  d.textContent = text;
-  var box = $('msgs');
-  box.appendChild(d);
-  box.scrollTop = box.scrollHeight;
-}
-
-function drawLobby() {
-  var box = $('lobbyList');
-  box.innerHTML = '';
-  var now = Date.now();
-  Object.keys(lobby).forEach(function(u) {
-    if (u !== me && now - lobby[u].ts > 8000) delete lobby[u];
-  });
-  Object.keys(lobby).forEach(function(u) {
-    var c = document.createElement('div');
-    c.className = 'chip';
-    c.textContent = u === me ? '🟢 Вы' : '⏳ ' + lobby[u].name;
-    box.appendChild(c);
-  });
-}
-
-function drawGroup() {
-  var g = $('gGrid');
-  g.innerHTML = '';
-  var ids = Object.keys(grp);
-  for (var i = 0; i < 6; i++) {
-    var s = document.createElement('div');
-    if (ids[i]) {
-      s.className = 'seat busy';
-      s.textContent = ids[i] === me ? '🎙️ Вы' : '🎧 ' + grp[ids[i]];
-    } else {
-      s.className = 'seat';
-      s.textContent = '➕ Свободно';
-    }
-    g.appendChild(s);
-  }
-}
-
-// 3. Переключение режимов Соло / Группа
-function switchMode(m) {
-  stopWait(false);
-  mode = m;
-  $('mSolo').classList.toggle('on', m === 'solo');
-  $('mGroup').classList.toggle('on', m === 'group');
-  $('hIco').textContent = m === 'solo' ? '🎙️' : '👥';
-  $('hTitle').textContent = m === 'solo' ? 'Режим: Соло (1 на 1)' : 'Режим: Групповой (до 6)';
-}
-
-$('mSolo').onclick = function() { switchMode('solo'); };
-$('mGroup').onclick = function() { switchMode('group'); };
-
-// 4. Кнопка «Найти / Далее»
-$('bNext').onclick = function() {
-  stopWait(false);
-  sec = 0;
-  $('bStop').disabled = false;
-  $('msgs').innerHTML = '';
-
-  if (!mic && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(s) {
-      mic = s;
-      if (muted) mic.getAudioTracks().forEach(function(t) { t.enabled = false; });
-    }).catch(function() { addLog('Микрофон недоступен — работает чат'); });
+  function $(id) {
+    return document.getElementById(id);
   }
 
-  if (mode === 'solo') {
-    state = 'wait';
-    lobby[me] = { name: myName, ts: Date.now() };
-    drawLobby();
-    show('sWait');
-    $('tWait').textContent = 'Время ожидания: 00:00';
-    addLog('Вы в комнате ожидания (1 на 1)...');
-    sendSig({ cmd: 'wait_solo' });
-    searchLoop = setInterval(function() {
-      if (state === 'wait') {
-        lobby[me].ts = Date.now();
-        drawLobby();
-        sendSig({ cmd: 'wait_solo' });
-      }
-    }, 1500);
-  } else {
-    state = 'group';
-    grp[me] = myName;
-    drawGroup();
-    show('sGroup');
-    $('inp').disabled = false;
-    $('bSend').disabled = false;
-    $('tGroup').textContent = '● Комната (1/6) • 00:00';
-    addLog('Вы вошли в групповую комнату (до 6 чел.)');
-    sendSig({ cmd: 'wait_group' });
-    searchLoop = setInterval(function() {
-      if (state === 'group' && Object.keys(grp).length < 6) sendSig({ cmd: 'wait_group' });
-    }, 2000);
-  }
+  var MY_ID = 'u_' + Math.random().toString(36).slice(2, 9) + '_' + Date.now().toString(36).slice(-4);
+  var MY_NAME = 'Участник #' + Math.floor(100 + Math.random() * 899);
+  var CHANNEL = 'https://ntfy.sh';
 
-  timer = setInterval(function() {
-    sec++;
-    var t = String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0');
-    if (state === 'wait') $('tWait').textContent = 'Время ожидания: ' + t;
-    if (state === 'call') $('tCall').textContent = '● Разговор: ' + t;
-    if (state === 'group') $('tGroup').textContent = '● Комната (' + Object.keys(grp).length + '/6) • ' + t;
-  }, 1000);
-};
+  var mode = 'solo';
+  var state = 'idle';
+  var partnerId = null;
+  var localStream = null;
+  var isMuted = false;
 
-// 5. Кнопка «Стоп»
-function stopWait(showStopped) {
-  clearInterval(timer);
-  clearInterval(searchLoop);
-  if (soloPid) sendSig({ to: soloPid, cmd: 'bye' });
-  if (state === 'group') {
-    Object.keys(grp).forEach(function(u) { if (u !== me) sendSig({ to: u, cmd: 'bye6' }); });
-  }
-  Object.keys(peers).forEach(function(u) {
-    try { peers[u].close(); } catch (e) {}
-    delete peers[u];
-    var a = $('a_' + u);
-    if (a) a.remove();
-  });
-  grp = {};
-  lobby = {};
-  soloPid = null;
-  state = 'home';
-  $('inp').disabled = true;
-  $('bSend').disabled = true;
+  var clockTimer = null;
+  var searchTimer = null;
+  var seconds = 0;
 
-  if (showStopped) {
-    $('bStop').disabled = true;
-    show('sHome');
-    $('hTitle').textContent = 'Поиск остановлен';
-    addLog('Вы вышли из комнаты');
-  }
-}
+  var peers = {};
+  var lobby = {};
+  var group = {};
+  var seen = {};
 
-$('bStop').onclick = function() { stopWait(true); };
-
-// 6. Кнопка «Выключить микрофон»
-$('bMute').onclick = function() {
-  muted = !muted;
-  if (mic) mic.getAudioTracks().forEach(function(t) { t.enabled = !muted; });
-  this.textContent = muted ? 'Включить микрофон' : 'Выключить микрофон';
-  this.classList.toggle('on', muted);
-};
-
-// 7. Чат
-$('cForm').onsubmit = function(e) {
-  e.preventDefault();
-  var txt = $('inp').value.trim();
-  if (!txt) return;
-  if (state === 'call' && soloPid) {
-    addLog(txt, 'me');
-    sendSig({ to: soloPid, cmd: 'comm', v: txt });
-    $('inp').value = '';
-  } else if (state === 'group') {
-    addLog(txt, 'me');
-    Object.keys(grp).forEach(function(u) { if (u !== me) sendSig({ to: u, cmd: 'comm6', v: txt }); });
-    $('inp').value = '';
-  }
-};
-
-// 8. Протокол подключения собеседников (WebSocket + WebRTC)
-var ws = null;
-function initNet() {
-  try {
-    ws = new WebSocket('wss://://socketsbay.com');
-    ws.onopen = function() { $('netSt').textContent = '● Онлайн: В сети'; };
-    ws.onmessage = function(e) {
-      var m = null;
-      try { m = JSON.parse(e.data); } catch (err) { return; }
-      if (!m || m.app !== 'likodopt_v3' || m.uco === me || seen[m.nonce]) return;
-      seen[m.nonce] = true;
-      handlePacket(m);
-    };
-    ws.onclose = function() { setTimeout(initNet, 2000); };
-  } catch (e) {}
-}
-initNet();
-
-function sendSig(data) {
-  if (!ws || ws.readyState !== 1) return;
-  data.app = 'likodopt_v3';
-  data.uco = me;
-  data.name = myName;
-  data.nonce = me + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-  try { ws.send(JSON.stringify(data)); } catch (e) {}
-}
-
-async function startRtc(to, init, kind) {
-  if (peers[to]) { try { peers[to].close(); } catch (e) {} }
-  var pc = new RTCPeerConnection({
+  var rtcConfig = {
     iceServers: [
+      { urls: 'stun:://google.com' },
       { urls: 'stun:://google.com' },
       { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
     ]
-  });
-  peers[to] = pc;
-  if (mic) mic.getTracks().forEach(function(t) { pc.addTrack(t, mic); });
-  pc.ontrack = function(e) {
-    var a = $('a_' + to);
-    if (!a) {
-      a = document.createElement('audio');
-      a.id = 'a_' + to;
-      a.autoplay = true;
-      $('auds').appendChild(a);
-    }
-    a.srcObject = new MediaStream([e.track]);
-    a.play().catch(function() {});
   };
-  pc.onicecandidate = function(e) {
-    if (e.candidate) sendSig({ to: to, cmd: 'ice', c: e.candidate });
-  };
-  if (init) {
-    var o = await pc.createOffer();
-    await pc.setLocalDescription(o);
-    sendSig({ to: to, cmd: 'offer', o: o, kind: kind });
-  }
-}
 
-async function handlePacket(m) {
-  if (m.cmd === 'wait_solo' && state === 'wait') {
-    lobby[m.uco] = { name: m.name, ts: Date.now() };
-    drawLobby();
-    if (me > m.uco) {
-      state = 'call';
-      soloPid = m.uco;
-      clearInterval(searchLoop);
-      sec = 0;
-      sendSig({ to: soloPid, cmd: 'pair' });
-      show('sCall');
-      $('inp').disabled = false;
-      $('bSend').disabled = false;
-      $('msgs').innerHTML = '';
-      addLog('Собеседник найден! 👋');
-      startRtc(soloPid, true, 'solo');
+  function formatTime(sec) {
+    var m = String(Math.floor(sec / 60)).padStart(2, '0');
+    var s = String(sec % 60).padStart(2, '0');
+    return m + ':' + s;
+  }
+
+  if (localStorage.getItem('likodopt_cookie_ok') === '1' && $('cookieBanner')) {
+    $('cookieBanner').style.display = 'none';
+  }
+  if ($('btnCloseCookie')) {
+    $('btnCloseCookie').addEventListener('click', function () {
+      localStorage.setItem('likodopt_cookie_ok', '1');
+      if ($('cookieBanner')) $('cookieBanner').style.display = 'none';
+    });
+  }
+
+  function showScreen(viewId) {
+    clearInterval(clockTimer);
+    seconds = 0;
+
+    ['idleView', 'queueView', 'callView', 'groupView'].forEach(function (id) {
+      if ($(id)) $(id).classList.remove('active');
+    });
+    if ($(viewId)) $(viewId).classList.add('active');
+
+    if (viewId !== 'idleView') {
+      var tId = viewId === 'queueView' ? 'searchTimerText' : (viewId === 'callView' ? 'callTimerText' : 'groupTimerText');
+      var el = $(tId);
+      if (el) el.textContent = '00:00';
+      clockTimer = setInterval(function () {
+        seconds++;
+        if (el) el.textContent = formatTime(seconds);
+      }, 1000);
     }
-  } else if (m.to === me && m.cmd === 'pair' && state === 'wait') {
-    state = 'call';
-    soloPid = m.uco;
-    clearInterval(searchLoop);
-    sec = 0;
-    show('sCall');
-    $('inp').disabled = false;
-    $('bSend').disabled = false;
-    $('msgs').innerHTML = '';
-    addLog('Собеседник найден! 👋');
-    startRtc(soloPid, false, 'solo');
-  } else if (m.cmd === 'wait_group' && state === 'group' && !grp[m.uco] && Object.keys(grp).length < 6) {
-    grp[m.uco] = m.name;
-    drawGroup();
-    addLog(m.name + ' зашёл в комнату');
-    sendSig({ to: m.uco, cmd: 'pair6' });
-    if (me > m.uco) startRtc(m.uco, true, 'group');
-  } else if (m.to === me && m.cmd === 'pair6' && state === 'group' && !grp[m.uco] && Object.keys(grp).length < 6) {
-    grp[m.uco] = m.name;
-    drawGroup();
-    if (me > m.uco) startRtc(m.uco, true, 'group');
-  } else if (m.to === me) {
-    if (m.cmd === 'offer') {
-      if (m.kind === 'group' && state === 'group' && !grp[m.uco] && Object.keys(grp).length < 6) {
-        grp[m.uco] = m.name;
-        drawGroup();
+  }
+
+  function log(text, cls) {
+    var box = $('messages');
+    if (!box) return;
+    var div = document.createElement('div');
+    div.className = 'msg ' + (cls || 'sys');
+    div.textContent = text;
+    box.appendChild(div);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function setChat(enabled) {
+    if ($('msgInput')) {
+      $('msgInput').disabled = !enabled;
+      if (!enabled) $('msgInput').value = '';
+    }
+    if ($('btnSend')) $('btnSend').disabled = !enabled;
+  }
+
+  function renderLobby() {
+    var box = $('lobbyChips');
+    if (!box) return;
+    box.innerHTML = '';
+    var now = Date.now();
+    Object.keys(lobby).forEach(function (u) {
+      if (u !== MY_ID && now - lobby[u].ts > 9000) delete lobby[u];
+    });
+    Object.keys(lobby).forEach(function (u) {
+      var c = document.createElement('div');
+      c.className = 'chip';
+      c.textContent = u === MY_ID ? '🟢 Вы (' + MY_NAME + ')' : '⏳ ' + lobby[u].name;
+      box.appendChild(c);
+    });
+  }
+
+  function renderGroup() {
+    var grid = $('groupGrid');
+    if (!grid) return;
+    grid.innerHTML = '';
+    var ids = Object.keys(group);
+    if ($('groupCountText')) $('groupCountText').textContent = String(ids.length);
+
+    for (var i = 0; i < 6; i++) {
+      var seat = document.createElement('div');
+      if (ids[i]) {
+        var uid = ids[i];
+        var isMe = uid === MY_ID;
+        seat.className = 'seat occupied';
+        seat.innerHTML = '<span style="font-size:1.3rem">' + (isMe ? '🎙️' : '🎧') + '</span><span>' + (isMe ? 'Вы' : group[uid]) + '</span>';
+      } else {
+        seat.className = 'seat';
+        seat.innerHTML = '<span style="font-size:1.3rem">➕</span><span>Свободно</span>';
       }
-      await startRtc(m.uco, false, m.kind);
-      await peers[m.uco].setRemoteDescription(new RTCSessionDescription(m.o));
-      var a = await peers[m.uco].createAnswer();
-      await peers[m.uco].setLocalDescription(a);
-      sendSig({ to: m.uco, cmd: 'answer', a: a });
-    } else if (m.cmd === 'answer' && peers[m.uco]) {
-      await peers[m.uco].setRemoteDescription(new RTCSessionDescription(m.a));
-    } else if (m.cmd === 'ice' && peers[m.uco]) {
-      try { await peers[m.uco].addIceCandidate(new RTCIceCandidate(m.c)); } catch (e) {}
-    } else if (m.cmd === 'comm' && m.uco === soloPid) {
-      addLog(m.v, 'he');
-    } else if (m.cmd === 'comm6' && state === 'group' && grp[m.uco]) {
-      addLog(m.name + ': ' + m.v, 'he');
-    } else if (m.cmd === 'bye' && m.uco === soloPid) {
-      stopWait(true);
-      $('hTitle').textContent = 'Собеседник отключился';
-    } else if (m.cmd === 'bye6' && state === 'group' && grp[m.uco]) {
-addLog(grp[m.uco_] + ' вышел');
-удалить grp[m.uco_];
-if (peers[m.uco_]) peers[m.uco_].close();
-удалить peers[m.uco_];
-drawGroup();
+      grid.appendChild(seat);
+    }
+  }
+
+  function switchMode(newMode) {
+    if (state !== 'idle') stopSession(false);
+    mode = newMode;
+    if ($('btnModeSolo')) $('btnModeSolo').classList.toggle('active', mode === 'solo');
+    if ($('btnModeGroup')) $('btnModeGroup').classList.toggle('active', mode === 'group');
+    if ($('idleIcon')) $('idleIcon').textContent = mode === 'solo' ? '🎙️' : '👥';
+    if ($('status')) {
+      $('status').textContent = mode === 'solo' ? 'Режим: Соло (1 на 1)' : 'Режим: Групповой (до 6 чел.)';
+    }
+    showScreen('idleView');
+  }
+
+  function initMic() {
+    if (localStream) return;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+      log('Микрофон недоступен — работает чат');
+      return;
+    }
+    navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+      .then(function (s) {
+        localStream = s;
+        if (isMuted) {
+          localStream.getAudioTracks().forEach(function (t) { t.enabled = false; });
+        }
+      })
+      .catch(function () {
+        log('Доступ к микрофону запрещён — работает чат');
+      });
+  }
+
+  function closePeer(uid) {
+    if (peers[uid]) {
+      try { peers[uid].close(); } catch (e) {}
+      delete peers[uid];
+    }
+    var a = $('aud_' + uid);
+    if (a) a.remove();
+  }
+
+  async function createRtc(to, init, kind) {
+    closePeer(to);
+    var pc = new RTCPeerConnection(rtcConfig);
+    peers[to] = pc;
+
+    if (localStream) {
+      localStream.getTracks().forEach(function (t) { pc.addTrack(t, localStream); });
+    }
+
+    pc.ontrack = function (e) {
+      var a = $('aud_' + to);
+      if (!a) {
+        a = document.createElement('audio');
+        a.id = 'aud_' + to;
+        a.autoplay = true;
+        a.playsInline = true;
+        if ($('audioPool')) $('audioPool').appendChild(a);
+      }
+      a.srcObject = new MediaStream([e.track]);
+      a.play().catch(function () {});
+    };
+
+    pc.onicecandidate = function (e) {
+      if (e.candidate) sendSig({ cmd: 'ice', to: to, data: e.candidate });
+    };
+
+    if (init) {
+      var off = await pc.createOffer();
+      await pc.setLocalDescription(off);
+      sendSig({ cmd: 'offer', to: to, data: off, kind: kind });
+    }
+  }
+
+  function startSearch() {
+    stopSession(false);
+    if ($('btnStop')) $('btnStop').disabled = false;
+    if ($('messages')) $('messages').innerHTML = '';
+    initMic();
+
+    if (mode === 'solo') {
+      state = 'search';
+      lobby[MY_ID] = { name: MY_NAME, ts: Date.now() };
+      renderLobby();
+      showScreen('queueView');
+      log('Вы вошли в окно ожидания собеседника...');
+      sendSig({ cmd: 'wait_solo', to: '*' });
+      searchTimer = setInterval(function () {
+        if (state === 'search') {
+          lobby[MY_ID].ts = Date.now();
+          renderLobby();
+          sendSig({ cmd: 'wait_solo', to: '*' });
+        }
+      }, 1500);
+    } else {
+      state = 'group';
+      group[MY_ID] = MY_NAME;
+      renderGroup();
+      showScreen('groupView');
+      setChat(true);
+      log('Вы вошли в групповую комнату (до 6 мест)');
+      sendSig({ cmd: 'wait_group', to: '*' });
+      searchTimer = setInterval(function () {
+        if (state === 'group' && Object.keys(group).length < 6) {
+          sendSig({ cmd: 'wait_group', to: '*' });
+        }
+      }, 2000);
+    }
+  }
+
+  function stopSession(showStopped) {
+    clearInterval(searchTimer);
+    clearInterval(clockTimer);
+    if (partnerId) sendSig({ cmd: 'bye', to: partnerId, kind: 'solo' });
+    if (state === 'group') {
+      Object.keys(group).forEach(function (u) {
+        if (u !== MY_ID) sendSig({ cmd: 'bye', to: u, kind: 'group' });
+      });
+    }
+    Object.keys(peers).forEach(closePeer);
+    for (var k1 in group) delete group[k1];
+    for (var k2 in lobby) delete lobby[k2];
+    partnerId = null;
+    state = 'idle';
+    setChat(false);
+
+    if (showStopped) {
+      if ($('btnStop')) $('btnStop').disabled = true;
+      if ($('status')) $('status').textContent = 'Поиск остановлен';
+      showScreen('idleView');
+      log('Вы вышли на главный экран');
+    }
+  }
+
+  function toggleMute() {
+    isMuted = !isMuted;
+    if (localStream) {
+      localStream.getAudioTracks().forEach(function (t) { t.enabled = !isMuted; });
+    }
+    if ($('btnMute')) {
+      $('btnMute').textContent = isMuted ? 'Включить микрофон' : 'Выключить микрофон';
+      $('btnMute').classList.toggle('muted', isMuted);
+    }
+    log(isMuted ? 'Микрофон выключен' : 'Микрофон включён');
+  }
+
+  function onChatSubmit(e) {
+    e.preventDefault();
+    var inp = $('msgInput');
+    if (!inp) return;
+    var text = inp.value.trim();
+    if (!text) return;
+
+    if (state === 'call' && partnerId) {
+      log(text, 'me');
+      sendSig({ cmd: 'comm', to: partnerId, kind: 'solo', data: text });
+      inp.value = '';
+    } else if (state === 'group') {
+      log(text, 'me');
+      Object.keys(group).forEach(function (u) {
+        if (u !== MY_ID) sendSig({ cmd: 'comm', to: u, kind: 'group', data: text });
+      });
+      inp.value = '';
+    }
+  }
+
+  function sendSig(payload) {
+    var nonce = MY_ID + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+    var packet = Object.assign({ uco: MY_ID, name: MY_NAME, nonce: nonce, ts: Date.now() }, payload);
+    try {
+      fetch(CHANNEL, { method: 'POST', body: JSON.stringify(packet) }).catch(function () {});
+    } catch (e) {}
+  }
+
+  async function handlePacket(pkt) {
+    if (pkt.cmd === 'wait_solo' && state === 'search') {
+      lobby[pkt.uco] = { name: pkt.name, ts: Date.now() };
+      renderLobby();
+      if (MY_ID > pkt.uco) {
+        state = 'call';
+        partnerId = pkt.uco;
+        clearInterval(searchTimer);
+        sendSig({ cmd: 'pair', to: partnerId, kind: 'solo' });
+        showScreen('callView');
+        setChat(true);
+        if ($('messages')) $('messages').innerHTML = '';
+        log('Собеседник найден! Приятного общения 👋');
+        createRtc(partnerId, true, 'solo');
+      }
+    } else if (pkt.cmd === 'pair' && pkt.to === MY_ID && pkt.kind === 'solo' && state === 'search') {
+      state = 'call';
+      partnerId = pkt.uco;
+      clearInterval(searchTimer);
+      showScreen('callView');
+      setChat(true);
+      if ($('messages')) $('messages').innerHTML = '';
+log('Собеседник найден!Приятного общения 👋');
+createRtc(partnerId, false, 'solo');
+} else if (pkt.cmd === 'wait_group' && state === 'group') {
+if (!group[pkt.uco] && Object.keys(group).длина < 6) {
+group[pkt.uco] = pkt.name;
+renderGroup();
+log(pkt.name + ' зашёл в комнату');
+sendSig({ cmd: 'pair', кому: pkt.uco, вид: 'group' });
+if (MY_ID > pkt.uco) createRtc(pkt.uco, true, 'group');
+}
+} else if (pkt.cmd === 'pair' && pkt.to === MY_ID && pkt.kind === 'group' && state === 'группа') {
+if (!group[pkt.uco] && Object.keys(группа).длина < 6) {
+группа[pkt.uco] = pkt.name ;
+renderGroup();
+if (MY_ID > pkt.uco) createRtc(pkt.uco, true, 'group');
+}
+} else if (pkt.to === MY_ID) {
+if (pkt.cmd === 'предложение') {
+if (pkt.kind === 'группа' && state === 'группа' && !group[pkt.uco] && Object.keys(группа).длина < 6) {
+группа[pkt.uco] = pkt.name ;
+renderGroup();
+}
+ожидает createRtc(pkt.uco, false, pkt.kind);
+var pc = peers[pkt.uco];
+if (pc) {
+ожидает pc.setRemoteDescription(новое RTCSessionDescription(pkt.data));
+var ans = ожидает pc.createAnswer();
+ожидает pc.setLocalDescription(ans);
+отправляет ({ cmd: 'ответ', кому: pkt. uco, данные: ans });
+}
+} else if (pkt.cmd === 'answer' && peers[pkt.uco]) {
+ожидают пиров[pkt.uco].setRemoteDescription(new RTCSessionDescription(pkt.data));
+} else if (pkt.cmd === 'ice' && peers[pkt.uco]) {
+try { await peers[pkt.uco].addIceCandidate(новый RTCIceCandidate(pkt.data)); } catch (e) {}
+} else if (pkt.cmd === 'comm') {
+if (pkt.kind === 'solo' && pkt.uco === partnerId) log(pkt.data, 'partner');
+if (pkt.kind === 'group' && state === 'group' && group[pkt .uco]) войти(pkt.name + ': ' + pkt.data, 'partner');
+} else if (pkt.cmd === 'bye') {
+if (pkt.kind === 'solo' && pkt.uco === partnerId) {
+stopSession(true);
+if ($('status')) $('status').textContent = 'Собеседник отключился';
+}
+if (pkt.kind === 'group' && state === 'group' && group[pkt.uco ]) {
+log(group[pkt.uco] + ' покинул комнату');
+delete group[pkt.uco];
+closePeer(pkt.uco);
+renderGroup();
 }
 }
 }
+}
+async function poll() {
+try {
+var res = await fetch(CHANNEL + '/json?poll=1&since=12s');
+if (res.ok) {
+var text = await res.text();
+var lines = text.trim().split('\n');
+for (var i = 0; i < lines.length; i++) {
+if (!lines[i]) continue;
+var wrap = JSON.parse(lines[i]);
+if (!wrap.message) continue;
+var pkt = JSON.parse(wrap.message);
+if (!pkt || pkt.uco === MY_ID || seen[pkt.nonce] || Date.now() - pkt.ts > 16000) continue;
+seen[pkt.nonce] = true;
+handlePacket(pkt);
+}
+}
+} catch (e) {}
+setTimeout(poll, 1000);
+}
+if ($('btnModeSolo')) $('btnModeSolo').addEventListener('click', function () { switchMode('solo'); });
+if ($('btnModeGroup')) $('btnModeGroup').addEventListener('click', function () { switchMode('group'); });
+if ($('btnNext')) $('btnNext').addEventListener('click', startSearch);
+if ($('btnStop')) $('btnStop').addEventListener('click', function () { stopSession(true); });
+if ($('btnMute')) $('btnMute').addEventListener('click', toggleMute);
+if ($('chatForm')) $('chatForm').addEventListener('submit', onChatSubmit);
+poll();
+})();
