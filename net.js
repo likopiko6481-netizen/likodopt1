@@ -107,6 +107,16 @@ function drawGroup() {
 
 window.netUpdateProfile = function() {
   if (netState === 'search') drawLobby();
+  if (netState === 'call') {
+    var meCard = document.getElementById('roomMeCard');
+    if (meCard) {
+      var myAva = getMyAva();
+      meCard.innerHTML = (myAva
+        ? '<img src="' + myAva + '" style="width:32px;height:32px;border-radius:6px;image-rendering:pixelated;border:1px solid #00e676;margin-bottom:4px;">'
+        : '<span style="font-size:1.5rem;">🎙️</span>') +
+        '<span>' + getMyNick() + ' (Вы)</span>';
+    }
+  }
   if (netState === 'group') {
     group[myId] = { name: getMyNick(), ava: getMyAva() };
     drawGroup();
@@ -114,11 +124,17 @@ window.netUpdateProfile = function() {
   }
 };
 
-function initMic() {
-  if (localStream) {
-    localStream.getAudioTracks().forEach(function(t) { t.enabled = !window.uiMuted; });
-    return;
+  var partnerCard = document.getElementById('roomPartnerCard');
+  if (partnerCard) {
+    partnerCard.innerHTML = (pAva
+      ? '<img src="' + pAva + '" style="width:32px;height:32px;border-radius:6px;image-rendering:pixelated;border:1px solid #00e676;margin-bottom:4px;">'
+      : '<span style="font-size:1.5rem;">🎧</span>') +
+      '<span>' + (pName || 'Собеседник') + '</span>';
   }
+
+  logMsg('Вы вошли в руму с пользователем ' + (pName || 'Собеседник') + ' 👋');
+}
+
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return;
   navigator.mediaDevices.getUserMedia({ audio: true, video: false })
     .then(function(s) {
