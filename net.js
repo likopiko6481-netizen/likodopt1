@@ -1,5 +1,8 @@
+var SB_URL = 'https://supabase.co';
+var SB_KEY = 'sb_publishable_6Y72t3-gkgmLmoRJGECLMQ_d1azrPSN';
+
 var myId = 'u_' + Math.random().toString(36).slice(2, 9);
-var netState = 'idle', partnerId = null, loop = null;
+var netState = 'idle', partnerId = null, loop = null, lastId = 0;
 var lobby = {}, group = {}, seen = {};
 
 var bus = new BroadcastChannel('likodopt_room_bus');
@@ -9,14 +12,36 @@ function nick() { return window.myNick || 'Гость #' + myId.slice(-3); }
 function ava() { return window.myAvaUrl || ''; }
 
 function send(pkt) {
-  pkt.from = myId;
-  pkt.nick = nick();
-  pkt.ava = ava();
+  pkt.from = myId; pkt.nick = nick(); pkt.ava = ava();
   pkt.id = myId + '_' + Date.now() + '_' + Math.random();
+  pkt.ts = Date.now();
   bus.postMessage(pkt);
+
+  fetch(SB_URL + '/rest/v1/room_signals', {
+    method: 'POST',
+    headers: { 'apikey': SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
+    body: JSON.stringify({ payload: pkt })
+  }).catch(function() {});
 }
 
-function log(txt, cls, n, a) {
+async function poll() {
+  try {
+    var r = await fetch(SB_URL + '/rest/v1/room_signals?select=id,payload&id=gt.' + lastId + '&order=id.asc&limit=40', {
+      headers: { 'apikey': SB_KEY }
+    });
+    if (r.ok) {
+      var rows = await r.json();
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i].id > lastId) lastId = rows[i].id;
+        onSignal(rows[i].payload);
+      }
+    }
+  } catch (e) {}
+  setTimeout(poll, 900);
+}
+poll();
+
+function log(txt, cls, n) {
   var box = document.getElementById('messages');
   if (!box) return;
   var d = document.createElement('div');
@@ -46,39 +71,42 @@ function drawGroup() {
   document.getElementById('groupCountText').textContent = ids.length;
   for (var i = 0; i < 6; i++) {
     var s = document.createElement('div');
-    s.className = ids[i] ? 'seat occupied' : 'seat';
-    s.innerHTML = ids[i] ? '<span>🎙️</span><span>' + (ids[i] === myId ? nick() : group[ids[i]]) + '</span>' : '<span>➕</span><span>Свободно</span>';
+    if (ids[i]) {
+      var isMe = ids[i] === myId;
+      var uAva = isMe ? ava() : group[ids[i]].ava;
+      var uName = isMe ? nick() : group[ids[i]].nick;
+      s.className = 'seat occupied';
+      s.innerHTML = (uAva ? '<img src="' + uAva + '" style="width:24px;height:24px;border-radius:5px;image-rendering:pixelated;border:1px solid #00e676;">' : '<span>🎙️</span>') + '<span>' + uName + '</span>';
+    } else {
+      s.className = 'seat';
+      s.innerHTML = '<span>➕</span><span>Свободно</span>';
+    }
     grid.appendChild(s);
   }
 }
 
-function openSoloRoom(pName) {
+function openSoloRoom(pName, pAva) {
   if (window.showScr) window.showScr('callView');
   document.getElementById('msgInput').disabled = false;
   document.getElementById('btnSend').disabled = false;
   document.getElementById('messages').innerHTML = '';
-  document.getElementById('roomMeCard').innerHTML = '<span>🎙️</span><span>' + nick() + ' (Вы)</span>';
-  document.getElementById('roomPartnerCard').innerHTML = '<span>🎧</span><span>' + pName + '</span>';
+  var mAva = ava();
+  document.getElementById('roomMeCard').innerHTML = (mAva ? '<img src="' + mAva + '" style="width:32px;height:32px;border-radius:6px;image-rendering:pixelated;border:1px solid #00e676;margin-bottom:4px;">' : '<span>🎙️</span>') + '<span>' + nick() + ' (Вы)</span>';
+  document.getElementById('roomPartnerCard').innerHTML = (pAva ? '<img src="' + pAva + '" style="width:32px;height:32px;border-radius:6px;image-rendering:pixelated;border:1px solid #00e676;margin-bottom:4px;">' : '<span>🎧</span>') + '<span>' + pName + '</span>';
   log('Вы в руме с ' + pName + ' 👋');
 }
 
-window.netStartSearch = function(mode) {
+window.netStartSearch = async function(mode) {
   window.netStopSession();
-  initAudio();
+  await initAudio();
   if (mode === 'solo') {
-    netState = 'search';
-    lobby[myId] = nick();
-    drawLobby();
-    log('Поиск собеседника...');
+    netState = 'search'; lobby[myId] = nick(); drawLobby(); log('Поиск собеседника...');
     send({ ev: 'w1' });
-    loop = setInterval(function() { if (netState === 'search') send({ ev: 'w1' }); }, 1000);
+    loop = setInterval(function() { if (netState === 'search') send({ ev: 'w1' }); }, 1200);
   } else {
-    netState = 'group';
-    group[myId] = nick();
-    drawGroup();
-    log('Вы в групповой руме');
+    netState = 'group'; group[myId] = { nick: nick(), ava: ava() }; drawGroup(); log('Вы в групповой руме');
     send({ ev: 'w6' });
-    loop = setInterval(function() { if (netState === 'group') send({ ev: 'w6' }); }, 1500);
+    loop = setInterval(function() { if (netState === 'group' && Object.keys(group).length < 6) send({ ev: 'w6' }); }, 1800);
   }
 };
 
@@ -100,37 +128,35 @@ window.netSendChat = function(txt) {
 };
 
 async function onSignal(p) {
-  if (!p || p.from === myId || seen[p.id]) return;
+  if (!p || p.from === myId || seen[p.id] || (p.ts && Date.now() - p.ts > 25000)) return;
   seen[p.id] = 1;
 
   if (p.ev === 'w1' && netState === 'search') {
-    lobby[p.from] = p.nick;
-    drawLobby();
+    lobby[p.from] = p.nick; drawLobby();
     if (myId > p.from) {
       netState = 'call'; partnerId = p.from; clearInterval(loop);
       send({ ev: 'p1', to: partnerId });
-      openSoloRoom(p.nick);
-      var pc = getPeer(partnerId, send);
+      openSoloRoom(p.nick, p.ava);
+      var pc = await getPeer(partnerId, send);
       var off = await pc.createOffer();
       await pc.setLocalDescription(off);
       send({ ev: 'off', to: partnerId, off: off });
     }
   } else if (p.ev === 'p1' && p.to === myId && netState === 'search') {
     netState = 'call'; partnerId = p.from; clearInterval(loop);
-    openSoloRoom(p.nick);
+    openSoloRoom(p.nick, p.ava);
   } else if (p.ev === 'w6' && netState === 'group' && !group[p.from] && Object.keys(group).length < 6) {
-    group[p.from] = p.nick;
-    drawGroup();
+    group[p.from] = { nick: p.nick, ava: p.ava }; drawGroup();
     send({ ev: 'w6' });
     if (myId > p.from) {
-      var pc6 = getPeer(p.from, send);
+      var pc6 = await getPeer(p.from, send);
       var off6 = await pc6.createOffer();
       await pc6.setLocalDescription(off6);
       send({ ev: 'off', to: p.from, off: off6 });
     }
   } else if (p.to === myId) {
     if (p.ev === 'off') {
-      var pcIn = getPeer(p.from, send);
+      var pcIn = await getPeer(p.from, send);
       await pcIn.setRemoteDescription(new RTCSessionDescription(p.off));
       var ans = await pcIn.createAnswer();
       await pcIn.setLocalDescription(ans);
