@@ -53,7 +53,27 @@ document.getElementById('btnModeGroup').onclick = function() {
 };
 
 document.getElementById('btnNext').onclick = function() {
-  if (window.askMicNow) window.askMicNow();
+  if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(function(s) {
+      window.localStream = s;
+      s.getAudioTracks().forEach(function(t) { t.enabled = !uiMuted; });
+      var box = document.getElementById('messages');
+      if (box) {
+        var d = document.createElement('div');
+        d.className = 'msg sys';
+        d.textContent = '🎙️ Микрофон разрешён и работает';
+        box.appendChild(d);
+      }
+    }).catch(function(err) {
+      var box = document.getElementById('messages');
+      if (box) {
+        var d = document.createElement('div');
+        d.className = 'msg sys';
+        d.textContent = '⚠️ Браузер заблокировал микрофон: ' + err.name;
+        box.appendChild(d);
+      }
+    });
+  }
   document.getElementById('btnStop').disabled = false;
   document.getElementById('messages').innerHTML = '';
   if (uiMode === 'solo') {
