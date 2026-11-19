@@ -171,3 +171,322 @@ body {
   var myName = 'Участник #' + Math.floor(100 + Math.random() * 899);
 
   var mode = 'solo'; // 'solo' | 'group'
+var state = 'idle'; // 'idle' | 'search' | 'call' | 'group'
+var partnerId = null;
+var stream = null;
+var muted = false;
+var timer = null;
+var searchLoop = null;
+var sec = 0;
+var peers = {};
+var lobby = {};
+var grp = {};
+var seen = {};
+if (localStorage.GetItem('lk_ck') === '1') {
+document.getElementById('cookieBanner').style.display = 'нет';
+}
+функция closeCk() {
+localStorage.setItem('lk_ck', '1');
+document.getElementById('cookieBanner').style.display = 'нет';
+}
+журнал функций(text, cls) {
+var d = document.createElement('div');
+d.className = 'msg ' + (cls || 'sys');
+d.textContent = text;
+var m = document.getElementById('сообщения');
+m.appendChild(d);
+m.scrollTop = m.scrollHeight;
+}
+функция setScreen(ViewID) {
+clearInterval(таймер);
+сек = 0;
+['idleView', 'queueView', 'callView', 'GroupView'].forEach(функция(id) {
+document.getElementById(id).classList.remove('активный');
+});
+document.getElementById(ViewID).classList.add('активный');
+if (ViewID !== 'idleView') {
+var tId = ViewID === 'Просмотр очереди' ? 'searchTimerText' : (ViewID === 'callView' ? 'callTimerText' : 'groupTimerText');
+var el = document.getElementById(tId);
+el.textContent = '00:00';
+timer = setInterval(функция() {
+сек.++;
+var m = строка (Математический этаж(сек. / 60)).padStart(2, '0');
+var s = строка (сек. % 60).padStart(2, '0');
+el.textContent = m + ':' + s ;
+}, 1000);
+}
+}
+функции инверторный(использованием newmode) {
+если (состояние !== 'ожидание') методе onStop(ложь);
+режим = использованием newmode;
+документ.метода getElementById('btnModeSolo').classList.переключатель('активный', режим === 'соло');
+документ.метода getElementById('btnModeGroup').classList.переключатель('активный', режим === 'группа');
+документ.метода getElementById('idleIcon').текстового содержимого = режим === 'соло' ? '🎙️' : '👥';
+документ.метода getElementById('статус').текстового содержимого = режим === 'соло' ? 'Режим: Соло (1 на 1)' : 'Режим: Групповой (до 6 чел.)';
+setScreen('idleView');
+}
+функция ChatON(вкл.) {
+document.getElementById('msgInput').disabled = !вкл.;
+document.getElementById('btnSend').disabled = !вкл.;
+if (!вкл.) document.getElementById('msgInput').value = ";
+}
+функция renderLobby() {
+var box = document.getElementById('lobbyChips');
+box.innerHTML = ";
+var now = Date.now();
+Object.keys(lobby).forEach(функция(u) {
+if (u !== myId && now - lobby[u].ts > 8000) удалить lobby[u];
+});
+Object.keys(lobby).forEach(функция(u) {
+var c = document.createElement( 'div');
+c.className = 'chip';
+c.textContent = u === myId ? '🟢 Вы' : '⏳ ' + lobby[u].name;
+box.appendChild(c);
+});
+}
+функция renderGroup() {
+var grid = document.getElementById('groupGrid');
+grid.innerHTML = ";
+var ids = Object.keys(grp);
+document.getElementById('groupCountText').textContent = ids.length;
+for (var i = 0; i < 6; i++) {
+var seat = document.createElement('div');
+if (ids[i]) {
+seat.className = 'место занято';
+seat.innerHTML = " + (ids[i] === myId ? '🎙️' : '🎧') + '' + (ids[i] === myId ? 'Вы' : grp[ids[i]]) + '';
+} else {
+seat.className = 'seat';
+seat.innerHTML = '➕Свободно';
+}
+grid.appendChild(seat);
+}
+}
+function closePeer(uid) {
+if (peers[uid]) {
+try { peers[uid].close(); } catch (e) {}
+удалить peers[uid];
+}
+var a = document.getElementById('aud_' + uid);
+if (a) a.remove();
+}
+// Протокол подключения собеседников (WebSocket + WebRTC)
+var ws = null;
+функция connectNet() {
+попробуйте {
+ws = new WebSocket('wss://socketsbay.com');
+ws.onopen = функция() {
+document.getElementById('netStatus').textContent = 'Онлайн: В сети';
+sendSig({cmd: 'connect', to: '*' });
+};
+ws.onmessage = функция(e) {
+ var pkt = null;
+try { pkt = JSON.parse(например,данные); } catch (ошибка) { return; }
+if (!pkt || pkt.app !== 'likodopt_full_v1' || pkt.uco === myId || видел[pkt.одноразовый номер]) return;
+видел[pkt.одноразовый номер] = true;
+handlePacket(pkt);
+};
+ws.onclose = function() {
+setTimeout( connectNet, 2000);
+};
+} catch (e) {}
+}
+connectNet();
+function sendSig(data) {
+if (!ws || ws.readyState !== 1) return;
+data.app = 'likodopt_full_v1';
+data.uco = myId;
+data.name = myName;
+data.session = '1';
+data.nonce = myId + '' + Date.now() + '' + Math.random().toString(36).slice(2, 6);
+try { ws.send(JSON.stringify(data)); } catch (e) {}
+}
+function onNext() {
+onStop(false);
+document.getElementById('btnStop').disabled = false;
+document.getElementById('messages').innerHTML = '';
+if (!stream && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+navigator.mediaDevices.getUserMedia({ audio: true })
+.then(function(s) {
+stream = s;
+if (muted) stream.getAudioTracks().forEach(function(t) { t.enabled = false; });
+})
+.catch(function() { log('Микрофон недоступен — работает текстовый чат'); });
+}
+if (mode === 'solo') {
+state = 'search';
+lobby[myId] = { name: myName, ts: Date.now() };
+renderLobby();
+setScreen('queueView');
+log('Вы вошли в окно ожидания собеседника...');
+sendSig({ cmd: 'wait_solo', to: '' });
+searchLoop = setInterval(function() {
+if (state === 'search') {
+lobby[myId].ts = Date.now();
+renderLobby();
+sendSig({ cmd: 'wait_solo', to: '' });
+}
+}, 1500);
+} else {
+state = 'group';
+grp[myId] = myName;
+renderGroup();
+setScreen('groupView');
+chatOn(true);
+log('Вы вошли в групповую комнату (до 6 мест)');
+sendSig({ cmd: 'wait_group', to: '' });
+searchLoop = setInterval(function() {
+if (state === 'group' && Object.keys(grp).length < 6) {
+sendSig({ cmd: 'wait_group', to: '' });
+}
+}, 2000);
+}
+}
+function onStop(showMsg) {
+clearInterval(searchLoop);
+clearInterval(timer);
+if (partnerId) sendSig({ cmd: 'bye', to: partnerId, kind: 'solo' });
+if (state === 'group') {
+Object.keys(grp).forEach(function(u) {
+if (u !== myId) sendSig({ cmd: 'bye', to: u, kind: 'group' });
+});
+}
+Object.keys(peers).forEach(closePeer);
+grp = {};
+lobby = {};
+partnerId = null;
+state = 'idle';
+chatOn(false);
+if (showMsg) {
+document.getElementById('btnStop').disabled = true;
+document.getElementById('status').textContent = 'Поиск остановлен';
+setScreen('idleView');
+log('Вы вышли из комнаты');
+}
+}
+function onMute() {
+muted = !muted;
+if (stream) stream.getAudioTracks().forEach(function(t) { t.enabled = !muted; });
+var b = document.getElementById('btnMute');
+b.textContent = muted ? 'Включить микрофон' : 'Выключить микрофон';
+b.classList.toggle('muted', muted);
+}
+function sendMsg(e) {
+e.preventDefault();
+var inp = document.getElementById('msgInput');
+var txt = inp.value.trim();
+if (!txt) return;
+if (state === 'call' && partnerId) {
+log(txt, 'me');
+sendSig({ cmd: 'comm', to: partnerId, kind: 'solo', data: txt });
+inp.value = '';
+} else if (state === 'group') {
+log(txt, 'me');
+Object.keys(grp).forEach(функция(u) {
+if (u !== myId) отправляет сигнал({ cmd: 'comm', кому: u, вид: 'group', данные: txt });
+});
+inp.value = ";
+}
+}
+асинхронная функция startRtc(to, init, kind) {
+closePeer(to);
+var pc = новое RTCPeerConnection({
+iceServers: [
+{ urls: 'stun:google.com ' },
+{ urls: 'turn:openrelay.metered.ca:443', имя пользователя: 'openrelayproject', учетные данные: 'openrelayproject' }
+]
+});
+peers[to] = pc;
+if (stream) {
+stream.getTracks().forEach(функция(t) { pc.addTrack(t, поток); });
+}
+pc.ontrack = функция(e) {
+var a = document.getElementById('aud_' + to);
+if (!a) {
+a = document.createElement('audio');
+a.id = 'aud_' + to;
+a.автозапуск = true;
+a.playsInline = true;
+document.getElementById('audioPool').appendChild(a);
+}
+a.srcObject = новый медиапоток ([например,дорожка]);
+a.play().catch(функция() {});
+};
+pc.onicecandidate = функция(e) {
+if (e.кандидат) {
+Отправляет сигнал ({ cmd: 'ice', to: кому, данные: e.кандидат });
+}
+};
+if (init) {
+var off = ожидает pc.createOffer();
+ожидает pc.setLocalDescription(выкл.);
+отправляет сигнал ({ cmd: 'предложение', кому: to, данные: выкл., вид: kind });
+}
+}
+асинхронная функция handlePacket(pkt) {
+если (pkt.cmd === 'wait_solo' && state === 'search') {
+лобби[pkt.uco] = { название: pkt.name , ts: Date.now() };
+renderLobby();
+if (myId > pkt.ucoo) {
+state = 'вызов';
+partnerId = pkt.ucoo;
+clearInterval(searchLoop);
+sendSig({ cmd: 'pair', кому: partnerId, вид: 'solo' });
+setScreen('callView');
+ChatON(true);
+document.getElementById('сообщения').innerHTML = ";
+log ('Собеседник найден! Приятного общения 👋');
+startRtc(partnerId, true, 'solo');
+}
+} else if (pkt.cmd === 'пара' && pkt.to === myId && pkt.kind === 'соло' && state === 'поиск') {
+state = 'вызов';
+partnerId = pkt.uco;
+clearInterval(searchLoop);
+setScreen('callView');
+ChatON(true);
+document.getElementById('сообщения').innerHTML = ";
+log('Собеседник найден! Приятного общения 👋');
+startRtc(partnerId, false, 'solo');
+} else if (pkt.cmd === 'wait_group' && state === 'group' && !grp[pkt.uco] && Object.keys(grp).length < 6) {
+grp[pkt.uco] = pkt.name;
+renderGroup();
+log(pkt.name + ' зашёл в комнату');
+sendSig({ cmd: 'pair', to: pkt.uco, kind: 'group' });
+if (myId > pkt.uco) startRtc(pkt.uco, true, 'group');
+} else if (pkt.cmd === 'pair' && pkt.to === myId && pkt.kind === 'group' && state === 'group' && !grp[pkt.uco] && Object.keys(grp).длина < 6) {
+grp[pkt.uco] = pkt.name ;
+renderGroup();
+if (myId > pkt.uco) startRtc(pkt.uco, true, 'group');
+} else if (pkt.to === myId) {
+if (pkt.cmd === 'предложение') {
+if (pkt.kind === 'группа' && state === 'группа' && !grp[pkt.uco] && Object.keys(grp).длина < 6) {
+grp[pkt.uco] = pkt.name ;
+renderGroup();
+}
+ожидает startRtc(pkt.uco, false, pkt.kind);
+ожидает одноранговые узлы[pkt.uco].setRemoteDescription(новое RTCSessionDescription(pkt.data));
+var ans = ожидает одноранговые узлы[pkt.uco].createAnswer();
+ожидает одноранговые узлы[pkt.uco].setLocalDescription(ans);
+Отправляет ({ cmd: 'answer', кому: pkt. uco, данные: ans });
+} else if (pkt.cmd === 'answer' && peers[pkt.uco]) {
+ожидают peers[pkt.uco].setRemoteDescription(новое RTCSessionDescription(pkt.data));
+} else if (pkt.cmd === 'ice' && peers[pkt.uco]) {
+try { await peers[pkt.uco].addIceCandidate(новый RTCIceCandidate(pkt.data)); } catch (e) {}
+} else if (pkt.cmd === 'comm') {
+if (pkt.kind === 'solo' && pkt.uco === partnerId) log(pkt.data, 'partner');
+if (pkt.kind === 'group' && state === 'group' && grp[ пкт.uco]) войти(pkt.name + ': ' + pkt.data, 'партнер');
+} else if (pkt.cmd === 'bye') {
+if (pkt.kind === 'solo' && pkt.uco === partnerId) {
+onStop(true);
+document.getElementById('status').textContent = 'Собеседник отключился';
+}
+if (pkt.kind === 'group' && state === 'group' && grp[pkt.uco]) {
+log(grp[pkt.uco] + ' покинул комнату');
+delete grp[pkt.uco];
+closePeer(pkt.uco);
+renderGroup();
+}
+}
+}
+}
+
+
