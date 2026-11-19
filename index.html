@@ -1,148 +1,183 @@
 <!DOCTYPE html>
-<html lang="ru" translate="no">
+<html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="google" content="notranslate">
-<title>LIKODOPT — Чат-рулетка</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LIKODOPT</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-  body {
-    background: #0b0d12 url('./bg.png') center/cover no-repeat fixed;
-    background-image: url('./bg.png'), url('./bg.jpg'), url('./bg.jpeg'), url('./bg.webp');
-    color: #f1f5f9;
-    display: flex;
-    justify-content: center;
-    align-items: center;
-    min-height: 100vh;
-    padding: 15px;
-  }
-  .app {
-    background: rgba(20, 23, 31, 0.94);
-    width: 100%;
-    max-width: 450px;
-    border-radius: 22px;
-    padding: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.14);
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85);
-    display: flex;
-    flex-direction: column;
-    gap: 12px;
-  }
-  .top { display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid rgba(255, 255, 255, 0.08); padding-bottom: 10px; }
-  .logo { font-size: 1.45rem; font-weight: 900; color: #00e676; letter-spacing: 1px; }
-  .badge { background: #1e2330; padding: 5px 12px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; color: #00e676; border: 1px solid #2e3548; }
-
-  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: #0e1016; padding: 5px; border-radius: 14px; border: 1px solid #262b38; }
-  .mbtn { padding: 11px; border: none; border-radius: 10px; font-size: 0.88rem; font-weight: 700; cursor: pointer; background: transparent; color: #94a3b8; }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
+  body { background: #0b0d12 url('./bg.png') center/cover no-repeat fixed; background-image: url('./bg.png'), url('./bg.jpg'), url('./bg.webp'); color: #fff; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 15px; }
+  .app { background: rgba(20, 23, 31, 0.95); width: 100%; max-width: 440px; border-radius: 22px; padding: 20px; border: 1px solid #2e3548; display: flex; flex-direction: column; gap: 12px; }
+  .top { display: flex; justify-content: space-between; align-items: center; }
+  .logo { font-size: 1.45rem; font-weight: 900; color: #00e676; }
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .mbtn { padding: 11px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; background: #1e2330; color: #94a3b8; }
   .mbtn.on { background: #00e676; color: #000; }
-
-  .box { background: #0e1016; border-radius: 18px; padding: 20px 14px; border: 1px solid #262b38; min-height: 200px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+  .box { background: #0e1016; border-radius: 16px; padding: 22px 15px; text-align: center; min-height: 185px; display: flex; flex-direction: column; justify-content: center; align-items: center; border: 1px solid #262b38; }
   .scr { display: none; flex-direction: column; align-items: center; width: 100%; }
   .scr.on { display: flex; }
-
-  .ava { width: 70px; height: 70px; border-radius: 50%; background: #1e2330; border: 2px solid #2e3548; display: flex; align-items: center; justify-content: center; font-size: 1.9rem; margin-bottom: 10px; }
-  .ava.radar { background: rgba(0, 230, 118, 0.14); border-color: #00e676; animation: pulse 1.4s infinite; }
-  .ava.call { background: #163326; border: 3px solid #00e676; box-shadow: 0 0 20px rgba(0, 230, 118, 0.4); }
-  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.65); } 100% { box-shadow: 0 0 0 20px rgba(0, 230, 118, 0); } }
-
-  .title { font-size: 1.08rem; font-weight: 700; margin-bottom: 4px; }
-  .sub { font-size: 0.82rem; color: #94a3b8; margin-bottom: 10px; }
-  .pill { background: #1e2330; border: 1px solid #333b50; padding: 5px 14px; border-radius: 12px; font-size: 0.84rem; font-weight: 700; }
-
-  .lobby-list { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; width: 100%; margin: 8px 0 12px; }
-  .lobby-chip { background: #1a1f2b; border: 1px solid #00e676; color: #f1f5f9; padding: 5px 10px; border-radius: 20px; font-size: 0.78rem; font-weight: 600; display: flex; align-items: center; gap: 5px; }
-  .grid6 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; margin-bottom: 10px; }
-  .seat { background: #1a1f2b; border: 1px solid #2c3345; border-radius: 12px; padding: 10px 4px; font-size: 0.76rem; color: #64748b; display: flex; flex-direction: column; align-items: center; gap: 4px; }
+  .ava { width: 70px; height: 70px; border-radius: 50%; background: #1e2330; display: flex; align-items: center; justify-content: center; font-size: 1.9rem; margin-bottom: 10px; }
+  .ava.radar { border: 2px solid #00e676; animation: pulse 1.4s infinite; }
+  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.6); } 100% { box-shadow: 0 0 0 18px rgba(0, 230, 118, 0); } }
+  .grid6 { display: grid; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 100%; margin-bottom: 10px; }
+  .seat { background: #1a1f2b; border: 1px solid #2c3345; border-radius: 10px; padding: 8px 4px; font-size: 0.75rem; color: #64748b; }
   .seat.busy { background: #163326; border-color: #00e676; color: #fff; font-weight: 600; }
-
-  .chat { background: #0e1016; border-radius: 16px; border: 1px solid #262b38; height: 150px; display: flex; flex-direction: column; overflow: hidden; }
+  .chat { background: #0e1016; border-radius: 14px; height: 140px; display: flex; flex-direction: column; border: 1px solid #262b38; overflow: hidden; }
   #msgs { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; font-size: 0.88rem; }
-  .m { padding: 7px 12px; border-radius: 11px; max-width: 82%; word-wrap: break-word; }
+  .m { padding: 6px 10px; border-radius: 10px; max-width: 82%; }
   .me { background: #00e676; color: #000; align-self: flex-end; font-weight: 600; }
-  .he { background: #232836; color: #fff; align-self: flex-start; }
-  .sys { color: #94a3b8; align-self: center; font-size: 0.78rem; text-align: center; }
+  .sys { color: #94a3b8; align-self: center; font-size: 0.78rem; }
   form { display: flex; border-top: 1px solid #262b38; }
-  input { flex: 1; background: transparent; border: none; padding: 11px; color: #fff; outline: none; font-size: 16px; }
-  form button { background: transparent; border: none; color: #00e676; font-weight: 800; padding: 0 16px; font-size: 1.2rem; cursor: pointer; }
-  form button:disabled { color: #475569; cursor: not-allowed; }
-
-  .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .btn { padding: 15px 10px; border: none; border-radius: 14px; font-size: 0.96rem; font-weight: 700; cursor: pointer; }
+  input { flex: 1; background: none; border: none; padding: 10px; color: #fff; outline: none; font-size: 16px; }
+  .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .btn { padding: 14px; border: none; border-radius: 12px; font-size: 0.95rem; font-weight: 700; cursor: pointer; }
   .btn:disabled { opacity: 0.4; cursor: not-allowed; }
   #bNext { background: #00e676; color: #000; }
   #bStop { background: #ff5252; color: #fff; }
-  #bMute { grid-column: span 2; background: #232836; color: #fff; border: 1px solid #32394d; }
+  #bMute { grid-column: span 2; background: #232836; color: #fff; }
   #bMute.on { background: #ff9800; color: #000; }
-
-  .ck { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); width: calc(100% - 30px); max-width: 450px; background: #14171f; border: 1px solid #00e676; border-radius: 14px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; z-index: 9999; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85); }
-  .ck.hide { display: none; }
-  .ck button { background: #232836; color: #fff; border: 1px solid #363e54; border-radius: 50%; width: 32px; height: 32px; min-width: 32px; font-size: 1rem; cursor: pointer; }
+  .ck { position: fixed; top: 12px; left: 12px; right: 12px; max-width: 440px; margin: auto; background: #14171f; border: 1px solid #00e676; border-radius: 12px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; z-index: 9999; font-size: 0.82rem; }
 </style>
 </head>
 <body>
 
 <div class="ck" id="ckBox">
-  <span style="font-size: 0.82rem; color: #e2e8f0;">🍪 Мы используем файлы <b style="color: #00e676;">Cookie</b> для работы сайта.</span>
-  <button type="button" id="ckClose">✕</button>
+  <span>🍪 Мы используем файлы <b style="color:#00e676">Cookie</b> для работы сайта.</span>
+  <button type="button" onclick="document.getElementById('ckBox').style.display='none'" style="background:#333;color:#fff;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer">✕</button>
 </div>
 
 <div class="app">
   <div class="top">
     <span class="logo">LIKODOPT</span>
-    <span class="badge" id="netBadge">● В сети</span>
+    <span style="font-size:0.8rem;color:#00e676">● В сети</span>
   </div>
 
   <div class="modes">
-    <button type="button" class="mbtn on" id="mSolo">👤 Соло (1 на 1)</button>
-    <button type="button" class="mbtn" id="mGroup">👥 Групповой (до 6)</button>
+    <button type="button" class="mbtn on" id="mSolo" onclick="switchMode('solo')">👤 Соло (1 на 1)</button>
+    <button type="button" class="mbtn" id="mGroup" onclick="switchMode('group')">👥 Групповой (до 6)</button>
   </div>
 
   <div class="box">
     <div class="scr on" id="sHome">
       <div class="ava" id="hIco">🎙️</div>
-      <div class="title" id="hTitle">Режим: Соло (1 на 1)</div>
-      <div class="sub" id="hSub">Нажмите «Найти / Далее», чтобы войти в комнату ожидания</div>
+      <div id="hTitle" style="font-weight:700;margin-bottom:4px">Режим: Соло (1 на 1)</div>
+      <div style="font-size:0.82rem;color:#94a3b8">Нажмите «Найти / Далее»</div>
     </div>
 
     <div class="scr" id="sWait">
       <div class="ava radar">⏳</div>
-      <div class="title" style="color: #00e676;">Комната ожидания</div>
-      <div class="sub" id="waitSub">Вы в комнате ожидания. Подбираем собеседника...</div>
-      <div class="lobby-list" id="lobbyList"></div>
-      <div class="pill">Ожидание: <span id="tWait">00:00</span></div>
-    </div>
-
-    <div class="scr" id="sCall">
-      <div class="ava call">🎧</div>
-      <div class="title">Собеседник на связи!</div>
-      <div class="sub" style="color: #00e676;">Вы в комнате разговора 1 на 1</div>
-      <div class="pill" style="color: #00e676;">● Разговор: <span id="tCall">00:00</span></div>
+      <div style="font-weight:700;color:#00e676;margin-bottom:4px">Комната ожидания</div>
+      <div id="tWait" style="font-size:0.85rem;color:#94a3b8">Время ожидания: 00:00</div>
     </div>
 
     <div class="scr" id="sGroup">
-      <div class="grid6" id="gGrid"></div>
-      <div class="pill" style="color: #00e676;">● Комната (<span id="gCount">1</span>/6) • <span id="tGroup">00:00</span></div>
+      <div class="grid6">
+        <div class="seat busy">🎙️ Вы</div>
+        <div class="seat">➕ Свободно</div>
+        <div class="seat">➕ Свободно</div>
+        <div class="seat">➕ Свободно</div>
+        <div class="seat">➕ Свободно</div>
+        <div class="seat">➕ Свободно</div>
+      </div>
+      <div id="tGroup" style="font-size:0.85rem;color:#00e676">● Комната (1/6) • 00:00</div>
     </div>
   </div>
 
   <div class="chat">
     <div id="msgs"></div>
-    <form id="cForm">
-      <input type="text" id="inp" placeholder="Написать сообщение..." disabled autocomplete="off">
-      <button type="submit" id="bSend" disabled>➤</button>
+    <form onsubmit="sendMsg(event)">
+      <input id="inp" placeholder="Написать сообщение..." disabled>
+      <button type="submit" id="bSend" disabled style="background:none;border:none;color:#00e676;padding:0 15px;font-weight:bold;cursor:pointer">➤</button>
     </form>
   </div>
 
   <div class="btns">
-    <button type="button" class="btn" id="bNext">Найти / Далее</button>
-    <button type="button" class="btn" id="bStop" disabled>Стоп</button>
-    <button type="button" class="btn" id="bMute">Выключить микрофон</button>
+    <button type="button" class="btn" id="bNext" onclick="startWait()">Найти / Далее</button>
+    <button type="button" class="btn" id="bStop" onclick="stopWait()" disabled>Стоп</button>
+    <button type="button" class="btn" id="bMute" onclick="toggleMute()">Выключить микрофон</button>
   </div>
-
-  <div id="auds"></div>
 </div>
 
-<script src="./app.js?v=950"></script>
+<script>
+  let mode = 'solo';
+  let timer = null;
+  let sec = 0;
+  let muted = false;
+
+  function show(id) {
+    document.getElementById('sHome').classList.remove('on');
+    document.getElementById('sWait').classList.remove('on');
+    document.getElementById('sGroup').classList.remove('on');
+    document.getElementById(id).classList.add('on');
+  }
+
+  function addLog(text, cls) {
+    const d = document.createElement('div');
+    d.className = 'm ' + (cls || 'sys');
+    d.textContent = text;
+    const box = document.getElementById('msgs');
+    box.appendChild(d);
+    box.scrollTop = box.scrollHeight;
+  }
+
+  function switchMode(m) {
+    stopWait();
+    mode = m;
+    document.getElementById('mSolo').classList.toggle('on', m === 'solo');
+    document.getElementById('mGroup').classList.toggle('on', m === 'group');
+    document.getElementById('hIco').textContent = m === 'solo' ? '🎙️' : '👥';
+    document.getElementById('hTitle').textContent = m === 'solo' ? 'Режим: Соло (1 на 1)' : 'Режим: Групповой (до 6)';
+  }
+
+  function startWait() {
+    clearInterval(timer);
+    sec = 0;
+    document.getElementById('bStop').disabled = false;
+    document.getElementById('inp').disabled = false;
+    document.getElementById('bSend').disabled = false;
+    document.getElementById('msgs').innerHTML = '';
+
+    if (mode === 'solo') {
+      show('sWait');
+      document.getElementById('tWait').textContent = 'Время ожидания: 00:00';
+      addLog('Вы вошли в комнату ожидания (1 на 1)...');
+    } else {
+      show('sGroup');
+      document.getElementById('tGroup').textContent = '● Комната (1/6) • 00:00';
+      addLog('Вы вошли в групповую комнату (до 6 чел.)');
+    }
+
+    timer = setInterval(function() {
+      sec++;
+      const t = String(Math.floor(sec / 60)).padStart(2, '0') + ':' + String(sec % 60).padStart(2, '0');
+      document.getElementById('tWait').textContent = 'Время ожидания: ' + t;
+      document.getElementById('tGroup').textContent = '● Комната (1/6) • ' + t;
+    }, 1000);
+  }
+
+  function stopWait() {
+    clearInterval(timer);
+    document.getElementById('bStop').disabled = true;
+    document.getElementById('inp').disabled = true;
+    document.getElementById('bSend').disabled = true;
+    show('sHome');
+    addLog('Вы вышли из комнаты');
+  }
+
+  function toggleMute() {
+    muted = !muted;
+    const b = document.getElementById('bMute');
+    b.textContent = muted ? 'Включить микрофон' : 'Выключить микрофон';
+    b.classList.toggle('on', muted);
+  }
+
+  function sendMsg(e) {
+    e.preventDefault();
+    const inp = document.getElementById('inp');
+    if (!inp.value.trim()) return;
+    addLog(inp.value.trim(), 'me');
+    inp.value = '';
+  }
+</script>
 </body>
 </html>
