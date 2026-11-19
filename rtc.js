@@ -5,9 +5,14 @@ var iceQueue = {};
 var rtcConfig = {
   iceServers: [
     { urls: 'stun:://google.com' },
-    { urls: 'stun:://google.com' }
+    { urls: 'stun:://google.com' },
+    { urls: 'stun:://cloudflare.com' },
+    { urls: 'turn:a.relay.metered.ca:80', username: 'e8dd65b92f62d3e36cafeb80', credential: 'uWdWNcQbcGnxB214' },
+    { urls: 'turn:a.relay.metered.ca:443', username: 'e8dd65b92f62d3e36cafeb80', credential: 'uWdWNcQbcGnxB214' },
+    { urls: 'turn:a.relay.metered.ca:443?transport=tcp', username: 'e8dd65b92f62d3e36cafeb80', credential: 'uWdWNcQbcGnxB214' }
   ]
 };
+
 
 function showAudioStatus(text) {
   var box = document.getElementById('messages');
