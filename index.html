@@ -1,151 +1,290 @@
 <!DOCTYPE html>
-<html lang="ru" translate="no">
+<html lang="ru">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<meta name="google" content="notranslate">
-<title>LIKODOPT — Чат-рулетка</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LIKODOPT</title>
 <style>
-  * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
+  * { box-sizing: border-box; margin: 0; padding: 0; font-family: sans-serif; }
   body {
-    background-color: #0b0d12;
+    background: #0b0d12 url('./bg.png') center/cover no-repeat fixed;
     background-image: url('./bg.png'), url('./bg.jpg'), url('./bg.jpeg'), url('./bg.webp');
-    background-position: center center;
-    background-repeat: no-repeat;
-    background-size: cover;
-    background-attachment: fixed;
-    color: #f1f5f9;
+    color: #fff;
     display: flex;
     justify-content: center;
     align-items: center;
     min-height: 100vh;
-    padding: 14px;
+    padding: 15px;
   }
   .app {
-    background: rgba(20, 23, 31, 0.92);
+    background: rgba(20, 23, 31, 0.94);
     width: 100%;
-    max-width: 460px;
-    border-radius: 24px;
+    max-width: 440px;
+    border-radius: 22px;
     padding: 20px;
-    border: 1px solid rgba(255, 255, 255, 0.12);
-    box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85);
+    border: 1px solid #333;
     display: flex;
     flex-direction: column;
     gap: 12px;
-    position: relative;
-    z-index: 10;
   }
-  .top { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
-  .logo { font-size: 1.45rem; font-weight: 900; color: #00e676; letter-spacing: 1px; }
-  .badge { background: #1e2330; padding: 5px 11px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; gap: 6px; border: 1px solid #2e3548; }
-  .dot { width: 8px; height: 8px; border-radius: 50%; background: #00e676; }
-
-  .mode-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: rgba(14, 16, 22, 0.85); padding: 5px; border-radius: 14px; border: 1px solid #262b38; }
-  .mode-btn { padding: 11px 8px; border: none; border-radius: 10px; font-size: 0.88rem; font-weight: 700; cursor: pointer; background: transparent; color: #94a3b8; transition: 0.15s; }
-  .mode-btn.active { background: #00e676; color: #000; }
-
-  .box { background: rgba(14, 16, 22, 0.82); border-radius: 18px; padding: 18px 14px; border: 1px solid rgba(255, 255, 255, 0.08); min-height: 180px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
-  .scr { display: none; flex-direction: column; align-items: center; width: 100%; }
-  .scr.on { display: flex; }
-  .ava { width: 68px; height: 68px; border-radius: 50%; background: #1e2330; border: 2px solid #2e3548; display: flex; align-items: center; justify-content: center; font-size: 1.9rem; margin-bottom: 10px; }
-  .ava.radar { background: rgba(0, 230, 118, 0.12); border-color: #00e676; animation: pulse 1.5s infinite; }
-  .ava.call { background: #163326; border: 3px solid #00e676; box-shadow: 0 0 20px rgba(0, 230, 118, 0.4); }
-  @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.6); } 100% { box-shadow: 0 0 0 18px rgba(0, 230, 118, 0); } }
-  .t1 { font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; }
-  .t2 { font-size: 0.82rem; color: #94a3b8; margin-bottom: 8px; }
-  .pill { background: #1e2330; border: 1px solid #333b50; padding: 4px 12px; border-radius: 12px; font-size: 0.82rem; font-weight: 700; }
-
-  .group-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; margin-bottom: 10px; }
-  .seat { background: #1a1f2b; border: 1px solid #2c3345; border-radius: 12px; padding: 10px 4px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 0.75rem; color: #64748b; }
-  .seat.occupied { background: #163326; border-color: #00e676; color: #f1f5f9; font-weight: 600; }
-  .seat-ico { font-size: 1.35rem; }
-
-  .chat { background: rgba(14, 16, 22, 0.82); border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.08); display: flex; flex-direction: column; height: 150px; overflow: hidden; }
+  .top { display: flex; justify-content: space-between; align-items: center; }
+  .logo { font-size: 1.4rem; font-weight: 900; color: #00e676; }
+  .modes { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .mbtn { padding: 10px; border: none; border-radius: 10px; font-weight: 700; cursor: pointer; background: #1e2330; color: #94a3b8; }
+  .mbtn.on { background: #00e676; color: #000; }
+  .box { background: #0e1016; border-radius: 16px; padding: 20px; text-align: center; min-height: 150px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
+  .grid6 { display: none; grid-template-columns: repeat(3, 1fr); gap: 6px; width: 100%; margin-bottom: 8px; }
+  .seat { background: #1a1f2b; border: 1px solid #2c3345; border-radius: 10px; padding: 8px 4px; font-size: 0.75rem; color: #64748b; }
+  .seat.busy { background: #163326; border-color: #00e676; color: #fff; }
+  .chat { background: #0e1016; border-radius: 14px; height: 140px; display: flex; flex-direction: column; overflow: hidden; }
   #msgs { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; font-size: 0.88rem; }
-  .m { padding: 7px 11px; border-radius: 11px; max-width: 84%; word-wrap: break-word; }
-  .m.me { background: #00e676; color: #000; align-self: flex-end; font-weight: 600; }
-  .m.he { background: #232836; color: #fff; align-self: flex-start; }
-  .m.sys { color: #94a3b8; align-self: center; font-size: 0.78rem; text-align: center; }
-  .form { display: flex; border-top: 1px solid rgba(255, 255, 255, 0.08); }
-  .form input { flex: 1; background: transparent; border: none; padding: 11px; color: #fff; outline: none; font-size: 16px; }
-  .form button { background: transparent; border: none; color: #00e676; font-weight: 800; padding: 0 16px; font-size: 1.2rem; cursor: pointer; }
-  .form button:disabled { color: #475569; cursor: not-allowed; }
-
-  .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-  .btn { padding: 15px 10px; border: none; border-radius: 14px; font-size: 0.96rem; font-weight: 700; cursor: pointer; }
-  .btn:active:not(:disabled) { transform: scale(0.97); }
+  .m { padding: 6px 10px; border-radius: 10px; max-width: 82%; }
+  .me { background: #00e676; color: #000; align-self: flex-end; font-weight: 600; }
+  .he { background: #232836; align-self: flex-start; }
+  .sys { color: #94a3b8; align-self: center; font-size: 0.78rem; }
+  form { display: flex; border-top: 1px solid #222; }
+  input { flex: 1; background: none; border: none; padding: 10px; color: #fff; outline: none; }
+  .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; }
+  .btn { padding: 14px; border: none; border-radius: 12px; font-size: 0.95rem; font-weight: 700; cursor: pointer; }
   .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-  #bNext { background: #00e676; color: #000; }
-  #bStop { background: #ff5252; color: #fff; }
-  #bMute { grid-column: span 2; background: #232836; color: #fff; border: 1px solid #32394d; }
-  #bMute.on { background: #ff9800; color: #000; }
-
-  .ck { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); width: calc(100% - 28px); max-width: 460px; background: #14171f; border: 1px solid #00e676; border-radius: 14px; padding: 9px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; z-index: 9999; box-shadow: 0 10px 30px rgba(0,0,0,0.85); }
-  .ck button { background: #232836; color: #fff; border: 1px solid #363e54; border-radius: 50%; width: 32px; height: 32px; min-width: 32px; font-size: 1rem; cursor: pointer; }
+  #b1 { background: #00e676; color: #000; }
+  #b2 { background: #ff5252; color: #fff; }
+  #b3 { grid-column: span 2; background: #232836; color: #fff; }
+  .ck { position: fixed; top: 10px; left: 10px; right: 10px; max-width: 440px; margin: auto; background: #14171f; border: 1px solid #00e676; border-radius: 12px; padding: 10px 14px; display: flex; justify-content: space-between; align-items: center; z-index: 9999; font-size: 0.82rem; }
 </style>
 </head>
 <body>
 
-<div class="ck" id="ckBox">
-  <span style="font-size:0.82rem;color:#e2e8f0">🍪 Мы используем ваши файлы <b style="color:#00e676">Cookie</b> для улучшения работы сайта.</span>
-  <button type="button" id="ckClose">✕</button>
+<div class="ck" id="ck">
+  <span>🍪 Мы используем файлы <b style="color:#00e676">Cookie</b></span>
+  <button type="button" onclick="document.getElementById('ck').style.display='none'" style="background:#333;color:#fff;border:none;border-radius:50%;width:28px;height:28px;cursor:pointer">✕</button>
 </div>
 
 <div class="app">
   <div class="top">
-    <div class="logo">LIKODOPT</div>
-    <div class="badge"><span class="dot"></span>Онлайн: В сети</div>
+    <span class="logo">LIKODOPT</span>
+    <span style="font-size:0.8rem;color:#00e676">● В сети</span>
   </div>
 
-  <div class="mode-switch">
-    <button type="button" class="mode-btn active" id="mSolo">👤 Соло (1 на 1)</button>
-    <button type="button" class="mode-btn" id="mGroup">👥 Групповой (до 6)</button>
+  <div class="modes">
+    <button type="button" class="mbtn on" id="ms" onclick="setM('solo')">👤 Соло (1 на 1)</button>
+    <button type="button" class="mbtn" id="mg" onclick="setM('group')">👥 Групповой (до 6)</button>
   </div>
 
   <div class="box">
-    <div class="scr on" id="sHome">
-      <div class="ava" id="homeIco">🎙️</div>
-      <div class="t1" id="hTitle">Режим: Соло (1 на 1)</div>
-      <div class="t2" id="hSub">Нажмите «Найти / Далее» для старта</div>
-    </div>
-
-    <div class="scr" id="sSearch">
-      <div class="ava radar">🔍</div>
-      <div class="t1" style="color:#00e676">Поиск собеседника...</div>
-      <div class="t2">Вы в очереди ожидания</div>
-      <div class="pill">Время поиска: <span id="tSearch">00:00</span></div>
-    </div>
-
-    <div class="scr" id="sCall">
-      <div class="ava call">🎧</div>
-      <div class="t1">Собеседник на связи!</div>
-      <div class="t2" style="color:#00e676">Вы в комнате разговора 1 на 1</div>
-      <div class="pill" style="color:#00e676">● Разговор: <span id="tCall">00:00</span></div>
-    </div>
-
-    <div class="scr" id="sGroup">
-      <div class="group-grid" id="groupGrid"></div>
-      <div class="pill" style="color:#00e676">● Комната (<span id="grpCount">1</span>/6) • <span id="tGroup">00:00</span></div>
-    </div>
+    <div id="ico" style="font-size:2rem;margin-bottom:8px">🎙️</div>
+    <div class="grid6" id="g6"></div>
+    <div id="t1" style="font-weight:700;margin-bottom:4px">Режим: Соло (1 на 1)</div>
+    <div id="t2" style="font-size:0.82rem;color:#94a3b8">Нажмите «Найти / Далее»</div>
   </div>
 
   <div class="chat">
     <div id="msgs"></div>
-    <form class="form" id="chatForm">
-      <input type="text" id="inp" placeholder="Написать сообщение..." disabled autocomplete="off">
-      <button type="submit" id="bSend" disabled>➤</button>
+    <form onsubmit="sendMsg(event)">
+      <input id="inp" placeholder="Сообщение..." disabled>
+      <button id="bs" disabled style="background:none;border:none;color:#00e676;padding:0 15px;font-weight:bold;cursor:pointer">➤</button>
     </form>
   </div>
 
   <div class="btns">
-    <button type="button" class="btn" id="bNext">Найти / Далее</button>
-    <button type="button" class="btn" id="bStop" disabled>Стоп</button>
-    <button type="button" class="btn" id="bMute">Выключить микрофон</button>
+    <button type="button" class="btn" id="b1" onclick="goFind()">Найти / Далее</button>
+    <button type="button" class="btn" id="b2" onclick="goStop(true)" disabled>Стоп</button>
+    <button type="button" class="btn" id="b3" onclick="goMute()">Выключить микрофон</button>
   </div>
-
-  <div id="audioPool"></div>
+  <div id="auds"></div>
 </div>
 
-<script src="./script.js?v=1001"></script>
-</body>
-</html>
+<script>
+const URL_SIG = 'https://ntfy.sh';
+const me = 'u_' + Math.random().toString(36).slice(2, 9);
+const myName = 'Участник #' + Math.floor(100 + Math.random() * 899);
+
+let mode = 'solo', st = 'home', pid = null, mic = null, mute = false, tmr = null, srch = null, sec = 0;
+const peers = {}, grp = {}, seen = new Set();
+
+function setM(m) {
+  if (st !== 'home') goStop(false);
+  mode = m;
+  document.getElementById('ms').className = m === 'solo' ? 'mbtn on' : 'mbtn';
+  document.getElementById('mg').className = m === 'group' ? 'mbtn on' : 'mbtn';
+  document.getElementById('ico').style.display = 'block';
+  document.getElementById('ico').textContent = m === 'solo' ? '🎙️' : '👥';
+  document.getElementById('g6').style.display = 'none';
+  document.getElementById('t1').textContent = m === 'solo' ? 'Режим: Соло (1 на 1)' : 'Режим: Групповой (до 6)';
+  document.getElementById('t2').textContent = 'Нажмите «Найти / Далее»';
+}
+
+function log(t, c) {
+  const d = document.createElement('div');
+  d.className = 'm ' + (c || 'sys');
+  d.textContent = t;
+  const box = document.getElementById('msgs');
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+
+function draw6() {
+  const g = document.getElementById('g6');
+  g.innerHTML = '';
+  const ids = Object.keys(grp);
+  for (let i = 0; i < 6; i++) {
+    const s = document.createElement('div');
+    if (ids[i]) {
+      s.className = 'seat busy';
+      s.textContent = ids[i] === me ? '🎙️ Вы' : '🎧 ' + grp[ids[i]];
+    } else {
+      s.className = 'seat';
+      s.textContent = '➕ Свободно';
+    }
+    g.appendChild(s);
+  }
+  document.getElementById('t1').textContent = 'Комната (' + ids.length + '/6)';
+}
+
+function post(data) {
+  const id = me + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+  fetch(URL_SIG, { method: 'POST', body: JSON.stringify({ id, f: me, name: myName, t: Date.now(), ...data }) }).catch(() => {});
+}
+
+function goFind() {
+  goStop(false);
+  document.getElementById('b2').disabled = false;
+  document.getElementById('msgs').innerHTML = '';
+  clearInterval(tmr); sec = 0;
+
+  if (!mic && navigator.mediaDevices) {
+    navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
+      mic = s;
+      if (mute) mic.getAudioTracks().forEach(tr => tr.enabled = false);
+    }).catch(() => log('Микрофон отключен — работает чат'));
+  }
+
+  if (mode === 'solo') {
+    st = 'search';
+    document.getElementById('ico').textContent = '🔍';
+    document.getElementById('t1').textContent = 'Поиск собеседника...';
+    document.getElementById('t2').textContent = 'Время поиска: 00:00';
+    log('Ищем собеседника (1 на 1)...');
+    tmr = setInterval(() => {
+      sec++;
+      document.getElementById('t2').textContent = 'Время поиска: ' + String(Math.floor(sec/60)).padStart(2,'0') + ':' + String(sec%60).padStart(2,'0');
+    }, 1000);
+    post({ tp: 'seek1' });
+    srch = setInterval(() => { if (st === 'search') post({ tp: 'seek1' }); }, 1500);
+  } else {
+    st = 'group';
+    document.getElementById('ico').style.display = 'none';
+    document.getElementById('g6').style.display = 'grid';
+    document.getElementById('inp').disabled = false;
+    document.getElementById('bs').disabled = false;
+    grp[me] = myName;
+    draw6();
+    log('Вы вошли в групповую комнату (до 6 мест)');
+    tmr = setInterval(() => {
+      sec++;
+      document.getElementById('t2').textContent = 'В комнате: ' + String(Math.floor(sec/60)).padStart(2,'0') + ':' + String(sec%60).padStart(2,'0');
+    }, 1000);
+    post({ tp: 'seek6' });
+    srch = setInterval(() => { if (st === 'group' && Object.keys(grp).length < 6) post({ tp: 'seek6' }); }, 2000);
+  }
+}
+
+function goStop(ui) {
+  clearInterval(srch); clearInterval(tmr);
+  if (pid) post({ to: pid, tp: 'bye' });
+  if (st === 'group') Object.keys(grp).forEach(u => { if (u !== me) post({ to: u, tp: 'bye6' }); });
+  Object.keys(peers).forEach(u => { try { peers[u].close(); } catch(e) {} delete peers[u]; });
+  for (const k in grp) delete grp[k];
+  pid = null; st = 'home';
+  document.getElementById('inp').disabled = true;
+  document.getElementById('bs').disabled = true;
+  if (ui) {
+    document.getElementById('b2').disabled = true;
+    setM(mode);
+    document.getElementById('t1').textContent = 'Поиск остановлен';
+    log('Вы вышли из комнаты');
+  }
+}
+
+function goMute() {
+  mute = !mute;
+  if (mic) mic.getAudioTracks().forEach(tr => tr.enabled = !mute);
+  document.getElementById('b3').textContent = mute ? 'Включить микрофон' : 'Выключить микрофон';
+}
+
+function sendMsg(e) {
+  e.preventDefault();
+  const inp = document.getElementById('inp');
+  const v = inp.value.trim();
+  if (!v) return;
+  if (st === 'call' && pid) { log(v, 'me'); post({ to: pid, tp: 'txt', v }); inp.value = ''; }
+  else if (st === 'group') { log(v, 'me'); Object.keys(grp).forEach(u => { if (u !== me) post({ to: u, tp: 'gtxt', v }); }); inp.value = ''; }
+}
+
+async function rtc(to, init, kind) {
+  if (peers[to]) try { peers[to].close(); } catch(e) {}
+  const pc = new RTCPeerConnection({ iceServers: [{ urls: 'stun:://google.com' }, { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }] });
+  peers[to] = pc;
+  if (mic) mic.getTracks().forEach(tr => pc.addTrack(tr, mic));
+  pc.ontrack = e => {
+пусть a = document.getElementById('a_' + to);
+if (!a) { a = document.createElement('audio'); a.id = 'a_' + to; a.автозапуск = true; document.getElementById('auds').appendChild(a); }
+a.srcObject = новый медиапоток ([например,дорожка]);
+a.play().catch(() => {});
+};
+pc.onicecandidate = e => { if (например,кандидат) post({ to, tp: 'c', c: e.кандидат }); };
+if (инициализация) { const o = ожидание pc.createOffer(); ожидание pc.setLocalDescription(o); post({ to, tp: 'o', o, kind }); }
+}
+асинхронная функция poll() {
+try {
+const r = await fetch(URL_SIG + '/json?poll=1&since=12s');
+if (r.ok) {
+const lines = (await r.text()).trim().split('\n');
+for (const l строк) {
+if (!l) continue;
+const w = JSON.parse(l);
+if (!w.message) continue;
+const m = JSON.parse( w.сообщение);
+if (!m || m.f === я || видел.имеет(m.id ) || Дата.сейчас() - m.t > 16000) продолжить;
+видно.добавить(m.id);
+if (m.tp === 'seek1' && st === 'search' && me > m.f) {
+st = 'call'; pid = m.f; clearInterval(srch); clearInterval(tmr); sec = 0;
+document.getElementById('ico').textContent = '🎧';
+document.getElementById('t1').textContent = 'Собеседник на связи!';
+document.getElementById('inp').disabled = false; document.getElementById('bs').disabled = false;
+document.getElementById('msgs').innerHTML = ''; log('Собеседник найден! 👋');
+tmr = setInterval(() => { sec++; document.getElementById('t2').textContent = 'Разговор: ' + String(Математический этаж(сек/60)).padStart(2,'0') + ':' + Строка(сек.%60).padStart(2,'0'); }, 1000);
+post({ to: pid, tp: 'ok1' }); rtc(pid, true, 'solo');
+} иначе, если (m.to === я && m.tp === 'ok1' && st === 'поиск') {
+st = 'вызов'; pid = m.f; clearInterval(srch); clearInterval(tmr); sec = 0;
+document.getElementById('ico').textContent = '🎧';
+document.getElementById('t1').textContent = 'Собеседник на связи!';
+document.getElementById('inp').disabled = false; document.getElementById('bs').disabled = false;
+document.getElementById('msgs').innerHTML = ''; log('Собеседник найден! 👋');
+tmr = setInterval(() => { sec++; document.getElementById('t2').textContent = 'Разговор: ' + Строка (Математический этаж(сек/60)).Начальный этап(2,'0') + ':' + Строка(сек.%60).padStart(2,'0'); }, 1000);
+rtc(pid, false, 'solo');
+} иначе, если (m.tp === 'seek6' && st === 'group' && !grp[m.f] && Object.ключи(grp).length < 6) {
+grp[m.f] = m.name || 'Участник'; draw6(); log(grp[m.f] + ' зашёл в комнату');
+if (me > m.f) rtc(m.f, true, 'group');
+} else if (m.to === me) {
+if (m.tp === 'o') {
+if (m.kind === 'group' && st === 'group' && !grp[m.f] && Object.keys(grp).длина < 6) { стеклопластик [м.f] = m.name || 'Участник'; draw6(); }
+ожидает rtc(m.f, false, m.kind);
+ожидает одноранговые узлы[m.f].setRemoteDescription(новое RTCSessionDescription(m.o));
+const a = ожидает одноранговые узлы[m.f].createAnswer(); ожидает одноранговые узлы[m.f].setLocalDescription(a);
+post({ to: m.f, tp: 'a', a });
+} else if (m.tp === 'a' && одноранговые узлы[m.f]) ожидают одноранговые узлы[m.f].setRemoteDescription(новое RTCSessionDescription(m.a));
+иначе, если (m.tp === 'c' && peers[m.f]) попробуйте { await peers[m.f].addIceCandidate(новый RTCIceCandidate(m.c)); } catch(e) {}
+else if (m.tp === 'txt' && m.f === pid) войти(m.v, 'he');
+иначе, если (m.tp === 'gtxt' && st === 'group' && grp[m.f]) войти(grp[m.f] + ': ' + m.v, 'he');
+иначе, если (m.tp === 'bye' && m.f === pid) { GoStop(true); document.getElementById('t1').textContent = 'Собеседник отключился'; }
+иначе, если (m.tp === 'bye6' && st === 'group' && grp[m.f]) { log(grp[m.f] + ' вышел'); удалить grp[m.f]; if (одноранговые узлы[m.f]) одноранговые узлы[m.f].close(); удалить одноранговые узлы[m.f]; draw6(); }
+}
+}
+}
+} catch (e) {}
+setTimeout(опрос, 1000);
+}
+poll();
+
+
