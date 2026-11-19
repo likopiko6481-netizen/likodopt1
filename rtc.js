@@ -2,7 +2,6 @@ window.localStream = null;
 var connections = {};
 var iceQueue = {};
 
-// Дефолтные STUN-серверы для прямого соединения браузеров (P2P)
 var rtcConfig = {
   iceServers: [
     { urls: 'stun:://google.com' },
@@ -10,7 +9,16 @@ var rtcConfig = {
   ]
 };
 
-// 1. Дефолтный запрос микрофона у браузера
+function showAudioStatus(text) {
+  var box = document.getElementById('messages');
+  if (!box) return;
+  var d = document.createElement('div');
+  d.className = 'msg sys';
+  d.textContent = text;
+  box.appendChild(d);
+  box.scrollTop = box.scrollHeight;
+}
+
 async function initAudio() {
   if (window.localStream) {
     window.localStream.getAudioTracks().forEach(function(track) {
@@ -25,13 +33,14 @@ async function initAudio() {
     stream.getAudioTracks().forEach(function(track) {
       track.enabled = !window.uiMuted;
     });
+    showAudioStatus('🎙️ Микрофон активен');
     return stream;
   } catch (err) {
+    showAudioStatus('⚠️ Ошибка микрофона: ' + err.name + ' (проверьте замок в адресной строке)');
     return null;
   }
 }
 
-// 2. Закрытие соединения
 function closePeer(uid) {
   if (connections[uid]) {
     connections[uid].close();
@@ -42,7 +51,6 @@ function closePeer(uid) {
   if (audioEl) audioEl.remove();
 }
 
-// 3. Буфер сетевых маршрутов (ICE)
 window.saveOrAddIce = function(uid, cand) {
   var pc = connections[uid];
   if (pc && pc.remoteDescription) {
@@ -62,21 +70,18 @@ window.flushIce = function(uid) {
   }
 };
 
-// 4. Дефолтное P2P-соединение браузер <-> браузер
 async function getPeer(uid, sendFn) {
   if (connections[uid]) return connections[uid];
 
   var stream = await initAudio();
   var pc = new RTCPeerConnection(rtcConfig);
 
-  // Отдаём свой микрофон собеседнику
   if (stream) {
     stream.getTracks().forEach(function(track) {
       pc.addTrack(track, stream);
     });
   }
 
-  // Принимаем голос собеседника в наушники/динамики
   pc.ontrack = function(event) {
     var audioEl = document.getElementById('aud_' + uid);
     if (!audioEl) {
@@ -84,13 +89,19 @@ async function getPeer(uid, sendFn) {
       audioEl.id = 'aud_' + uid;
       audioEl.autoplay = true;
       audioEl.playsInline = true;
+      audioEl.volume = 1.0;
       document.body.appendChild(audioEl);
     }
-    audioEl.srcObject = event.streams[0];
-    audioEl.play().catch(function() {});
+    var remoteStream = new MediaStream();
+    remoteStream.addTrack(event.track);
+    audioEl.srcObject = remoteStream;
+    audioEl.play().then(function() {
+      showAudioStatus('🔊 Звук собеседника пошёл в наушники');
+    }).catch(function(e) {
+      showAudioStatus('🔇 Браузер заглушил звук: нажмите в любое место экрана (' + e.name + ')');
+    });
   };
 
-  // Обмен сетевыми адресами
   pc.onicecandidate = function(event) {
     if (event.candidate) {
       sendFn({ ev: 'ice', to: uid, cand: event.candidate });
