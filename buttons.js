@@ -90,3 +90,4 @@ document.getElementById('chatForm').onsubmit = function(e) {
   if (window.netSendChat) window.netSendChat(txt);
   inp.value = '';
 };
+window.showScr = showScr;
