@@ -13,7 +13,24 @@ var peers = {};
 var lobby = {};
 var group = {};
 var seen = {};
-var RELAY = 'https://ntfy.sh';
+
+// Два параллельных канала связи (WebSocket + HTTPS), чтобы работало у всех в РФ без VPN
+var WS_URL = 'wss://://socketsbay.com';
+var HTTP_URL = 'https://ntfy.sh';
+var ws = null;
+
+var rtcConfig = {
+  iceServers: [
+    { urls: 'stun:://google.com' },
+    { urls: 'stun:://google.com' },
+    { urls: 'stun:://google.com' },
+    { urls: 'stun:://twilio.com' },
+    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
+    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+  ],
+  iceCandidatePoolSize: 10
+};
 
 if (localStorage.getItem('likodopt_cookie_ok') === '1') {
   var cb = document.getElementById('cookieBanner');
@@ -112,12 +129,18 @@ function initMic() {
     logMsg('Микрофон недоступен — работает чат');
     return;
   }
-  navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+  navigator.mediaDevices.getUserMedia({
+    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
+    video: false
+  })
     .then(function(s) {
       localStream = s;
       if (uiMuted) localStream.getAudioTracks().forEach(function(t) { t.enabled = false; });
       Object.keys(peers).forEach(function(u) {
-        localStream.getTracks().forEach(function(t) { peers[u].addTrack(t, localStream); });
+        var senders = peers[u].getSenders();
+        if (senders.length === 0) {
+          localStream.getTracks().forEach(function(t) { peers[u].addTrack(t, localStream); });
+        }
       });
     })
     .catch(function() {
@@ -134,13 +157,38 @@ function closePeer(u) {
   if (a) a.remove();
 }
 
+// Подключение основного WebSocket-канала (работает у всех операторов РФ)
+function connectWs() {
+  try {
+    ws = new WebSocket(WS_URL);
+    ws.onmessage = function(e) {
+      var pkt = null;
+      try { pkt = JSON.parse(e.data); } catch (err) { return; }
+      if (!pkt || pkt.app !== 'likodopt_global_26' || pkt.uco === myId || seen[pkt.nonce]) return;
+      seen[pkt.nonce] = true;
+      onPacket(pkt);
+    };
+    ws.onclose = function() {
+      setTimeout(connectWs, 2000);
+    };
+  } catch (e) {}
+}
+connectWs();
+
+// Отправка сигнала сразу по обоим каналам для 100% доставки
 function sendSig(data) {
+  data.app = 'likodopt_global_26';
   data.uco = myId;
   data.name = myName;
   data.nonce = myId + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
   data.ts = Date.now();
+  var raw = JSON.stringify(data);
+
+  if (ws && ws.readyState === 1) {
+    try { ws.send(raw); } catch (e) {}
+  }
   try {
-    fetch(RELAY, { method: 'POST', body: JSON.stringify(data) }).catch(function() {});
+    fetch(HTTP_URL, { method: 'POST', body: raw }).catch(function() {});
   } catch (e) {}
 }
 
@@ -149,6 +197,15 @@ function uiStartSearch() {
   document.getElementById('btnStop').disabled = false;
   document.getElementById('messages').innerHTML = '';
   initMic();
+
+  // Разблокировка аудио на мобильных устройствах (iOS / Android)
+  try {
+    var AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (AudioCtx) {
+      var ctx = new AudioCtx();
+      if (ctx.state === 'suspended') ctx.resume();
+    }
+  } catch (e) {}
 
   if (uiMode === 'solo') {
     state = 'search';
@@ -236,12 +293,7 @@ function uiSendChat(e) {
 
 async function startRtc(to, init, kind) {
   closePeer(to);
-  var pc = new RTCPeerConnection({
-    iceServers: [
-      { urls: 'stun:://google.com' },
-      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
-    ]
-  });
+  var pc = new RTCPeerConnection(rtcConfig);
   peers[to] = pc;
   if (localStream) {
     localStream.getTracks().forEach(function(t) { pc.addTrack(t, localStream); });
@@ -260,48 +312,47 @@ async function startRtc(to, init, kind) {
     a.play().catch(function() {});
   };
   pc.onicecandidate = function(e) {
-    if (e.candidate) sendSig({ cmd: 'ice', to: to, data: e.candidate });
-  };
-  if (init) {
-    var off = await pc.createOffer();
-    await pc.setLocalDescription(off);
-    sendSig({ cmd: 'offer', to: to, data: off, kind: kind });
-  }
+if (e.candidate) sendSig({ cmd: 'ice', to: to, data: e.candidate });
+};
+if (init) {
+var off = await pc.createOffer();
+await pc.setLocalDescription(off);
+sendSig({ cmd: 'offer', to: to, data: off, kind: kind });
 }
-
-async function onPacket(pkt) {
-  if (pkt.cmd === 'wait_solo' && state === 'search') {
-    lobby[pkt.uco] = { name: pkt.name, ts: Date.now() };
-    drawLobby();
-    if (myId > pkt.uco) {
-      state = 'call';
-      partnerId = pkt.uco;
-      clearInterval(searchLoop);
-      sendSig({ cmd: 'pair', to: partnerId, kind: 'solo' });
-      uiShowView('callView');
-      document.getElementById('msgInput').disabled = false;
-      document.getElementById('btnSend').disabled = false;
-      document.getElementById('messages').innerHTML = '';
-      logMsg('Собеседник найден! Поздоровайтесь 👋');
-      startRtc(partnerId, true, 'solo');
-    }
-  } else if (pkt.cmd === 'pair' && pkt.to === myId && pkt.kind === 'solo' && state === 'search') {
-    state = 'call';
-    partnerId = pkt.uco;
-    clearInterval(searchLoop);
-    uiShowView('callView');
-    document.getElementById('msgInput').disabled = false;
-    document.getElementById('btnSend').disabled = false;
-    document.getElementById('messages').innerHTML = '';
-    logMsg('Собеседник найден! Поздоровайтесь 👋');
-    startRtc(partnerId, false, 'solo');
-  } else if (pkt.cmd === 'wait_group' && state === 'group' && !group[pkt.uco] && Object.keys(group).length < 6) {
-    group[pkt.uco] = pkt.name;
-    drawGroup();
-    logMsg(pkt.name + ' зашёл в комнату');
-    sendSig({ cmd: 'pair', to: pkt.uco, kind: 'group' });
-    if (myId > pkt.uco) startRtc(pkt.uco, true, 'group');
-} else if (pkt.cmd === 'pair' && pkt.to === myId && pkt.kind === 'group' && state === 'group' && !group[pkt.uco] && Object.keys(group).длина < 6) {
+}
+асинхронная функция onPacket(pkt) {
+если (pkt.cmd === 'wait_solo' && state === 'search') {
+лобби[pkt.uco] = { название: pkt.name , ts: Date.now() };
+drawLobby();
+if (myId > pkt.ucoo) {
+state = 'вызов';
+partnerId = pkt.ucoo;
+clearInterval(searchLoop);
+sendSig({ cmd: 'pair', кому: partnerId, вид: 'solo' });
+uiShowView('callView');
+document.getElementById('msgInput').disabled = false;
+document.getElementById ('btnSend').отключено = false;
+document.getElementById('сообщения').innerHTML = ";
+logMsg('Собеседник найден! Поздоровайтесь 👋');
+startRtc(partnerId, true, 'solo');
+}
+} else if (pkt.cmd === 'пара' && pkt.to === myId && pkt.kind === 'solo' && state === 'search') {
+state = 'call';
+partnerId = pkt.uco;
+clearInterval(searchLoop);
+uiShowView('callView');
+document.getElementById('msgInput').disabled = false;
+document.getElementById('btnSend').disabled = false;
+document.getElementById('сообщения'). innerHTML = ";
+logMsg('Собеседник найден! Поздоровайтесь 👋');
+startRtc(partnerId, false, 'solo');
+} else if (pkt.cmd === 'wait_group' && state === 'group' && !group[pkt.uco] && Object.keys(group).length < 6) {
+group[pkt.uco] = pkt.name;
+drawGroup();
+logMsg(pkt.name + ' зашёл в комнату');
+Отправляет сигнал({ cmd: 'pair', кому: pkt.uco2, вид: 'group' });
+if (myId > pkt.uco2) startRtc(pkt.uco2, true, 'group');
+} else if (pkt.cmd === 'pair' && pkt.to === myId && pkt.kind === 'group' && state === 'group' && !группа[pkt.uco] && Object.keys(группа).длина < 6) {
 группа[pkt.uco] = pkt.name ;
 drawGroup();
 if (myId > pkt.uco) startRtc(pkt.uco, true, 'group');
@@ -319,16 +370,16 @@ var ans = ожидает одноранговые узлы[pkt.uco].createAnswer
 } else if (pkt.cmd === 'answer' && peers[pkt.uco]) {
 ожидают peers[pkt.uco].setRemoteDescription(новое RTCSessionDescription(pkt.data));
 } else if (pkt.cmd === 'ice' && peers[pkt.uco]) {
-try { await peers[pkt.uco].addIceCandidate(новый RTCIceCandidate(pkt.data)); } catch (e) {}
+try { await peers[pkt.uco].addIceCandidate(new RTCIceCandidate(pkt.data)); } catch (e) {}
 } else if (pkt.cmd === 'comm') {
-if (pkt.kind === 'solo' && pkt.uco === partnerId) logMsg(pkt.data, 'partner');
-if (pkt.kind === 'group' && state === 'group' && group[ пкт.uco]) logMsg(pkt.name + ': ' + пкт.данные, 'partner');
+if (pkt.kind === 'solo' && pkt.uco === partnerId) logMsg(pkt.данные, 'партнер');
+if (pkt.kind === 'group' && state === 'group' && group[pkt.uco]) logMsg(pkt.name + ': ' + pkt.data, 'partner');
 } else if (pkt.cmd === 'bye') {
 if (pkt.kind === 'solo' && pkt.uco === partnerId) {
 uiStopSession(true);
 document.getElementById('status').textContent = 'Собеседник отключился';
 }
-if (pkt.kind === 'group' && state === 'group' && group[pkt.uco]) {
+if (pkt.kind === 'group' && state === 'group' && group[pkt.uco] ) {
 logMsg(group[pkt.uco] + ' вышел');
 delete group[pkt.uco];
 closePeer(pkt.uco);
@@ -339,7 +390,7 @@ drawGroup();
 }
 асинхронная функция poll() {
 try {
-var res = await fetch(RELAY + '/json?poll=1&since=12s');
+var res = await fetch(HTTP_URL + '/json?poll=1&since=12s');
 if (res.ok) {
 var lines = (await res.text()).trim().split('\n');
 for (var i = 0; i < lines.длина; i++) {
@@ -347,12 +398,12 @@ if (!строки[i]) продолжить;
 var w = JSON.parse(строки[i]);
 if (!без сообщения) продолжить;
 var pkt = JSON.parse(без сообщения);
-if (!pkt || pkt.uco === myId || видел [pkt.одноразовый номер] || Date.now() - pkt.ts > 16000) продолжить;
-видел[pkt.одноразовый номер] = true;
-onPacket(pkt );
+if (!pkt || pkt.app !== 'likodopt_global_26' || pkt.uco === myId || видел[pkt.одноразовый номер] || Date.now() - pkt.ts > 16000) продолжить ;
+замечено[pkt.одноразовый номер] = true;
+onPacket(pkt);
 }
 }
 } catch (e) {}
 setTimeout(опрос, 1000);
 }
-опрос ();
+poll();
