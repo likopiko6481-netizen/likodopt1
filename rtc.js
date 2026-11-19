@@ -1,4 +1,4 @@
-var localStream = null;
+window.localStream = window.localStream || null;
 var connections = {};
 var rtcConfig = {
   iceServers: [
@@ -8,56 +8,33 @@ var rtcConfig = {
   ]
 };
 
-window.askMicNow = function() {
-  if (localStream) {
-    localStream.getAudioTracks().forEach(function(t) { t.enabled = !window.uiMuted; });
-    return;
-  }
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    if (typeof log === 'function') log('Браузер не поддерживает микрофон');
-    return;
-  }
-  navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-    .then(function(stream) {
-      localStream = stream;
-      localStream.getAudioTracks().forEach(function(t) { t.enabled = !window.uiMuted; });
-      if (typeof log === 'function') log('🎙️ Микрофон включён');
-      Object.keys(connections).forEach(function(uid) {
-        var pc = connections[uid];
-        if (pc && pc.getSenders().length === 0) {
-          localStream.getTracks().forEach(function(track) {
-            pc.addTrack(track, localStream);
-          });
-        }
-      });
-    })
-    .catch(function(err) {
-      if (typeof log === 'function') log('⚠️ Разрешите микрофон в настройках сайта (' + err.name + ')');
-    });
-};
-
 function initAudio() {
-  if (localStream) return Promise.resolve(localStream);
-  window.askMicNow();
-  return new Promise(function(resolve) {
-    setTimeout(function() { resolve(localStream); }, 400);
-  });
+  if (window.localStream) {
+    window.localStream.getAudioTracks().forEach(function(t) { t.enabled = !window.uiMuted; });
+    return Promise.resolve(window.localStream);
+  }
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return Promise.resolve(null);
+  return navigator.mediaDevices.getUserMedia({ audio: true })
+    .then(function(s) {
+      window.localStream = s;
+      s.getAudioTracks().forEach(function(t) { t.enabled = !window.uiMuted; });
+      return s;
+    })
+    .catch(function() { return null; });
 }
 
 function closePeer(uid) {
-  if (connections[uid]) {
-    try { connections[uid].close(); } catch (e) {}
-    delete connections[uid];
-  }
+  if (connections[uid]) { try { connections[uid].close(); } catch (e) {} delete connections[uid]; }
   var a = document.getElementById('aud_' + uid);
   if (a) a.remove();
 }
 
 async function getPeer(uid, sendFn) {
   if (connections[uid]) return connections[uid];
-  if (!localStream) await initAudio();
+  if (!window.localStream) await initAudio();
 
   var pc = new RTCPeerConnection(rtcConfig);
+
   pc.ontrack = function(e) {
     var a = document.getElementById('aud_' + uid);
     if (!a) {
@@ -66,11 +43,11 @@ async function getPeer(uid, sendFn) {
       a.autoplay = true;
       a.playsInline = true;
       a.volume = 1.0;
-      var p = document.getElementById('audioPool');
-      if (p) p.appendChild(a);
+      document.body.appendChild(a);
     }
-    var remoteStream = (e.streams && e.streams.length > 0) ? e.streams[0] : new MediaStream([e.track]);
-    a.srcObject = remoteStream;
+    var stream = new MediaStream();
+    stream.addTrack(e.track);
+    a.srcObject = stream;
     a.play().catch(function() {});
   };
 
@@ -78,9 +55,9 @@ async function getPeer(uid, sendFn) {
     if (e.candidate) sendFn({ ev: 'ice', to: uid, cand: e.candidate });
   };
 
-  if (localStream) {
-    localStream.getTracks().forEach(function(t) {
-      pc.addTrack(t, localStream);
+  if (window.localStream) {
+    window.localStream.getTracks().forEach(function(t) {
+      pc.addTrack(t, window.localStream);
     });
   }
 
