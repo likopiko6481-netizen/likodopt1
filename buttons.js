@@ -53,6 +53,7 @@ document.getElementById('btnModeGroup').onclick = function() {
 };
 
 document.getElementById('btnNext').onclick = function() {
+  if (window.askMicNow) window.askMicNow();
   document.getElementById('btnStop').disabled = false;
   document.getElementById('messages').innerHTML = '';
   if (uiMode === 'solo') {
