@@ -4,51 +4,70 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
 <meta name="google" content="notranslate">
-<title>LIKODOPT</title>
+<title>LIKODOPT — Голосовая чат-рулетка</title>
 <style>
 * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; -webkit-tap-highlight-color: transparent; }
-body { background: #0b0d12 url('./bg.png') center/cover no-repeat fixed; background-image: url('./bg.png'), url('./bg.jpg'), url('./bg.jpeg'), url('./bg.webp'); color: #f1f5f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }
-.app { background: rgba(20, 23, 31, 0.88); width: 100%; max-width: 440px; border-radius: 24px; padding: 22px; border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85); display: flex; flex-direction: column; gap: 14px; position: relative; z-index: 10; }
+body { background: #0b0d12 url('./bg.png') center/cover no-repeat fixed; background-image: url('./bg.png'), url('./bg.jpg'), url('./bg.jpeg'), url('./bg.webp'); color: #f1f5f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 14px; }
+.app { background: rgba(20, 23, 31, 0.90); width: 100%; max-width: 460px; border-radius: 24px; padding: 20px; border: 1px solid rgba(255, 255, 255, 0.12); box-shadow: 0 20px 50px rgba(0, 0, 0, 0.85); display: flex; flex-direction: column; gap: 12px; position: relative; z-index: 10; }
 .top { display: flex; justify-content: space-between; align-items: center; padding-bottom: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
-.logo { font-size: 1.5rem; font-weight: 900; color: #00e676; letter-spacing: 1px; }
-.badge { background: #1e2330; padding: 6px 12px; border-radius: 20px; font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; gap: 7px; border: 1px solid #2e3548; }
-.dot { width: 9px; height: 9px; border-radius: 50%; background: #00e676; }
-.box { background: rgba(14, 16, 22, 0.78); border-radius: 18px; padding: 22px 16px; border: 1px solid rgba(255, 255, 255, 0.08); min-height: 180px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+.logo { font-size: 1.45rem; font-weight: 900; color: #00e676; letter-spacing: 1px; }
+.badge { background: #1e2330; padding: 5px 11px; border-radius: 20px; font-size: 0.8rem; font-weight: 600; display: flex; align-items: center; gap: 6px; border: 1px solid #2e3548; }
+.dot { width: 8px; height: 8px; border-radius: 50%; background: #00e676; }
+
+/* Переключатель режимов: Соло / Групповой */
+.mode-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: rgba(14, 16, 22, 0.85); padding: 5px; border-radius: 14px; border: 1px solid #262b38; }
+.mode-btn { padding: 10px 8px; border: none; border-radius: 10px; font-size: 0.88rem; font-weight: 700; cursor: pointer; background: transparent; color: #94a3b8; transition: all 0.15s; touch-action: manipulation; }
+.mode-btn.active { background: #00e676; color: #000; box-shadow: 0 2px 10px rgba(0, 230, 118, 0.3); }
+
+/* Окно экранов */
+.box { background: rgba(14, 16, 22, 0.80); border-radius: 18px; padding: 18px 14px; border: 1px solid rgba(255, 255, 255, 0.08); min-height: 185px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
 .scr { display: none; flex-direction: column; align-items: center; width: 100%; }
 .scr.on { display: flex; }
-.ava { width: 72px; height: 72px; border-radius: 50%; background: #1e2330; border: 2px solid #2e3548; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin-bottom: 12px; }
+.ava { width: 68px; height: 68px; border-radius: 50%; background: #1e2330; border: 2px solid #2e3548; display: flex; align-items: center; justify-content: center; font-size: 1.9rem; margin-bottom: 10px; }
 .ava.radar { background: rgba(0, 230, 118, 0.12); border-color: #00e676; animation: pulse 1.5s infinite; }
 .ava.call { background: #163326; border: 3px solid #00e676; box-shadow: 0 0 20px rgba(0, 230, 118, 0.4); }
 @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.6); } 100% { box-shadow: 0 0 0 18px rgba(0, 230, 118, 0); } }
-.t1 { font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; }
-.t2 { font-size: 0.85rem; color: #94a3b8; margin-bottom: 10px; }
-.pill { background: #1e2330; border: 1px solid #333b50; padding: 5px 14px; border-radius: 12px; font-size: 0.85rem; font-weight: 700; }
-.chat { background: rgba(14, 16, 22, 0.78); border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.08); display: flex; flex-direction: column; height: 160px; overflow: hidden; }
-#msgs { flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; font-size: 0.9rem; }
-.m { padding: 8px 12px; border-radius: 12px; max-width: 82%; word-wrap: break-word; }
+.t1 { font-size: 1.05rem; font-weight: 700; margin-bottom: 4px; }
+.t2 { font-size: 0.82rem; color: #94a3b8; margin-bottom: 8px; }
+.pill { background: #1e2330; border: 1px solid #333b50; padding: 4px 12px; border-radius: 12px; font-size: 0.82rem; font-weight: 700; }
+
+/* Сетка на 6 человек в групповой комнате */
+.group-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; margin-bottom: 10px; }
+.seat { background: #1a1f2b; border: 1px solid #2c3345; border-radius: 12px; padding: 10px 4px; display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 0.75rem; color: #64748b; }
+.seat.occupied { background: #163326; border-color: #00e676; color: #f1f5f9; font-weight: 600; }
+.seat-ico { font-size: 1.35rem; }
+
+/* Чат */
+.chat { background: rgba(14, 16, 22, 0.80); border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.08); display: flex; flex-direction: column; height: 150px; overflow: hidden; }
+#msgs { flex: 1; padding: 10px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; font-size: 0.88rem; }
+.m { padding: 7px 11px; border-radius: 11px; max-width: 84%; word-wrap: break-word; }
 .m.me { background: #00e676; color: #000; align-self: flex-end; font-weight: 600; }
 .m.he { background: #232836; color: #fff; align-self: flex-start; }
-.m.sys { color: #94a3b8; align-self: center; font-size: 0.8rem; text-align: center; }
+.m.sys { color: #94a3b8; align-self: center; font-size: 0.78rem; text-align: center; }
 .form { display: flex; border-top: 1px solid rgba(255, 255, 255, 0.08); }
-.form input { flex: 1; background: transparent; border: none; padding: 12px; color: #fff; outline: none; font-size: 16px; }
-.form button { background: transparent; border: none; color: #00e676; font-weight: 800; padding: 0 18px; font-size: 1.2rem; cursor: pointer; }
+.form input { flex: 1; background: transparent; border: none; padding: 11px; color: #fff; outline: none; font-size: 16px; }
+.form button { background: transparent; border: none; color: #00e676; font-weight: 800; padding: 0 16px; font-size: 1.2rem; cursor: pointer; }
 .form button:disabled { color: #475569; cursor: not-allowed; }
+
+/* Кнопки управления */
 .btns { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; position: relative; z-index: 20; }
-.btn { padding: 15px 12px; border: none; border-radius: 14px; font-size: 0.98rem; font-weight: 700; cursor: pointer; touch-action: manipulation; }
+.btn { padding: 14px 10px; border: none; border-radius: 14px; font-size: 0.96rem; font-weight: 700; cursor: pointer; touch-action: manipulation; }
 .btn:active { transform: scale(0.97); }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 #bNext { background: #00e676; color: #000; }
 #bStop { background: #ff5252; color: #fff; }
 #bMute { grid-column: span 2; background: #232836; color: #fff; border: 1px solid #32394d; }
 #bMute.on { background: #ff9800; color: #000; }
-.ck { position: fixed; top: 14px; left: 50%; transform: translateX(-50%); width: calc(100% - 32px); max-width: 440px; background: #14171f; border: 1px solid #00e676; border-radius: 16px; padding: 10px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; z-index: 9999; box-shadow: 0 10px 30px rgba(0,0,0,0.85); }
-.ck button { background: #232836; color: #fff; border: 1px solid #363e54; border-radius: 50%; width: 32px; height: 32px; min-width: 32px; font-size: 1rem; cursor: pointer; touch-action: manipulation; }
+
+/* Плашка Cookie */
+.ck { position: fixed; top: 12px; left: 50%; transform: translateX(-50%); width: calc(100% - 28px); max-width: 460px; background: #14171f; border: 1px solid #00e676; border-radius: 14px; padding: 9px 14px; display: flex; align-items: center; justify-content: space-between; gap: 10px; z-index: 9999; box-shadow: 0 10px 30px rgba(0,0,0,0.85); }
+.ck button { background: #232836; color: #fff; border: 1px solid #363e54; border-radius: 50%; width: 30px; height: 30px; min-width: 30px; font-size: 0.95rem; cursor: pointer; touch-action: manipulation; }
 </style>
 </head>
 <body>
 
 <div class="ck" id="ckBox">
-  <span style="font-size:0.83rem;color:#e2e8f0">🍪 Мы используем ваши файлы <b style="color:#00e676">Cookie</b> для улучшения работы сайта.</span>
+  <span style="font-size:0.82rem;color:#e2e8f0">🍪 Мы используем ваши файлы <b style="color:#00e676">Cookie</b> для улучшения работы сайта.</span>
   <button type="button" onclick="hideCk()">✕</button>
 </div>
 
@@ -58,23 +77,40 @@ body { background: #0b0d12 url('./bg.png') center/cover no-repeat fixed; backgro
     <div class="badge"><span class="dot"></span>Онлайн: В сети</div>
   </div>
 
+  <!-- 2 кнопки выбора режима: Соло или Групповой до 6 человек -->
+  <div class="mode-switch">
+    <button type="button" class="mode-btn active" id="mSolo" onclick="setMode('solo')">👤 Соло (1 на 1)</button>
+    <button type="button" class="mode-btn" id="mGroup" onclick="setMode('group')">👥 Групповой (до 6)</button>
+  </div>
+
   <div class="box">
+    <!-- Экран 1: Главный -->
     <div class="scr on" id="sHome">
-      <div class="ava">🎙️</div>
-      <div class="t1" id="hTitle">Нажмите «Найти / Далее»</div>
-      <div class="t2">Голосовая и текстовая чат-рулетка</div>
+      <div class="ava" id="homeIco">🎙️</div>
+      <div class="t1" id="hTitle">Режим: Соло (1 на 1)</div>
+      <div class="t2" id="hSub">Нажмите «Найти / Далее» для старта</div>
     </div>
+
+    <!-- Экран 2: Поиск собеседника (Соло) -->
     <div class="scr" id="sSearch">
       <div class="ava radar">🔍</div>
       <div class="t1" style="color:#00e676">Поиск собеседника...</div>
       <div class="t2">Вы в очереди ожидания</div>
       <div class="pill">Время поиска: <span id="tSearch">00:00</span></div>
     </div>
+
+    <!-- Экран 3: Собеседник найден (Соло) -->
     <div class="scr" id="sCall">
       <div class="ava call">🎧</div>
-      <div class="t1">Собеседник найден!</div>
-      <div class="t2" style="color:#00e676">Вы в комнате разговора</div>
+      <div class="t1">Собеседник на связи!</div>
+      <div class="t2" style="color:#00e676">Вы в комнате разговора 1 на 1</div>
       <div class="pill" style="color:#00e676">● Разговор: <span id="tCall">00:00</span></div>
+    </div>
+
+    <!-- Экран 4: Групповая комната на 6 человек -->
+    <div class="scr" id="sGroup">
+      <div class="group-grid" id="groupGrid"></div>
+      <div class="pill" style="color:#00e676">● Комната (<span id="grpCount">1</span>/6) • <span id="tGroup">00:00</span></div>
     </div>
   </div>
 
@@ -91,13 +127,27 @@ body { background: #0b0d12 url('./bg.png') center/cover no-repeat fixed; backgro
     <button type="button" class="btn" id="bStop" onclick="clickStop(true)" disabled>Стоп</button>
     <button type="button" class="btn" id="bMute" onclick="clickMute()">Выключить микрофон</button>
   </div>
-  <audio id="aud" autoplay playsinline></audio>
+
+  <div id="audioPool"></div>
 </div>
 
 <script>
 const DB = 'https://firebasedatabase.app';
-const me = 'u_' + Math.random().toString(36).slice(2, 10);
-let pid = null, st = 'home', mic = null, pc = null, muted = false, tInt = null, sInt = null, sec = 0;
+const me = 'u_' + Math.random().toString(36).slice(2, 9);
+const myName = 'Участник #' + Math.floor(100 + Math.random() * 899);
+
+let mode = 'solo'; // 'solo' | 'group'
+let st = 'home';   // 'home' | 'search' | 'call' | 'group'
+let soloPid = null;
+let groupRoomId = null;
+let mic = null;
+let muted = false;
+let tInt = null;
+let sInt = null;
+let sec = 0;
+
+const peers = {}; // { peerId: RTCPeerConnection }
+const groupMembers = {}; // { peerId: name }
 const seen = new Set();
 
 if (localStorage.getItem('lk_ck') === '1') document.getElementById('ckBox').style.display = 'none';
@@ -106,123 +156,262 @@ function hideCk() {
   document.getElementById('ckBox').style.display = 'none';
 }
 
-function goScr(name) {
-  clearInterval(tInt); sec = 0;
-  document.getElementById('sHome').classList.toggle('on', name === 'home');
-  document.getElementById('sSearch').classList.toggle('on', name === 'search');
-  document.getElementById('sCall').classList.toggle('on', name === 'call');
-  if (name === 'search' || name === 'call') {
-    const el = document.getElementById(name === 'search' ? 'tSearch' : 'tCall');
-    el.textContent = '00:00';
-    tInt = setInterval(() => {
-      sec++;
-      el.textContent = String(Math.floor(sec/60)).padStart(2,'0') + ':' + String(sec%60).padStart(2,'0');
-    }, 1000);
-  }
+// Переключение между Соло и Групповым режимом
+function setMode(newMode) {
+  if (st !== 'home') clickStop(false);
+  mode = newMode;
+  document.getElementById('mSolo').classList.toggle('active', mode === 'solo');
+  document.getElementById('mGroup').classList.toggle('active', mode === 'group');
+  document.getElementById('homeIco').textContent = mode === 'solo' ? '🎙️' : '👥';
+  document.getElementById('hTitle').textContent = mode === 'solo' ? 'Режим: Соло (1 на 1)' : 'Режим: Групповой (до 6 чел.)';
+document.getElementById('hSub').textContent = mode === 'solo' ? 'Один на один со случайным собеседником' : 'Общая голосовая комната до 6 человек';
+goScr('home');
 }
-
-function log(txt, cls) {
-  const d = document.createElement('div');
-  d.className = 'm ' + (cls || 'sys');
-  d.textContent = txt;
-  const box = document.getElementById('msgs');
-  box.appendChild(d);
-  box.scrollTop = box.scrollHeight;
+функция goScr(name) {
+clearInterval(tInt); sec = 0;
+['sHome', 'sSearch', 'sCall', 'sGroup'].forEach(id => document.getElementById(id).classList.remove('on'));
+const map = { home: 'sHome', search: 'sSearch', call: 'sCall', group: 'sGroup' };
+document.getElementById(map[name]).classList .добавить('вкл.');
+if (name === 'поиск' || name === 'вызов' || name === 'группа') {
+const elId = name === 'поиск'? 'tSearch' : (name === 'вызов' ? 'tCall' : 'TGroup');
+const el = document.getElementById(elId);
+el.textContent = '00:00';
+tInt = setInterval(() => {
+сек++;
+el.textContent = строка (Математический этаж(сек / 60)).padStart(2, '0') + ':' + Строка(сек. % 60).padStart(2, '0');
+}, 1000);
 }
-
-function chatOn(on) {
-  document.getElementById('inp').disabled = !on;
-  document.getElementById('bSend').disabled = !on;
 }
-
+function renderGroupGrid() {
+const grid = document.getElementById('groupGrid');
+grid.innerHTML = '';
+const ids = Object.keys(groupMembers);
+document.getElementById('grpCount').textContent = ids.length;
+for (let i = 0; i < 6; i++) {
+const seat = document.createElement('div');
+if (ids[i]) {
+const uid = ids[i];
+seat.className = 'seat occupied';
+seat.innerHTML = '' + (uid === me ? '🎙️' : '🎧') + '' + (uid === me ? 'Вы' : groupMembers[uid]) + ";
+} else {
+seat.className = 'seat';
+seat.innerHTML = '➕Свободно';
+}
+grid.appendChild(сиденье);
+}
+}
+журнал функций(txt, cls) {
+const d = document.createElement('div');
+d.className = 'm ' + (cls || 'sys');
+d.textContent = txt;
+const box = document.getElementById('msgs');
+box.appendChild(d);
+box.scrollTop = box.scrollHeight;
+}
+функция ChatON(вкл.) {
+document.getElementById('inp').disabled = !вкл.;
+document.getElementById('bSend').disabled = !вкл.;
+}
 function post(to, data) {
-  fetch(DB + '/in/' + to + '.json', { method: 'POST', body: JSON.stringify({ f: me, t: Date.now(), ...data }) }).catch(() => {});
+fetch(DB + '/in/' + to + '.json', {
+method: 'POST',
+body: JSON.stringify({ f: me, name: myName, t: Date.now(), ...data })
+}).catch(() => {});
 }
-
-function clickNext() {
-  clickStop(false);
-  st = 'search';
-  document.getElementById('bStop').disabled = false;
-  document.getElementById('msgs').innerHTML = '';
-  goScr('search');
-  log('Вы вошли в очередь поиска собеседника...');
-
-  if (!mic && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-    navigator.mediaDevices.getUserMedia({ audio: true }).then(s => {
-      mic = s;
-      if (muted) mic.getAudioTracks().forEach(tr => tr.enabled = false);
-    }).catch(() => log('Микрофон недоступен — работает чат'));
-  }
-
-  step();
-  sInt = setInterval(step, 1500);
+function closePeer(uid) {
+if (peers[uid]) {
+try { peers[uid].close(); } catch (e) {}
+удалить peers[uid];
 }
-
-function clickStop(show) {
-  clearInterval(sInt);
-  fetch(DB + '/q/' + me + '.json', { method: 'DELETE' }).catch(() => {});
-  if (pid) post(pid, { tp: 'bye' });
-  pid = null; st = 'home'; chatOn(false);
-  if (pc) { try { pc.close(); } catch (e) {} pc = null; }
-  if (show) {
-    document.getElementById('bStop').disabled = true;
-    document.getElementById('hTitle').textContent = 'Поиск остановлен';
-    goScr('home');
-    log('Вы вышли из очереди');
-  }
+const aud = document.getElementById('aud_' + uid);
+if (aud) aud.remove();
 }
-
+функция clickNext() {
+clickStop(false);
+document.getElementById('bStop').disabled = false;
+document.getElementById('msgs').innerHTML = ";
+if (!mic && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
+navigator.mediaDevices.getUserMedia({ аудио: true }).then(s => {
+mic = s;
+если (отключено) mic.getAudioTracks().forEach(tr => tr.enabled = false);
+Object.values(одноранговые узлы).forEach(pc => mic.getTracks().forEach(tr => pc.addTrack(tr, mic)));
+}).catch(() => log('Микрофон отключен — работает текстовый чат'));
+}
+if (mode === 'solo') {
+st = 'search';
+goScr('search');
+log('Поиск свободного собеседника (1 на 1)...');
+soloStep();
+sInt = setInterval(soloStep, 1500);
+} else {
+joinGroupRoom();
+}
+}
+функция clickStop(showUi) {
+clearInterval(sInt);
+выборка(DB + '/q_solo/' + me + '.json', { метод: 'DELETE' }).catch(() => {});
+if (soloPid) post(soloPid, { tp: 'bye' });
+if (groupromid) {
+выборка(DB + '/rooms/' + groupromid + '/members/' + me + '.json', { метод: 'DELETE' }).catch(() => {});
+Object.keys(участники группы).forEach(uid => { if (uid !== me) post(uid, { tp: 'g_bye' }); });
+}
+Object.keys(peers).forEach(closePeer);
+for (const k в GroupMembers) удалить GroupMembers[k];
+soloPid = null;
+groupromid = null;
+st = 'home';
+ChatON(ложь);
+if (showUi) {
+document.getElementById('bStop').disabled = true;
+document.getElementById('hTitle').textContent = 'Диалог завершён';
+goScr('home');
+log('Вы вышли из комнаты');
+}
+}
 function clickMute() {
-  muted = !muted;
-  if (mic) mic.getAudioTracks().forEach(tr => tr.enabled = !muted);
-  const b = document.getElementById('bMute');
-  b.textContent = muted ? 'Включить микрофон' : 'Выключить микрофон';
-  b.classList.toggle('on', muted);
+muted = !muted;
+if (mic) mic.getAudioTracks().forEach(tr => tr.enabled = !muted);
+const b = document.getElementById('bMute');
+b.textContent = muted ? 'Включить микрофон' : 'Выключить микрофон';
+b.classList.toggle('on', muted);
 }
-
 function sendTxt(e) {
-  e.preventDefault();
-  const inp = document.getElementById('inp');
-  const txt = inp.value.trim();
-  if (!txt || !pid) return;
-  log(txt, 'me');
-  post(pid, { tp: 'txt', v: txt });
-  inp.value = '';
+e.preventDefault();
+const inp = document.getElementById('inp');
+const txt = inp.value.trim();
+if (!txt) return;
+if (st === 'call' && soloPid) {
+log(txt, 'me');
+post(soloPid, { tp: 'txt', v: txt });
+inp.value = '';
+} else if (st === 'group') {
+log(txt, 'me');
+Object.keys(groupMembers).forEach(uid => {
+if (uid !== me) post(uid, { tp: 'g_txt', v: txt });
+});
+inp.value = '';
 }
-
-async function step() {
-  if (st !== 'search') return;
-  try {
-await fetch(DB + '/q/' + me + '.json', { метод: 'PUT', тело: JSON.stringify({ id: me, t: Date.now() }) });
-const r = await fetch(DB + '/q.json');
-const q = await r.json();
+}
+// --- ЛОГИКА СОЛО (1 на 1) ---
+асинхронная функция soloStep() {
+if (st !== 'search') return;
+try {
+await fetch(DB + '/q_solo/' + me + '.json', { метод: 'PUT', тело: JSON.stringify({ id: me, t: Date.now() }) });
+const r = await fetch(DB + '/q_solo.json');
+const q = await r.json() ;
 if (!q || st !== 'search') return;
 for (const k of Object.keys(q)) {
-if (k !== me && q [k] && (Date.now() - q[k].t < 10000) && me > k) {
-st = 'conn'; pid = k; clearInterval(sInt);
-выборка(DB + '/q/' + me + '.json', {метод: 'DELETE' }).catch(() => {});
-выборка(DB + '/q/' + pid + '.json', {метод: 'DELETE' }).catch(() => {}) ;
-post(pid, { tp: 'ok' });
-call(true);
+if (k !== me && q[k] && (Date.now() - q[k].t < 10000) && me > k) {
+st = 'conn'; soloPid = k; clearInterval(sInt);
+fetch(DB + '/q_solo/' + me + '.json', { метод: 'DELETE' }).catch (() => {});
+fetch(DB + '/q_solo/' + soloPid + '.json', { метод: 'DELETE' }).catch(() => {});
+post(soloPid, { tp: 'ok' });
+startSoloCall(true);
 return;
 }
 }
 } catch (e) {}
 }
-асинхронный вызов функции (init) {
+async function startSoloCall(init) {
 st = 'call'; goScr('call'); chatOn(true);
 document.getElementById('msgs').innerHTML = '';
-log('Собеседник найден! Поздоровайтесь 👋');
-pc = новое RTCPeerConnection({ iceServers: [{ urls: 'stun:google.com ' }, { urls: 'turn:openrelay.metered.ca:443', имя пользователя: 'openrelayproject', учетные данные: 'openrelayproject' }] });
+log('Собеседник найден! Вы в комнате 1 на 1 👋');
+await createRtcWith(soloPid, init, 'solo');
+}
+// --- ЛОГИКА ГРУППОВОЙ КОМНАТЫ (ДО 6 ЧЕЛОВЕК) ---
+async function joinGroupRoom() {
+st = 'group';
+goScr('group');
+chatOn(true);
+groupMembers[me] = myName;
+renderGroupGrid();
+log('Подключаемся к групповой комнате (до 6 человек)...');
+попробуйте {
+const r = await fetch(DB + '/rooms.json');
+const rooms = (await r.json()) || {};
+пусть chosenRoom = null;
+const now = Date.now();
+for (const избавиться от Object.keys(rooms)) {
+const mems = rooms[rId] && rooms[rId].members ? rooms[rId].members : {};
+const activeIds = Object.keys(mems).filter(uid => now - mems[uid].t < 12000);
+if (activeIds.length > 0 && activeIds.length < 6) {
+chosenRoom = rId;
+break;
+}
+}
+if (!chosenRoom) {
+chosenRoom = 'room_' + Math.random().toString(36).slice(2, 8);
+}
+groupRoomId = chosenRoom;
+log('Вы вошли в комнату. Ожидаем участников (до 6 мест)...');
+await syncGroupRoom();
+sInt = setInterval(syncGroupRoom, 2500);
+} catch (e) {}
+}
+async function syncGroupRoom() {
+if (st !== 'group' || !groupRoomId) return;
+try {
+await fetch(DB + '/rooms/' + groupRoomId + '/members/' + me + '.json', {
+method: 'PUT',
+body: JSON.stringify({ name: myName, t: Date.now() })
+});
+const r = await fetch(DB + '/rooms/' + groupRoomId + '/members.json');
+const mems = (await r.json()) || {};
+const now = Date.now();
+for (const uid of Object.keys(mems)) {
+if (uid === me) continue;
+if (now - mems[uid].t > 12000) {
+if (groupMembers[uid]) {
+log(groupMembers[uid] + ' вышел из комнаты');
+delete groupMembers[uid];
+closePeer(uid);
+}
+continue;
+}
+if (!groupMembers[uid] && Object.keys(groupMembers).length < 6) {
+groupMembers[uid] = mems[uid].name || 'Участник';
+log(groupMembers[uid] + ' присоединился к комнате!');
+if (me > uid && !peers[uid]) {
+await createRtcWith(uid, true, 'group');
+}
+}
+}
+renderGroupGrid();
+} catch (e) {}
+}
+// --- ОБЩИЙ WEBRTC ДЛЯ СОЛО И ГРУППЫ ---
+async function createRtcWith(targetId, isInitiator, callType) {
+closePeer(targetId);
+const pc = new RTCPeerConnection({
+iceServers: [
+{ urls: 'stun:google.com' },
+{ urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
+]
+});
+peers[targetId] = pc;
 if (mic) mic.getTracks().forEach(tr => pc.addTrack(tr, mic));
-pc.ontrack = e => { const a = document.getElementById('aud'); a.srcObject = новый медиапоток ([например, трек]); a.play ().поймать(() => {}); }; 
-pc.onicecandidate = e => { if (e.кандидат && pid) post(pid, { tp: 'c', c: e.кандидат }); };
-if (init) {
-const o = ожидает pc.createOffer();
-ожидает pc.setLocalDescription(o);
-post(pid, { tp: 'o', o });
+pc.ontrack = e => {
+let aud = document.getElementById('aud_' + targetId);
+if (!aud) {
+aud = document.createElement('audio');
+aud.id = 'aud_' + targetId;
+aud.autoplay = true;
+aud.playsInline = true;
+document.getElementById('audioPool').appendChild(aud);
+}
+aud.srcObject = new MediaStream([e.track]);
+aud.play().catch(() => {});
+};
+pc.onicecandidate = e => {
+if (e.candidate) post(targetId, { tp: 'c', c: e.candidate });
+};
+if (isInitiator) {
+const o = await pc.createOffer();
+await pc.setLocalDescription(o);
+post(targetId, { tp: 'o', o, callType });
 }
 }
+// --- ПРИЁМ СИГНАЛОВ ---
 setInterval(async () => {
 try {
 const r = await fetch(DB + '/in/' + me + '.json');
@@ -230,16 +419,44 @@ const msgs = await r.json();
 if (!msgs) return;
 fetch(DB + '/in/' + me + '.json', { method: 'DELETE' }).catch(() => {});
 for (const k of Object.keys(msgs)) {
-if (seen.has(k)) continue; seen.add(k);
+if (seen.has(k)) continue;
+seen.add(k);
 const m = msgs[k];
 if (!m || Date.now() - m.t > 20000) continue;
-if (m.tp === 'ok' && st === 'search') { st = 'conn'; pid = m.f; clearInterval(sInt); call(false); }
-else if (m.f === pid) {
-если (m.tp === 'o' && pc) { await pc.setRemoteDescription(новое RTCSessionDescription(m.o)); const a = await pc.createAnswer(); await pc.setLocalDescription(a); post(pid, { tp: 'a', a }); }
-еще, если (m.tp === 'a' && pc) ожидает pc.setRemoteDescription(новое RTCSessionDescription(m.a));
-иначе, если (m.tp === 'c' && pc) { try { await pc.addIceCandidate(новый RTCIceCandidate(m.c)); } catch (e) {} }
-else if (m.tp === 'txt') войти (т.е. 'он');
-иначе, если (m.tp === 'пока') { clickStop(true); document.getElementById('hTitle').textContent = 'Собеседник отключился'; }
+if (m.tp === 'ok' && st === 'search') {
+st = 'conn'; soloPid = m.f; clearInterval(sInt);
+startSoloCall(false);
+} else if (m.tp === 'o') {
+if (m.callType === 'group' && st === 'group') {
+if (!groupMembers[m.f] && Object.keys(groupMembers).length < 6) {
+groupMembers[m.f] = m.name || 'Участник';
+renderGroupGrid();
+}
+await createRtcWith(m.f, false, 'group');
+}
+const pc = peers[m.f];
+if (pc) {
+await pc.setRemoteDescription(new RTCSessionDescription(m.o));
+const a = await pc.createAnswer();
+await pc.setLocalDescription(a);
+post(m.f, { tp: 'a', a });
+}
+} else if (m.tp === 'a' && peers[m.f]) {
+await peers[m.f].setRemoteDescription(new RTCSessionDescription(m.a));
+} else if (m.tp === 'c' && peers[m.f]) {
+try { await peers[m.f].addIceCandidate(new RTCIceCandidate(m.c)); } catch (e) {}
+} else if (m.tp === 'txt' && m.f === soloPid) {
+log(m.v, 'he');
+} else if (m.tp === 'g_txt' && st === 'group' && groupMembers[m.f]) {
+log((m.name || 'Участник') + ': ' + m.v, 'he');
+} else if (m.tp === 'bye' && m.f === soloPid) {
+clickStop(true);
+document.getElementById('hTitle').textContent = 'Собеседник отключился';
+} else if (m.tp === 'g_bye' && st === 'group' && groupMembers[m.f]) {
+log(groupMembers[m.
+delete groupMembers[m.f];
+closePeer(m.f);
+renderGroupGrid();
 }
 }
 } catch (e) {}
