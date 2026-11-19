@@ -4,36 +4,51 @@ var rtcConfig = {
   iceServers: [
     { urls: 'stun:://google.com' },
     { urls: 'stun:://google.com' },
-    { urls: 'stun:://cloudflare.com' },
-    { urls: 'turn:a.relay.metered.ca:80', username: 'e8dd65b92f62d3e36cafeb80', credential: 'uWdWNcQbcGnxB214' },
-    { urls: 'turn:a.relay.metered.ca:443', username: 'e8dd65b92f62d3e36cafeb80', credential: 'uWdWNcQbcGnxB214' }
+    { urls: 'stun:://cloudflare.com' }
   ]
 };
 
-function initAudio() {
+window.askMicNow = function() {
   if (localStream) {
     localStream.getAudioTracks().forEach(function(t) { t.enabled = !window.uiMuted; });
-    return Promise.resolve(localStream);
+    return;
   }
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     if (typeof log === 'function') log('Браузер не поддерживает микрофон');
-    return Promise.resolve(null);
+    return;
   }
-  return navigator.mediaDevices.getUserMedia({ audio: true, video: false })
-    .then(function(s) {
-      localStream = s;
+  navigator.mediaDevices.getUserMedia({ audio: true, video: false })
+    .then(function(stream) {
+      localStream = stream;
       localStream.getAudioTracks().forEach(function(t) { t.enabled = !window.uiMuted; });
-      if (typeof log === 'function') log('🎙️ Микрофон подключён');
-      return localStream;
+      if (typeof log === 'function') log('🎙️ Микрофон включён');
+      Object.keys(connections).forEach(function(uid) {
+        var pc = connections[uid];
+        if (pc && pc.getSenders().length === 0) {
+          localStream.getTracks().forEach(function(track) {
+            pc.addTrack(track, localStream);
+          });
+        }
+      });
     })
     .catch(function(err) {
-      if (typeof log === 'function') log('⚠️ Доступ к микрофону запрещён (' + err.name + ') — разрешите в адресной строке');
-      return null;
+      if (typeof log === 'function') log('⚠️ Разрешите микрофон в настройках сайта (' + err.name + ')');
     });
+};
+
+function initAudio() {
+  if (localStream) return Promise.resolve(localStream);
+  window.askMicNow();
+  return new Promise(function(resolve) {
+    setTimeout(function() { resolve(localStream); }, 400);
+  });
 }
 
 function closePeer(uid) {
-  if (connections[uid]) { try { connections[uid].close(); } catch (e) {} delete connections[uid]; }
+  if (connections[uid]) {
+    try { connections[uid].close(); } catch (e) {}
+    delete connections[uid];
+  }
   var a = document.getElementById('aud_' + uid);
   if (a) a.remove();
 }
@@ -54,15 +69,21 @@ async function getPeer(uid, sendFn) {
       var p = document.getElementById('audioPool');
       if (p) p.appendChild(a);
     }
-    a.srcObject = (e.streams && e.streams[0]) ? e.streams[0] : new MediaStream([e.track]);
+    var remoteStream = (e.streams && e.streams.length > 0) ? e.streams[0] : new MediaStream([e.track]);
+    a.srcObject = remoteStream;
     a.play().catch(function() {});
   };
+
   pc.onicecandidate = function(e) {
     if (e.candidate) sendFn({ ev: 'ice', to: uid, cand: e.candidate });
   };
+
   if (localStream) {
-    localStream.getTracks().forEach(function(t) { pc.addTrack(t, localStream); });
+    localStream.getTracks().forEach(function(t) {
+      pc.addTrack(t, localStream);
+    });
   }
+
   connections[uid] = pc;
   return pc;
 }
