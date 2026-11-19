@@ -84,7 +84,7 @@ async function getPeer(uid, sendFn) {
     });
   }
 
-  pc.ontrack = function(event) {
+    pc.ontrack = function(event) {
     var a = document.getElementById('aud_' + uid);
     if (!a) {
       a = document.createElement('audio');
@@ -94,13 +94,21 @@ async function getPeer(uid, sendFn) {
       a.volume = 1.0;
       document.body.appendChild(a);
     }
-    var remoteStream = new MediaStream();
-    remoteStream.addTrack(event.track);
-    a.srcObject = remoteStream;
+    if (event.streams && event.streams) {
+      a.srcObject = event.streams;
+    } else {
+      var s = new MediaStream();
+      s.addTrack(event.track);
+      a.srcObject = s;
+    }
     a.play().then(function() {
       sayRtc('🔊 Голос собеседника подключён');
     }).catch(function() {
       sayRtc('🔇 Нажмите на экран, чтобы включить звук собеседника');
+      document.addEventListener('click', function unlock() {
+        a.play();
+        document.removeEventListener('click', unlock);
+      }, { once: true });
     });
   };
 
