@@ -2,7 +2,7 @@
 <html lang="ru" translate="no">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <meta name="google" content="notranslate">
     <title>LIKODOPT — Голосовая чат-рулетка</title>
     <style>
@@ -19,7 +19,7 @@
         .avatar-circle { width: 76px; height: 76px; border-radius: 50%; background: #1e2330; border: 2px solid #2e3548; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; margin-bottom: 12px; }
         .radar-ring { width: 76px; height: 76px; border-radius: 50%; background: rgba(0, 230, 118, 0.12); border: 2px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 2rem; margin-bottom: 12px; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { box-shadow: 0 0 0 0 rgba(0, 230, 118, 0.6); } 100% { box-shadow: 0 0 0 20px rgba(0, 230, 118, 0); } }
-        .partner-avatar { width: 76px; height: 76px; border-radius: 50%; background: #163326; border: 3px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; margin-bottom: 12px; }
+        .partner-avatar { width: 76px; height: 76px; border-radius: 50%; background: #163326; border: 3px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; margin-bottom: 12px; box-shadow: 0 0 20px rgba(0, 230, 118, 0.35); }
         .stage-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; }
         .stage-subtitle { font-size: 0.85rem; color: #94a3b8; margin-bottom: 12px; }
         .timer-badge { background: #1e2330; border: 1px solid #333b50; padding: 5px 14px; border-radius: 12px; font-size: 0.85rem; font-weight: 700; }
@@ -54,17 +54,19 @@
         <div class="logo">LIKODOPT</div>
         <div class="status-badge">
             <span class="status-dot"></span>
-            <span>Онлайн: В сети</span>
+            <span id="netStatus">Онлайн: В сети</span>
         </div>
     </div>
 
     <div class="stage-box">
+        <!-- Экран 1: Главный -->
         <div class="screen active" id="screenHome">
             <div class="avatar-circle">🎙️</div>
             <div class="stage-title" id="homeTitle">Нажмите «Найти / Далее»</div>
             <div class="stage-subtitle" id="homeSub">Голосовая и текстовая чат-рулетка</div>
         </div>
 
+        <!-- Экран 2: Поиск собеседника -->
         <div class="screen" id="screenSearch">
             <div class="radar-ring">🔍</div>
             <div class="stage-title" style="color: #00e676;">Поиск собеседника...</div>
@@ -72,6 +74,7 @@
             <div class="timer-badge">Время поиска: <span id="searchTimer">00:00</span></div>
         </div>
 
+        <!-- Экран 3: Собеседник найден -->
         <div class="screen" id="screenCall">
             <div class="partner-avatar">🎧</div>
             <div class="stage-title">Собеседник на связи!</div>
@@ -104,8 +107,8 @@
 
 <script>
     const $ = id => document.getElementById(id);
-    const CHANNEL = 'https://ntfy.sh';
-    const myId = 'u_' + Math.random().toString(36).slice(2, 10);
+    const DB = 'https://firebasedatabase.app';
+    const myId = 'u_' + Math.random().toString(36).slice(2, 10) + '_' + Date.now().toString(36).slice(-4);
 
     let partnerId = null;
     let state = 'home';
@@ -117,6 +120,7 @@
     let sec = 0;
     const seen = new Set();
 
+    // Закрытие плашки Cookie
     if (localStorage.getItem('likodopt_ck') === '1') {
         $('cookieBanner').classList.add('hidden');
     }
@@ -156,22 +160,22 @@
         if (!on) $('msgInput').value = '';
     }
 
-    function sendSig(data) {
-        const mid = myId + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-        fetch(CHANNEL, {
-            method: 'POST',
-            body: JSON.stringify({ mid, from: myId, ts: Date.now(), ...data })
-        }).catch(() => {});
+    async function sendSig(to, data) {
+        try {
+            await fetch(DB + '/in/' + to + '.json', {
+                method: 'POST',
+                body: JSON.stringify({ from: myId, ts: Date.now(), ...data })
+            });
+        } catch (e) {}
     }
 
     $('btnNext').onclick = function() {
         stopAll(false);
-        state = 'search';
-        $('btnStop').disabled = false;
-        $('messages').innerHTML = '';
-        switchScreen('search');
-        addMsg('Вы вошли в очередь поиска собеседника...');
-
+state = 'search';
+$('btnStop').disabled = false;
+$('messages').innerHTML = '';
+switchScreen('search');
+addMsg('Вы вошли в очередь поиска собеседника...');
 if (!localStream && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
 navigator.mediaDevices.getUserMedia({ audio: true })
 .then(s => {
@@ -180,17 +184,16 @@ $('btnMute').disabled = false;
 })
 .catch(() => addMsg('Микрофон недоступен — работает текстовый чат'));
 }
-sendSig({ type: 'seek' });
-searchInt = setInterval(() => {
-if (state === 'search') sendSig({ type: 'seek' });
-}, 1500);
+findStep();
+searchInt = setInterval(findStep, 1500);
 };
 $('btnStop').onclick = function() {
 stopAll(true);
 };
 function stopAll(showStop) {
 clearInterval(searchInt);
-if (partnerId) sendSig({ to: partnerId, type: 'bye' });
+fetch(DB + '/q/' + myId + '.json', { method: 'DELETE' }).catch(() => {});
+if (partnerId) sendSig(partnerId, { type: 'bye' });
 partnerId = null;
 state = 'home';
 setChat(false);
@@ -217,79 +220,100 @@ e.preventDefault();
 const txt = $('msgInput').value.trim();
 if (!txt || !partnerId) return;
 addMsg(txt, 'me');
-sendSig({ to: partnerId, type: 'chat', text: txt });
+sendSig(partnerId, { type: 'chat', text: txt });
 $('msgInput').value = '';
 };
-async function startCall(init) {
-state = 'call';
-switchScreen('call');
+async function findStep() {
+if (state !== 'search') return;
+try {
+await fetch(DB + '/q/' + myId + '.json', {
+method: 'PUT',
+body: JSON.stringify({ id: myId, ts: Date.now() })
+});
+const res = await fetch(DB + '/q.json');
+const q = await res.json();
+if (!q || state !== 'search') return;
+for (const k of Object.keys(q)) {
+if (k !== myId && q[k] && (Date.now() - q[k].ts < 10000) && myId > k) {
+state = 'conn';
+partnerId = k;
+clearInterval(searchInt);
+await fetch(DB + '/q/' + myId + '.json', { метод: 'DELETE' });
+await fetch(DB + '/q/' + partnerId + '.json', { метод: 'DELETE' });
+ожидание отправки (partnerId, { тип: 'accept' });
+startCall(true);
+возврат;
+}
+}
+} catch (e) {}
+}
+асинхронная функция startCall(init) {
+state = 'вызов';
+switchScreen('вызов');
 setChat(true);
-$('messages').innerHTML = '';
+$('сообщения').innerHTML = ";
 addMsg('Собеседник найден! Вы в комнате общения 👋');
 pc = new RTCPeerConnection({
 iceServers: [
+{ urls: 'stun:google.com' },
 { urls: 'stun:google.com' },
 { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
 ]
 });
 if (localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
 pc.ontrack = e => {
-$('remoteAudio').srcObject = new MediaStream([e.track]);
+$('remoteAudio').srcObject = новый медиапоток ([электронная дорожка]);
 $('remoteAudio').play().catch(() => {});
 };
 pc.onicecandidate = e => {
-if (e.candidate && partnerId) sendSig({ to: partnerId, type: 'cand', cand: e.candidate });
+if (e.candidate && partnerId) отправляет сигнал(partnerId, { тип: 'cand', cand: e.candidate });
 };
 if (init) {
-const off = await pc.createOffer();
-await pc.setLocalDescription(off);
-sendSig({ to: partnerId, type: 'offer', offer: off });
+const off = ожидать pc.createOffer();
+ожидать pc.setLocalDescription(выкл.);
+ожидать отправки (partnerId, { type: 'offer', предложение: выкл. });
 }
 }
-async function poll() {
+асинхронная функция poll() {
 try {
-const res = await fetch(CHANNEL + '/json?poll=1&since=12s');
+const res = await fetch(DB + '/in/' + myId + '.json');
 if (res.ok) {
-const lines = (await res.text()).trim().split('\n');
-for (const l of lines) {
-if (!l) continue;
-const w = JSON.parse(l);
-if (!w.message) continue;
-const m = JSON.parse(w.message);
-if (!m || m.from === myId || seen.has(m.mid) || Date.now() - m.ts > 15000) continue;
-seen.add(m.mid);
-if (m.type === 'seek' && state === 'search' && myId > m.from) {
-state = 'conn';
-partnerId = m.from;
-clearInterval(searchInt);
-sendSig({ to: partnerId, type: 'accept' });
-startCall(true);
-} else if (m.to === myId && m.type === 'accept' && state === 'search') {
+$('netStatus').textContent = 'Онлайн: В сети';
+const msgs = await res.json();
+if (msgs) {
+await fetch(DB + '/in/' + myId + '.json', { метод: 'DELETE' });
+for (const k Object.keys( msgs)) {
+if (seen.has(k)) continue;
+seen.add(k);
+const m = msgs[k];
+if (!m || Date.now() - m.ts > 20000) continue;
+if (m.type === 'принять' && state === 'поиск') {
 state = 'conn';
 partnerId = m.from;
 clearInterval(searchInt);
 startCall(false);
-} else if (m.to === myId && m.from === partnerId) {
-if (m.type === 'offer' && pc) {
-await pc.setRemoteDescription(new RTCSessionDescription(m.offer));
-const ans = await pc.createAnswer();
-await pc.setLocalDescription(ans);
-sendSig({ to: partnerId, type: 'answer', answer: ans });
+} else if (m.from === partnerId) {
+if (m.type === 'предложение' && pc) {
+ожидает pc.setRemoteDescription(новое RTCSessionDescription(m.offer));
+const ans = ожидает pc. createAnswer();
+ожидает pc.setLocalDescription(ans);
+отправляет (partnerId, { тип: 'answer', ответ: ans });
 } else if (m.type === 'answer' && pc) {
-await pc.setRemoteDescription(new RTCSessionDescription(m.answer));
+ожидает pc.setRemoteDescription(новое RTCSessionDescription(m.answer));
 } else if (m.type === 'cand' && pc) {
-try { await pc.addIceCandidate(new RTCIceCandidate(m.cand)); } catch (e) {}
-} else if (m.type === 'chat') {
-addMsg(m.text, 'partner');
-} else if (m.type === 'bye') {
+попробуйте { ожидает pc.addIceCandidate(новое RTCIceCandidate(m.cand)); } catch (e) {}
+} else if (m.type === 'чат') {
+addMsg(m.text, 'партнер');
+} else if (m.type === 'пока') {
 stopAll(true);
-$('homeTitle').textContent = 'Собеседник отключился';
+$('Домашний заголовок').textContent = 'Собеседник отключился';
 }
 }
+
 }
 }
 } catch (e) {}
-setTimeout(poll, 1000);
+setTimeout(опрос, 1000);
 }
 poll();
 
