@@ -106,10 +106,6 @@ function closePeer(u) {
 }
 
 function connectSupabase() {
-  if (!SUPABASE_URL || SUPABASE_URL.indexOf('http') !== 0) {
-    logMsg('Вставьте Project URL из Supabase в первую строчку net.js');
-    return;
-  }
   var host = SUPABASE_URL.replace('https://', '').replace('http://', '').replace(/\/$/, '');
   var wsUrl = 'wss://' + host + '/realtime/v1/websocket?apikey=' + SUPABASE_KEY + '&vsn=1.0.0';
 
@@ -303,7 +299,7 @@ async function onPacket(pkt) {
   } else if (pkt.cmd === 'pair' && pkt.to === myId && pkt.kind === 'group' && netState === 'group' && !group[pkt.uco] && Object.keys(group).length < 6) {
     group[pkt.uco] = pkt.name;
     drawGroup();
-if (myId > pkt.uco) startRtc(pkt.uco, true, 'group');
+    if (myId > pkt.uco) startRtc(pkt.uco, true, 'group');
 } else if (pkt.to === myId) {
 if (pkt.cmd === 'offer') {
 if (pkt.kind === 'group' && netState === 'group' && !group[pkt.uco] && Object.keys(group).длина < 6) {
@@ -327,7 +323,7 @@ if (pkt.kind === 'solo' && pkt.uco === partnerId) {
 document.getElementById('btnStop').click();
 document.getElementById('status').textContent = 'Собеседник отключился';
 }
-if (pkt.kind === 'group' && netState === 'group' && group[pkt.uco]) {
+if (pkt.
 logMsg(group[pkt.uco] + ' вышел');
 delete group[pkt.uco];
 closePeer(pkt.uco);
