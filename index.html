@@ -104,8 +104,8 @@
     </div>
 
     <div class="mode-switch">
-      <button type="button" class="mode-btn active" id="btnModeSolo" onclick="uiSwitchMode('solo')">👤 Соло (1 на 1)</button>
-      <button type="button" class="mode-btn" id="btnModeGroup" onclick="uiSwitchMode('group')">👥 Групповой (до 6)</button>
+      <button type="button" class="mode-btn active" id="btnModeSolo">👤 Соло (1 на 1)</button>
+      <button type="button" class="mode-btn" id="btnModeGroup">👥 Групповой (до 6)</button>
     </div>
 
     <div class="voice-box">
@@ -138,26 +138,101 @@
 
     <div class="chat-box">
       <div id="messages"></div>
-      <form class="chat-input" id="chatForm" onsubmit="uiSendChat(event)">
+      <form class="chat-input" id="chatForm">
         <input type="text" id="msgInput" placeholder="Написать сообщение..." disabled autocomplete="off">
         <button type="submit" id="btnSend" disabled>➤</button>
       </form>
     </div>
 
     <div class="controls">
-      <button type="button" class="btn" id="btnNext" onclick="uiStartSearch()">Найти / Далее</button>
-      <button type="button" class="btn" id="btnStop" onclick="uiStopSession(true)" disabled>Стоп</button>
-      <button type="button" class="btn" id="btnMute" onclick="uiToggleMute()">Выключить микрофон</button>
+      <button type="button" class="btn" id="btnNext">Найти / Далее</button>
+      <button type="button" class="btn" id="btnStop" disabled>Стоп</button>
+      <button type="button" class="btn" id="btnMute">Выключить микрофон</button>
     </div>
 
     <div id="audioPool"></div>
   </div>
 
-    <div class="cookie-banner" id="cookieBanner">
+  <div class="cookie-banner" id="cookieBanner">
     <div class="cookie-text">🍪 Мы используем ваши файлы <span>Cookie</span> для улучшения работы сайта.</div>
-    <button type="button" class="cookie-close" id="btnCloseCookie" onclick="uiCloseCookie()">✕</button>
+    <button type="button" class="cookie-close" id="btnCloseCookie">✕</button>
   </div>
- <script src="./script.js?v=99"></script>
 
-</body>
-</html>
+  <script>
+    var uiMode = 'solo', uiMuted = false, uiTimer = null, uiSec = 0;
+
+if (localStorage.getItem('lk_ck') === '1') document.getElementById('cookieBanner').style.display = 'none';
+document.getElementById('btnCloseCookie').onclick = function() {
+localStorage.setItem('lk_ck', '1');
+document.getElementById('cookieBanner').style.display = 'none';
+};
+функция showScr(id) {
+clearInterval(пользовательский параметр); uiSec = 0;
+['idleView', 'queueView', 'callView', 'GroupView'].forEach(функция(v) {
+document.getElementById(v).classList.remove('активный');
+});
+document.getElementById(id).classList.add('активный');
+if (id !== 'idleView') {
+var tEl = документ .getElementById(id === 'Просмотр очереди' ? 'searchTimerText' : id === 'callView' ? 'callTimerText' : 'groupTimerText');
+tEl.textContent = '00:00';
+uiTimer = setInterval(функция() {
+uiSec++;
+tEl.textContent = строка(Математический этаж(uiSec / 60)).padStart(2, '0') + ':' + Строка(uiSec % 60).padStart(2, '0');
+}, 1000);
+}
+}
+document.getElementById('btnModeSolo').onclick = функция() {
+document.getElementById('btnStop').click();
+uiMode = 'solo';
+this.classList.add('активный');
+document.getElementById('btnModeGroup').classList.remove('активный');
+document.getElementById('idleIcon').textContent = '🎙️';
+document. getElementById('статус').textContent = 'Режим: Соло (1 на 1)';
+showScr('idleView');
+};
+document.getElementById('btnModeGroup').onclick = function() {
+document.getElementById('btnStop').click();
+uiMode = 'group';
+this.classList.add('active');
+document.getElementById('btnModeSolo').classList.remove('active');
+document.getElementById('idleIcon').textContent = '👥';
+document.getElementById('status').textContent = 'Режим: Групповой (до 6 чел.)';
+showScr('idleView');
+};
+document.getElementById('btnNext').onclick = function() {
+document.getElementById('btnStop').disabled = false;
+document.getElementById('messages').innerHTML = '';
+if (uiMode === 'solo') {
+showScr('queueView');
+} else {
+showScr('groupView');
+document.getElementById('msgInput').disabled = false;
+document.getElementById('btnSend').disabled = false;
+}
+if (window.netStartSearch) window.netStartSearch(uiMode);
+};
+document.getElementById('btnStop').onclick = функция() {
+clearInterval(пользовательский параметр);
+this.disabled = true;
+document.getElementById('msgInput').disabled = true;
+document.getElementById('btnSend').disabled = true;
+document.getElementById('status').textContent = 'Поиск остановлен';
+showScr('idleView');
+if (window.netStopSession) window.netStopSession();
+};
+document.getElementById('btnMute').onclick = функция() {
+uiMuted = !uiMuted;
+this.textContent = uiMuted ? 'Включить микрофон' : 'Выключить микрофон';
+this.classList.toggle('muted', uiMuted);
+if (window.netToggleMute) window.netToggleMute(uiMuted);
+};
+document.getElementById('chatForm').onsubmit = function(e) {
+e.preventDefault();
+var inp = document.getElementById('msgInput'), txt = inp.value.trim();
+if (!txt) return;
+if (window.netSendChat) window.netSendChat(txt);
+inp.value = '';
+};
+
+
+
