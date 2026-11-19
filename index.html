@@ -153,88 +153,10 @@
     <div id="audioPool"></div>
   </div>
 
-  <div class="cookie-banner" id="cookieBanner">
-    <div class="cookie-text">🍪 Мы используем ваши файлы <span>Cookie</span> для улучшения работы сайта.
-   </div>✕
-var uiMode = 'соло';
-var uiMuted = false;
-var uiTimer = null;
-var uiSec = 0;
-if (localStorage.GetItem('likodopt_cookie_ok') === '1') {
-document.getElementById('cookieBanner').style.display = 'нет';
-}
-функция uiCloseCookie() {
-localStorage.setItem('likodopt_cookie_ok', '1');
-document.getElementById('cookieBanner').style.display = 'нет';
-}
-функция uiShowView(id) {
-clearInterval(uiTimer);
-uiSec = 0;
-['idleView', 'queueView', 'callView', 'GroupView'].forEach(функция(v) {
-var el = document.getElementById(v);
-if (el) el.classList.remove('активный');
-});
-var target = document.getElementById(id);
-if (target) target.classList.add(' активный");
-if (id !== 'idleView') {
-var tId = id === 'Просмотр очереди' ? 'searchTimerText' : (id === 'callView' ? 'callTimerText' : 'groupTimerText');
-var tEl = document.getElementById(tId);
-if (tEl) tEl.textContent = '00:00';
-uiTimer = setInterval(функция() {
-uiSec++;
-var m = строка (Математический этаж(uiSec / 60)).padStart(2, '0');
-var s = строка (uiSec % 60).padStart(2, '0');
-if (tEl) tEl.textContent = m + ':' + s;
-}, 1000);
-}
-}
-uiSwitchMode функция(м) {
-uiStopSession(ложь);
-uiMode = м;
-документ.метода getElementById('btnModeSolo').classList.переключатель('активный', М === 'Соло');
-документ.метода getElementById('btnModeGroup').classList.переключатель('активный', м === 'группа');
-документ.метода getElementById('idleIcon').текстового содержимого = м === 'Соло' ? '🎙️' : '👥';
-документ.метода getElementById('статус').текстового содержимого = м === 'Соло' ? 'Режим: Соло (1 на 1)' : 'Режим: Групповой (до 6 чел.)';
-uiShowView('idleView');
-если (окно.окна netSwitchMode).netSwitchMode(м);
-}
-функция uiStartSearch() {
-document.getElementById('btnStop').disabled = false;
-if (uiMode === 'соло') {
-uiShowView('queueView');
-} else {
-uiShowView('groupView');
-document.getElementById('msgInput').disabled = false;
-document.getElementById('btnSend').disabled = false;
-}
-if (window.netStartSearch) window.netStartSearch(uiMode);
-}
-функция uiStopSession(toHome) {
-clearInterval(uiTimer);
-document.getElementById('msgInput').disabled = true;
-document.getElementById('btnSend').disabled = true;
-if (toHome) {
-document.getElementById('btnStop').disabled = true;
-document.getElementById('status').textContent = 'Поиск остановлен';
-uiShowView('idleView') ;
-}
-if (window.netStopSession) window.netStopSession();
-}
-function uiToggleMute() {
-uiMuted = !uiMuted;
-var btn = document.getElementById('btnMute');
-btn.textContent = uiMuted ? 'Включить микрофон' : 'Выключить микрофон';
-btn.classList.toggle('muted', uiMuted);
-if (window.netToggleMute) window.netToggleMute(uiMuted);
-}
-функция uiSendChat(e) {
-e.preventDefault();
-var inp = document.getElementById('msgInput');
-var txt = inp.value.trim();
-if (!txt) возвращает;
-if (window.netSendChat) window.netSendChat(txt);
-inp.value = ";
-}
-
-
-
+    <div class="cookie-banner" id="cookieBanner">
+    <div class="cookie-text">🍪 Мы используем ваши файлы <span>Cookie</span> для улучшения работы сайта.</div>
+    <button type="button" class="cookie-close" id="btnCloseCookie" onclick="uiCloseCookie()">✕</button>
+  </div>
+  <script src="./script.js?v=15"></script>
+</body>
+</html>
