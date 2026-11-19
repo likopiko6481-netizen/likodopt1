@@ -1,110 +1,101 @@
-window.localStream = window.localStream || null;
+window.localStream = null;
 var connections = {};
-var pendingCandidates = {};
+var iceQueue = {};
 
+// Дефолтные STUN-серверы для прямого соединения браузеров (P2P)
 var rtcConfig = {
   iceServers: [
     { urls: 'stun:://google.com' },
-    { urls: 'stun:://google.com' },
-    { urls: 'stun:://google.com' },
-    { urls: 'stun:://cloudflare.com' }
+    { urls: 'stun:://google.com' }
   ]
 };
 
-function initAudio() {
+// 1. Дефолтный запрос микрофона у браузера
+async function initAudio() {
   if (window.localStream) {
-    window.localStream.getAudioTracks().forEach(function(t) { t.enabled = !window.uiMuted; });
-    return Promise.resolve(window.localStream);
+    window.localStream.getAudioTracks().forEach(function(track) {
+      track.enabled = !window.uiMuted;
+    });
+    return window.localStream;
   }
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return Promise.resolve(null);
-  return navigator.mediaDevices.getUserMedia({ audio: true })
-    .then(function(s) {
-      window.localStream = s;
-      s.getAudioTracks().forEach(function(t) { t.enabled = !window.uiMuted; });
-      return s;
-    })
-    .catch(function() { return null; });
+
+  try {
+    var stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+    window.localStream = stream;
+    stream.getAudioTracks().forEach(function(track) {
+      track.enabled = !window.uiMuted;
+    });
+    return stream;
+  } catch (err) {
+    return null;
+  }
 }
 
+// 2. Закрытие соединения
 function closePeer(uid) {
   if (connections[uid]) {
-    try { connections[uid].close(); } catch (e) {}
+    connections[uid].close();
     delete connections[uid];
   }
-  delete pendingCandidates[uid];
-  var a = document.getElementById('aud_' + uid);
-  if (a) a.remove();
+  delete iceQueue[uid];
+  var audioEl = document.getElementById('aud_' + uid);
+  if (audioEl) audioEl.remove();
 }
 
-// Буфер ICE-кандидатов, чтобы сетевые адреса не терялись до установки соединения
+// 3. Буфер сетевых маршрутов (ICE)
 window.saveOrAddIce = function(uid, cand) {
   var pc = connections[uid];
-  if (pc && pc.remoteDescription && pc.remoteDescription.type) {
+  if (pc && pc.remoteDescription) {
     pc.addIceCandidate(new RTCIceCandidate(cand)).catch(function() {});
   } else {
-    if (!pendingCandidates[uid]) pendingCandidates[uid] = [];
-    pendingCandidates[uid].push(cand);
+    if (!iceQueue[uid]) iceQueue[uid] = [];
+    iceQueue[uid].push(cand);
   }
 };
 
 window.flushIce = function(uid) {
   var pc = connections[uid];
-  var list = pendingCandidates[uid];
-  if (pc && list && list.length > 0) {
-    while (list.length > 0) {
-      var c = list.shift();
-      pc.addIceCandidate(new RTCIceCandidate(c)).catch(function() {});
+  if (pc && iceQueue[uid]) {
+    while (iceQueue[uid].length > 0) {
+      pc.addIceCandidate(new RTCIceCandidate(iceQueue[uid].shift())).catch(function() {});
     }
   }
 };
 
+// 4. Дефолтное P2P-соединение браузер <-> браузер
 async function getPeer(uid, sendFn) {
-  if (connections[uid]) {
-    if (window.localStream && connections[uid].getSenders().length === 0) {
-      window.localStream.getTracks().forEach(function(t) {
-        connections[uid].addTrack(t, window.localStream);
-      });
-    }
-    return connections[uid];
-  }
+  if (connections[uid]) return connections[uid];
 
-  if (!window.localStream) await initAudio();
-
+  var stream = await initAudio();
   var pc = new RTCPeerConnection(rtcConfig);
 
-  pc.ontrack = function(e) {
-    var a = document.getElementById('aud_' + uid);
-    if (!a) {
-      a = document.createElement('audio');
-      a.id = 'aud_' + uid;
-      a.autoplay = true;
-      a.playsInline = true;
-      a.volume = 1.0;
-      document.body.appendChild(a);
-    }
-    var stream = new MediaStream();
-    stream.addTrack(e.track);
-    a.srcObject = stream;
-    a.play().catch(function() {});
-
-    var box = document.getElementById('messages');
-    if (box) {
-      var d = document.createElement('div');
-      d.className = 'msg sys';
-      d.textContent = '🔊 Голосовой канал с собеседником подключён!';
-      box.appendChild(d);
-    }
-  };
-
-  pc.onicecandidate = function(e) {
-    if (e.candidate) sendFn({ ev: 'ice', to: uid, cand: e.candidate });
-  };
-
-  if (window.localStream) {
-    window.localStream.getTracks().forEach(function(t) {
-      pc.addTrack(t, window.localStream);
+  // Отдаём свой микрофон собеседнику
+  if (stream) {
+    stream.getTracks().forEach(function(track) {
+      pc.addTrack(track, stream);
     });
   }
+
+  // Принимаем голос собеседника в наушники/динамики
+  pc.ontrack = function(event) {
+    var audioEl = document.getElementById('aud_' + uid);
+    if (!audioEl) {
+      audioEl = document.createElement('audio');
+      audioEl.id = 'aud_' + uid;
+      audioEl.autoplay = true;
+      audioEl.playsInline = true;
+      document.body.appendChild(audioEl);
+    }
+    audioEl.srcObject = event.streams[0];
+    audioEl.play().catch(function() {});
+  };
+
+  // Обмен сетевыми адресами
+  pc.onicecandidate = function(event) {
+    if (event.candidate) {
+      sendFn({ ev: 'ice', to: uid, cand: event.candidate });
+    }
+  };
 
   connections[uid] = pc;
   return pc;
