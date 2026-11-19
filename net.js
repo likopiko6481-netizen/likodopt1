@@ -227,15 +227,27 @@ function showFoundPartner(pName, pAva) {
   document.getElementById('msgInput').disabled = false;
   document.getElementById('btnSend').disabled = false;
   document.getElementById('messages').innerHTML = '';
-  var callView = document.getElementById('callView');
-  if (callView) {
-    var avaBox = callView.querySelector('.avatar');
-    if (avaBox && pAva) avaBox.innerHTML = '<img src="' + pAva + '" style="width:100%;height:100%;border-radius:50%;image-rendering:pixelated;">';
-    var sub = callView.querySelector('.queue-sub');
-    if (sub) sub.textContent = 'Собеседник: ' + (pName || 'Участник');
+
+  var meCard = document.getElementById('roomMeCard');
+  if (meCard) {
+    var myAva = getMyAva();
+    meCard.innerHTML = (myAva
+      ? '<img src="' + myAva + '" style="width:32px;height:32px;border-radius:6px;image-rendering:pixelated;border:1px solid #00e676;margin-bottom:4px;">'
+      : '<span style="font-size:1.5rem;">🎙️</span>') +
+      '<span>' + getMyNick() + ' (Вы)</span>';
   }
-  logMsg('Собеседник найден: ' + (pName || 'Участник') + ' 👋');
+
+  var partnerCard = document.getElementById('roomPartnerCard');
+  if (partnerCard) {
+    partnerCard.innerHTML = (pAva
+      ? '<img src="' + pAva + '" style="width:32px;height:32px;border-radius:6px;image-rendering:pixelated;border:1px solid #00e676;margin-bottom:4px;">'
+      : '<span style="font-size:1.5rem;">🎧</span>') +
+      '<span>' + (pName || 'Собеседник') + '</span>';
+  }
+
+  logMsg('Вы вошли в руму с пользователем ' + (pName || 'Собеседник') + ' 👋');
 }
+
 
 async function startRtc(to, init, kind) {
   closePeer(to);
