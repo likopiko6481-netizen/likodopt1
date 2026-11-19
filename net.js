@@ -16,7 +16,9 @@ var rtcConfig = {
   iceServers: [
     { urls: 'stun:://google.com' },
     { urls: 'stun:://google.com' },
-    { urls: 'stun:://cloudflare.com' }
+    { urls: 'stun:://cloudflare.com' },
+    { urls: 'turn:a.relay.metered.ca:80', username: 'e8dd65b92f62d3e36cafeb80', credential: 'uWdWNcQbcGnxB214' },
+    { urls: 'turn:a.relay.metered.ca:443', username: 'e8dd65b92f62d3e36cafeb80', credential: 'uWdWNcQbcGnxB214' }
   ],
   iceCandidatePoolSize: 10
 };
@@ -166,10 +168,11 @@ function sendSig(data) {
     body: JSON.stringify({ payload: data })
   }).then(function(r) {
     if (!r.ok) {
-      var st = document.getElementById('netStatus');
-      if (st) st.textContent = 'Ошибка записи БД: ' + r.status;
+      logMsg('Ошибка отправки сигнала (' + r.status + ')');
     }
-  }).catch(function() {});
+  }).catch(function(err) {
+    logMsg('Нет связи с сервером: проверьте интернет');
+  });
 }
 
 async function pollSignals() {
@@ -188,25 +191,22 @@ async function pollSignals() {
       for (var i = 0; i < rows.length; i++) {
         if (rows[i].id > lastRowId) lastRowId = rows[i].id;
         var pkt = rows[i].payload;
-        if (!pkt || pkt.uco === myId || seen[pkt.nonce] || Date.now() - pkt.ts > 20000) continue;
+        if (!pkt || pkt.uco === myId || seen[pkt.nonce] || Date.now() - pkt.ts > 30000) continue;
         seen[pkt.nonce] = true;
         onPacket(pkt);
       }
     } else {
-      if (st) st.textContent = 'Ошибка чтения БД: ' + res.status;
+      if (st) st.textContent = 'Ошибка БД: ' + res.status;
     }
-  } catch (e) {}
+  } catch (e) {
+    var st2 = document.getElementById('netStatus');
+    if (st2) st2.textContent = 'Нет ответа от БД';
+  }
   setTimeout(pollSignals, 800);
 }
 
-fetch(SUPABASE_URL + '/rest/v1/room_signals?select=id&order=id.desc&limit=1', {
-  headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
-}).then(function(r) { return r.json(); }).then(function(rows) {
-  if (Array.isArray(rows) && rows.length > 0 && rows[0].id) {
-    lastRowId = rows[0].id;
-  }
-  pollSignals();
-}).catch(function() { pollSignals(); });
+// Старт опроса без привязки к старым записям
+pollSignals();
 
 window.netStartSearch = function(mode) {
   window.netStopSession();
