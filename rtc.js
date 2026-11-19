@@ -6,8 +6,7 @@ var rtcConfig = {
     { urls: 'stun:://google.com' },
     { urls: 'stun:://cloudflare.com' },
     { urls: 'turn:a.relay.metered.ca:80', username: 'e8dd65b92f62d3e36cafeb80', credential: 'uWdWNcQbcGnxB214' },
-    { urls: 'turn:a.relay.metered.ca:443', username: 'e8dd65b92f62d3e36cafeb80', credential: 'uWdWNcQbcGnxB214' },
-    { urls: 'turn:a.relay.metered.ca:443?transport=tcp', username: 'e8dd65b92f62d3e36cafeb80', credential: 'uWdWNcQbcGnxB214' }
+    { urls: 'turn:a.relay.metered.ca:443', username: 'e8dd65b92f62d3e36cafeb80', credential: 'uWdWNcQbcGnxB214' }
   ]
 };
 
@@ -16,14 +15,21 @@ function initAudio() {
     localStream.getAudioTracks().forEach(function(t) { t.enabled = !window.uiMuted; });
     return Promise.resolve(localStream);
   }
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) return Promise.resolve(null);
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    if (typeof log === 'function') log('Браузер не поддерживает микрофон');
+    return Promise.resolve(null);
+  }
   return navigator.mediaDevices.getUserMedia({ audio: true, video: false })
     .then(function(s) {
       localStream = s;
       localStream.getAudioTracks().forEach(function(t) { t.enabled = !window.uiMuted; });
+      if (typeof log === 'function') log('🎙️ Микрофон подключён');
       return localStream;
     })
-    .catch(function() { return null; });
+    .catch(function(err) {
+      if (typeof log === 'function') log('⚠️ Доступ к микрофону запрещён (' + err.name + ') — разрешите в адресной строке');
+      return null;
+    });
 }
 
 function closePeer(uid) {
