@@ -1,39 +1,17 @@
-<!-- Плашка Cookie -->
-<div class="cookie-banner" id="cookieBanner">
-  <div class="cookie-text">
-    🍪 Мы используем ваши файлы <span>Cookie</span> для улучшения работы сайта и сохранения настроек.
-  </div>
-  <button type="button" class="cookie-close" id="btnCloseCookie" title="Закрыть уведомление">✕</button>
-</div>
-
-<script>
-(function () {
-  'use strict';
-
-  // =========================================================================
-  // 1. ВСПОМОГАТЕЛЬНЫЕ ФУНКЦИИ И ИДЕНТИФИКАЦИЯ ПОЛЬЗОВАТЕЛЯ
-  // =========================================================================
-  function $(id) {
-    return document.getElementById(id);
-  }
-
   function generateUserId() {
-    const randomPart = Math.random().toString(36).substring(2, 10);
-    const timePart = Date.now().toString(36).slice(-4);
-    return 'u_' + randomPart + '_' + timePart;
+    const r = Math.random().toString(36).substring(2, 10);
+    const t = Date.now().toString(36).slice(-4);
+    return 'u_' + r + '_' + t;
   }
 
   function generateUserName() {
-    const num = Math.floor(100 + Math.random() * 899);
-    return 'Участник #' + num;
+    return 'Участник #' + Math.floor(100 + Math.random() * 899);
   }
 
   function formatTime(totalSeconds) {
-    const mins = Math.floor(totalSeconds / 60);
-    const secs = totalSeconds % 60;
-    const mStr = String(mins).padStart(2, '0');
-    const sStr = String(secs).padStart(2, '0');
-    return mStr + ':' + sStr;
+    const m = String(Math.floor(totalSeconds / 60)).padStart(2, '0');
+    const s = String(totalSeconds % 60).padStart(2, '0');
+    return m + ':' + s;
   }
 
   const MY_ID = generateUserId();
@@ -41,11 +19,8 @@
   const APP_NAMESPACE = 'likodopt_ru_protocol_2026';
   const WS_ENDPOINT = 'wss://://postman-echo.com';
 
-  // =========================================================================
-  // 2. СОСТОЯНИЕ ПРИЛОЖЕНИЯ И ХРАНИЛИЩА СЕССИИ
-  // =========================================================================
-  let currentMode = 'solo';     // 'solo' | 'group'
-  let currentState = 'idle';    // 'idle' | 'search' | 'call' | 'group'
+  let currentMode = 'solo';
+  let currentState = 'idle';
   let soloPartnerId = null;
   let localAudioStream = null;
   let isMicMuted = false;
@@ -64,90 +39,52 @@
   const rtcServersConfig = {
     iceServers: [
       { urls: 'stun:://google.com' },
-      { urls: 'stun:://google.com' },
-      {
-        urls: 'turn:openrelay.metered.ca:80',
-        username: 'openrelayproject',
-        credential: 'openrelayproject'
-      },
-      {
-        urls: 'turn:openrelay.metered.ca:443',
-        username: 'openrelayproject',
-        credential: 'openrelayproject'
-      }
+      { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
     ]
   };
 
-  // =========================================================================
-  // 3. УПРАВЛЕНИЕ ПЛАШКОЙ COOKIE
-  // =========================================================================
   function initCookieBanner() {
     const banner = $('cookieBanner');
     const closeBtn = $('btnCloseCookie');
     if (!banner || !closeBtn) return;
-
-    const isAccepted = localStorage.getItem('likodopt_cookie_accepted') === '1';
-    if (isAccepted) {
-      banner.style.display = 'none';
-    }
-
+    if (localStorage.getItem('likodopt_cookie_accepted') === '1') banner.style.display = 'none';
     closeBtn.addEventListener('click', function () {
       localStorage.setItem('likodopt_cookie_accepted', '1');
       banner.style.display = 'none';
     });
   }
 
-  // =========================================================================
-  // 4. УПРАВЛЕНИЕ ЭКРАНАМИ И ТАЙМЕРАМИ
-  // =========================================================================
   function setActiveScreen(screenId) {
     clearInterval(clockTimer);
     elapsedSeconds = 0;
-
-    const allScreens = ['idleView', 'queueView', 'callView', 'groupView'];
-    for (let i = 0; i < allScreens.length; i++) {
-      const el = $(allScreens[i]);
-      if (el) {
-        el.classList.remove('active');
-      }
-    }
-
+    ['idleView', 'queueView', 'callView', 'groupView'].forEach(function (id) {
+      const el = $(id);
+      if (el) el.classList.remove('active');
+    });
     const target = $(screenId);
-    if (target) {
-      target.classList.add('active');
-    }
+    if (target) target.classList.add('active');
 
     if (screenId !== 'idleView') {
-      let timerElementId = 'searchTimerText';
-      if (screenId === 'callView') timerElementId = 'callTimerText';
-      if (screenId === 'groupView') timerElementId = 'groupTimerText';
-
-      const timerEl = $(timerElementId);
-      if (timerEl) {
-        timerEl.textContent = '00:00';
-      }
-
+      let timerId = 'searchTimerText';
+      if (screenId === 'callView') timerId = 'callTimerText';
+      if (screenId === 'groupView') timerId = 'groupTimerText';
+      const timerEl = $(timerId);
+      if (timerEl) timerEl.textContent = '00:00';
       clockTimer = setInterval(function () {
         elapsedSeconds++;
-        if (timerEl) {
-          timerEl.textContent = formatTime(elapsedSeconds);
-        }
+        if (timerEl) timerEl.textContent = formatTime(elapsedSeconds);
       }, 1000);
     }
   }
 
-  // =========================================================================
-  // 5. ФУНКЦИИ ТЕКСТОВОГО ЧАТА И ОТРИСОВКИ УЧАСТНИКОВ
-  // =========================================================================
   function appendChatLog(text, cssClass) {
-    const messagesBox = $('messages');
-    if (!messagesBox) return;
-
+    const box = $('messages');
+    if (!box) return;
     const item = document.createElement('div');
     item.className = 'msg ' + (cssClass || 'sys');
     item.textContent = text;
-    messagesBox.appendChild(item);
-    messagesBox.scrollTop = messagesBox.scrollHeight;
+    box.appendChild(item);
+    box.scrollTop = box.scrollHeight;
   }
 
   function setChatInputEnabled(isEnabled) {
@@ -157,444 +94,43 @@
       input.disabled = !isEnabled;
       if (!isEnabled) input.value = '';
     }
-    if (sendBtn) {
-      sendBtn.disabled = !isEnabled;
-    }
+    if (sendBtn) sendBtn.disabled = !isEnabled;
   }
 
   function renderWaitingLobby() {
     const container = $('lobbyChips');
     if (!container) return;
-
     container.innerHTML = '';
     const now = Date.now();
-
-    const userIds = Object.keys(waitingLobby);
-    for (let i = 0; i < userIds.length; i++) {
-      const uid = userIds[i];
-      if (uid !== MY_ID && now - waitingLobby[uid].ts > 8500) {
-        delete waitingLobby[uid];
-      }
-    }
-
-    const activeIds = Object.keys(waitingLobby);
-    for (let j = 0; j < activeIds.length; j++) {
-      const id = activeIds[j];
+    Object.keys(waitingLobby).forEach(function (uid) {
+      if (uid !== MY_ID && now - waitingLobby[uid].ts > 8500) delete waitingLobby[uid];
+    });
+    Object.keys(waitingLobby).forEach(function (id) {
       const chip = document.createElement('div');
       chip.className = 'chip';
-      if (id === MY_ID) {
-        chip.textContent = '🟢 Вы (' + MY_NAME + ')';
-      } else {
-        chip.textContent = '⏳ ' + waitingLobby[id].name;
-      }
+      chip.textContent = id === MY_ID ? '🟢 Вы (' + MY_NAME + ')' : '⏳ ' + waitingLobby[id].name;
       container.appendChild(chip);
-    }
+    });
   }
 
   function renderGroupRoomGrid() {
     const grid = $('groupGrid');
     const countLabel = $('groupCountText');
     if (!grid) return;
-
     grid.innerHTML = '';
     const memberIds = Object.keys(groupRoomMembers);
-    if (countLabel) {
-      countLabel.textContent = String(memberIds.length);
-    }
-
+    if (countLabel) countLabel.textContent = String(memberIds.length);
     for (let i = 0; i < 6; i++) {
       const seat = document.createElement('div');
       if (memberIds[i]) {
         const uid = memberIds[i];
         const isSelf = uid === MY_ID;
         seat.className = 'seat occupied';
-        seat.innerHTML =
-          '<span style="font-size:1.3rem">' + (isSelf ? '🎙️' : '🎧') + '</span>' +
-          '<span>' + (isSelf ? 'Вы' : groupRoomMembers[uid]) + '</span>';
+        seat.innerHTML = '<span style="font-size:1.3rem">' + (isSelf ? '🎙️' : '🎧') + '</span><span>' + (isSelf ? 'Вы' : groupRoomMembers[uid]) + '</span>';
       } else {
         seat.className = 'seat';
-        seat.innerHTML =
-          '<span style="font-size:1.3rem">➕</span>' +
-          '<span>Свободно</span>';
+        seat.innerHTML = '<span style="font-size:1.3rem">➕</span><span>Свободно</span>';
       }
       grid.appendChild(seat);
     }
   }
-
-  // =========================================================================
-  // 6. ПЕРЕКЛЮЧЕНИЕ РЕЖИМОВ (СОЛО / ГРУППОВОЙ ДО 6 ЧЕЛ.)
-  // =========================================================================
-  function switchChatMode(newMode) {
-    if (currentState !== 'idle') {
-      stopActiveSession(false);
-    }
-    currentMode = newMode;
-
-    const btnSolo = $('btnModeSolo');
-    const btnGroup = $('btnModeGroup');
-    const iconEl = $('idleIcon');
-    const statusEl = $('status');
-
-    if (btnSolo) btnSolo.classList.toggle('active', currentMode === 'solo');
-    if (btnGroup) btnGroup.classList.toggle('active', currentMode === 'group');
-    if (iconEl) iconEl.textContent = currentMode === 'solo' ? '🎙️' : '👥';
-    if (statusEl) {
-      statusEl.textContent = currentMode === 'solo'
-        ? 'Режим: Соло (1 на 1)'
-        : 'Режим: Групповой (до 6 чел.)';
-    }
-
-    setActiveScreen('idleView');
-  }
-
-  // =========================================================================
-  // 7. УПРАВЛЕНИЕ МИКРОФОНОМ И WEBRTC СОЕДИНЕНИЯМИ
-  // =========================================================================
-  function requestMicrophoneAccess() {
-    if (localAudioStream) return;
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-      appendChatLog('Микрофон недоступен в браузере — работает текстовый чат', 'sys');
-      return;
-    }
-
-    navigator.mediaDevices.getUserMedia({
-      audio: {
-        echoCancellation: true,
-        noiseSuppression: true,
-        autoGainControl: true
-      },
-      video: false
-    }).then(function (stream) {
-      localAudioStream = stream;
-      if (isMicMuted) {
-        const tracks = localAudioStream.getAudioTracks();
-        for (let i = 0; i < tracks.length; i++) {
-          tracks[i].enabled = false;
-        }
-      }
-    }).catch(function () {
-      appendChatLog('Доступ к микрофону запрещён — работает текстовый чат', 'sys');
-    });
-  }
-
-  function closePeerConnection(uid) {
-    if (peerConnections[uid]) {
-      try {
-        peerConnections[uid].close();
-      } catch (e) {}
-      delete peerConnections[uid];
-    }
-    const audioEl = $('aud_' + uid);
-    if (audioEl) {
-      audioEl.remove();
-    }
-  }
-
-  async function createWebRTCConnection(targetId, isInitiator, kind) {
-    closePeerConnection(targetId);
-
-    const pc = new RTCPeerConnection(rtcServersConfig);
-    peerConnections[targetId] = pc;
-
-    if (localAudioStream) {
-      const tracks = localAudioStream.getTracks();
-      for (let i = 0; i < tracks.length; i++) {
-        pc.addTrack(tracks[i], localAudioStream);
-      }
-    }
-
-    pc.ontrack = function (event) {
-      let audioEl = $('aud_' + targetId);
-      if (!audioEl) {
-        audioEl = document.createElement('audio');
-        audioEl.id = 'aud_' + targetId;
-        audioEl.autoplay = true;
-        audioEl.playsInline = true;
-        const pool = $('audioPool');
-        if (pool) pool.appendChild(audioEl);
-      }
-      audioEl.srcObject = new MediaStream([event.track]);
-      audioEl.play().catch(function () {});
-    };
-
-    pc.onicecandidate = function (event) {
-if (event.candidate) {
-sendProtocolPacket({
-cmd: 'ice',
-to: targetId,
-data: event.candidate
-});
-}
-};
-if (isInitiator) {
-const offer = await pc.createOffer();
-await pc.setLocalDescription(offer);
-sendProtocolPacket({
-cmd: 'offer',
-to: targetId,
-data: offer,
-kind: kind
-});
-}
-}
-// =========================================================================
-// 8. ЗАПУСК ПОИСКА, ОСТАНОВКА, МУТ И ОТПРАВКА СООБЩЕНИЙ
-// =========================================================================
-function startSearchOrNext() {
-stopActiveSession(false);
-const stopBtn = $('btnStop');
-const messagesBox = $('messages');
-if (stopBtn) stopBtn.disabled = false;
-if (messagesBox) messagesBox.innerHTML = '';
-requestMicrophoneAccess();
-if (currentMode === 'solo') {
-currentState = 'search';
-waitingLobby[MY_ID] = { name: MY_NAME, ts: Date.now() };
-renderWaitingLobby();
-setActiveScreen('queueView');
-appendChatLog('Вы вошли в окно ожидания собеседника...', 'sys');
-sendProtocolPacket({ cmd: 'wait_solo', кому: '' });
-searchLoopTimer = setInterval(функция () {
-if (currentState === 'поиск') {
-waitingLobby[MY_ID].ts = Date.now();
-renderWaitingLobby();
-sendProtocolPacket({ cmd: 'wait_solo', кому: '' });
-}
-}, 1500);
-} else {
-currentState = 'group';
-Grouprommembers[MY_ID] = MY_NAME;
-rendergroupromgrid();
-setActiveScreen('GroupView');
-setChatInputEnabled (true);
-appendChatLog('Вы вошли в групповую комнату (до 6 человек)', 'sys');
-sendProtocolPacket({ cmd: 'wait_group', to: '' });
-searchLoopTimer = setInterval(function () {
-if (currentState === 'group' && Object.keys(groupRoomMembers).длина < 6) {
-Отправить protocolpacket({ cmd: 'wait_group', кому: '' });
-}
-}, 2000);
-}
-}
-функция stopActiveSession(returnToHome) {
-clearInterval(searchLoopTimer);
-clearInterval(clockTimer);
-if (soloPartnerId) {
-Отправить protocolpacket({ cmd: 'bye', кому: soloPartnerId, вид: 'solo' });
-}
-if (currentState === 'group') {
-const ids = Object.keys(groupcommembers);
-for (пусть i = 0; i < ids.length; i++) {
-if (ids[i] !== MY_ID) {
-sendProtocolPacket({ cmd: 'bye', to: ids[i], kind: 'group' });
-}
-}
-}
-const peerIds = Object.keys(peerConnections);
-for (let j = 0; j < peerIds.length; j++) {
-closePeerConnection(peerIds[j]);
-}
-for (const key in groupRoomMembers) delete groupRoomMembers[key];
-for (const key in waitingLobby) delete waitingLobby[key];
-soloPartnerId = null;
-currentState = 'idle';
-setChatInputEnabled(false);
-if (returnToHome) {
-const stopBtn = $('btnStop');
-const statusEl = $('status');
-if (stopBtn) stopBtn.disabled = true;
-if (statusEl) statusEl.textContent = 'Поиск остановлен';
-setActiveScreen('idleView');
-appendChatLog('Вы вышли на главный экран', 'sys');
-}
-}
-function toggleMicrophoneMute() {
-isMicMuted = !isMicMuted;
-if (localAudioStream) {
-const tracks = localAudioStream.getAudioTracks();
-for (let i = 0; i < tracks.length; i++) {
-tracks[i].enabled = !isMicMuted;
-}
-}
-const muteBtn = $('btnMute');
-if (muteBtn) {
-muteBtn.textContent = isMicMuted ? 'Включить микрофон' : 'Выключить микрофон';
-muteBtn.classList.toggle('muted', isMicMuted);
-}
-appendChatLog(isMicMuted ? 'Микрофон выключен' : 'Микрофон включён', 'sys');
-}
-function handleChatSubmit(event) {
-event.preventDefault();
-const input = $('msgInput');
-if (!input) return;
-const text = input.value.trim();
-if (!text) return;
-if (currentState === 'call' && soloPartnerId) {
-appendChatLog(text, 'me');
-sendProtocolPacket({
-cmd: 'comm',
-to: soloPartnerId,
-kind: 'solo',
-data: text
-});
-input.value = '';
-} else if (currentState === 'group') {
-appendChatLog(text, 'me');
-const ids = Object.keys(groupRoomMembers);
-for (let i = 0; i < ids.length; i++) {
-if (ids[i] !== MY_ID) {
-sendProtocolPacket({
-cmd: 'comm',
-to: ids[i],
-kind: 'group',
-data: text
-});
-}
-}
-input.value = '';
-}
-}
-// =========================================================================
-// 9. ТРАНСПОРТНЫЙ ПРОТОКОЛ СОЕДИНЕНИЯ СОБЕСЕДНИКОВ (WEBSOCKET)
-// =========================================================================
-function connectSignalingSocket() {
-clearTimeout(reconnectTimer);
-try {
-socket = new WebSocket(WS_ENDPOINT);
-socket.onopen = function () {
-const netEl = $('netStatus');
-if (netEl) netEl.textContent = 'Онлайн: В сети';
-sendProtocolPacket({ cmd: 'connect', to: '*' });
-};
-socket.onmessage = function (event) {
-let packet = null;
-try {
-packet = JSON.parse(event.data);
-} catch (err) {
-return;
-}
-if (!packet || packet.app !== APP_NAMESPACE) return;
-if (packet.uco === MY_ID || processedNonces[packet.nonce]) return;
-processedNonces[packet.nonce] = true;
-processIncomingPacket(packet);
-};
-socket.onclose = function () {
-reconnectTimer = setTimeout(connectSignalingSocket, 2500);
-};
-socket.onerror = function () {};
-} catch (e) {}
-}
-function sendProtocolPacket(payload) {
-if (!socket || socket.readyState !== 1) return;
-const nonce = MY_ID + '' + Date.now() + '' + Math.random().toString(36).slice(2, 6);
-const packet = Object.assign({
-app: APP_NAMESPACE,
-uco: MY_ID,
-name: MY_NAME,
-session: '1',
-одноразовый номер: nonce
-}, полезная нагрузка);
-попробуйте {
-socket.send(JSON.stringify(пакет));
-} перехватить (e) {}
-}
-асинхронная функция processIncomingPacket(pkt) {
-if (pkt.cmd === 'wait_solo' && currentState === 'поиск') {
-waitingLobby[pkt.uco] = { name: pkt.name, ts: Date.now() };
-renderWaitingLobby();
-if (MY_ID > pkt.uco) {
-currentState = 'call';
-soloPartnerId = pkt.uco;
-clearInterval(searchLoopTimer);
-sendProtocolPacket({ cmd: 'pair', to: soloPartnerId, kind: 'solo' });
-setActiveScreen('callView');
-setChatInputEnabled(true);
-$('messages').innerHTML = '';
-appendChatLog('Собеседник найден! Приятного общения 👋', 'sys');
-createWebRTCConnection(soloPartnerId, true, 'solo');
-}
-} else if (pkt.cmd === 'пара' && pkt.to === MY_ID && pkt.kind === 'соло' && currentState === 'поиск') {
-currentState = 'вызов';
-soloPartnerId = pkt.uco;
-clearInterval(searchLoopTimer);
-setActiveScreen('callView');
-setChatInputEnabled(true);
-$('messages').innerHTML = '';
-appendChatLog('Собеседник найден! Приятного общения 👋', 'sys');
-createWebRTCConnection(soloPartnerId, false, 'solo');
-} else if (pkt.cmd === 'wait_group' && currentState === 'group') {
-if (!groupRoomMembers[pkt.uco] && Object.keys(groupRoomMembers).length < 6) {
-groupRoomMembers[pkt.uco] = pkt.name;
-renderGroupRoomGrid();
-appendChatLog(pkt.name + ' зашёл в комнату', 'sys');
-sendProtocolPacket({ cmd: 'pair', to: pkt.uco, kind: 'group' });
-if (MY_ID > pkt.uco) {
-createWebRTCConnection(pkt.uco, true, 'group');
-}
-}
-} else if (pkt.cmd === 'pair' && pkt.to === MY_ID && pkt.kind === 'group' && currentState === 'group') {
-if (!groupRoomMembers[pkt.uco] && Object.keys(groupRoomMembers).length < 6) {
-groupRoomMembers[pkt.uco] = pkt.name;
-renderGroupRoomGrid();
-if (MY_ID > pkt.uco) {
-createWebRTCConnection(pkt.uco, true, 'group');
-}
-}
-} else if (pkt.to === MY_ID) {
-if (pkt.cmd === 'offer') {
-if (pkt.kind === 'group' && currentState === 'group') {
-if (!groupRoomMembers[pkt.uco] && Object.keys(groupRoomMembers).length < 6) {
-groupRoomMembers[pkt.uco] = pkt.name;
-renderGroupRoomGrid();
-}
-}
-await createWebRTCConnection(pkt.uco, false, pkt.kind);
-const pc = peerConnections[pkt.uco];
-if (pc) {
-await pc.setRemoteDescription(new RTCSessionDescription(pkt.data));
-const answer = await pc.createAnswer();
-await pc.setLocalDescription(answer);
-sendProtocolPacket({ cmd: 'answer', to: pkt.uco, data: answer });
-}
-} else if (pkt.cmd === 'answer' && peerConnections[pkt.uco]) {
-await peerConnections[pkt.uco].setRemoteDescription(new RTCSessionDescription(pkt.data));
-} else if (pkt.cmd === 'ice' && peerConnections[pkt.uco]) {
-try {
-await peerConnections[pkt.uco].addIceCandidate(new RTCIceCandidate(pkt.data));
-} catch (e) {}
-} else if (pkt.cmd === 'comm') {
-if (pkt.kind === 'solo' && pkt.uco === soloPartnerId) {
-appendChatLog(pkt.data, 'partner');
-}
-if (pkt.kind === 'group' && currentState === 'group' && groupRoomMembers[pkt.uco]) {
-appendChatLog(pkt.name + ': ' + pkt.data, 'partner');
-}
-} else if (pkt.cmd === 'bye') {
-if (pkt.kind === 'solo' && pkt.uco === soloPartnerId) {
-stopActiveSession(true);
-const statusEl = $('status');
-if (statusEl) statusEl.textContent = 'Собеседник отключился';
-}
-if (pkt.kind === 'group' && currentState === 'group' && groupRoomMembers[pkt.uco]) {
-appendChatLog(groupRoomMembers[pkt.uco] + ' покинул комнату', 'sys');
-delete groupRoomMembers[pkt.uco];
-closePeerConnection(pkt.uco);
-renderGroupRoomGrid();
-}
-}
-}
-}
-// =========================================================================
-// 10. ПРИВЯЗКА ВСЕХ ОБРАБОТЧИКОВ НАЖАТИЙ КНОПОК ПРИ ЗАГРУЗКЕ
-// =========================================================================
-initCookieBanner();
-if ($('btnModeSolo')) $('btnModeSolo').addEventListener('click', function () { switchChatMode('solo'); });
-if ($('btnModeGroup')) $('btnModeGroup').addEventListener('click', function () { switchChatMode('group'); });
-if ($('btnNext')) $('btnNext').addEventListener('click', startSearchOrNext);
-if ($('btnStop')) $('btnStop').addEventListener('click', function () { stopActiveSession(true); });
-if ($('btnMute')) $('btnMute').addEventListener('click', toggleMicrophoneMute);
-if ($('chatForm')) $('chatForm').addEventListener('submit', handleChatSubmit);
-connectSignalingSocket();
-})();
-
-
