@@ -41,7 +41,12 @@ async function poll() {
   try {
     var url = SB_URL + '/rest/v1/room_signals?select=id,payload&id=gt.' + lastId + '&order=id.asc&limit=40';
     var r = await fetch(url, {
-      headers: { 'apikey': SB_KEY }
+      method: 'GET',
+      mode: 'cors',
+      headers: {
+        'apikey': SB_KEY,
+        'Accept': 'application/json'
+      }
     });
     if (r.ok) {
       if (st) st.textContent = 'Онлайн: Supabase подключён';
@@ -51,13 +56,15 @@ async function poll() {
         onSignal(rows[i].payload);
       }
     } else {
-      if (st) st.textContent = 'Ошибка чтения SB: ' + r.status;
+      var errTxt = await r.text();
+      if (st) st.textContent = 'Ошибка SB ' + r.status + ': ' + errTxt.slice(0, 35);
     }
   } catch (e) {
-    if (st) st.textContent = 'Нет доступа к Supabase (нужен прокси)';
+    if (st) st.textContent = 'Сбой сети: ' + (e && e.message ? e.message : 'Failed to fetch');
   }
-  setTimeout(poll, 800);
+  setTimeout(poll, 1000);
 }
+
 
 // Пропускаем старые записи при открытии страницы и запускаем опрос
 fetch(SB_URL + '/rest/v1/room_signals?select=id&order=id.desc&limit=1', {
