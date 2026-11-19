@@ -59,6 +59,16 @@ document.getElementById('btnNext').onclick = function() {
     showScr('queueView');
   } else {
     showScr('groupView');
+    var grid = document.getElementById('groupGrid');
+    if (grid) {
+      var ava = window.myAvaUrl ? '<img src="' + window.myAvaUrl + '" style="width:24px;height:24px;border-radius:5px;image-rendering:pixelated;border:1px solid #00e676;">' : '<span>🎙️</span>';
+      var nick = window.myNick || 'Вы';
+      var html = '<div class="seat occupied">' + ava + '<span>' + nick + '</span></div>';
+      for (var i = 1; i < 6; i++) {
+        html += '<div class="seat"><span style="font-size:1.3rem">➕</span><span>Свободно</span></div>';
+      }
+      grid.innerHTML = html;
+    }
     document.getElementById('msgInput').disabled = false;
     document.getElementById('btnSend').disabled = false;
   }
@@ -90,4 +100,5 @@ document.getElementById('chatForm').onsubmit = function(e) {
   if (window.netSendChat) window.netSendChat(txt);
   inp.value = '';
 };
+
 window.showScr = showScr;
