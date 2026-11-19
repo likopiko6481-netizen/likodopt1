@@ -53,6 +53,23 @@ document.getElementById('btnModeGroup').onclick = function() {
 };
 
 document.getElementById('btnNext').onclick = function() {
+  // 1. Принудительная разблокировка звука (наушников/динамиков) по клику
+  try {
+    var AudioCtx = window.AudioContext || window.webkitAudioContext;
+    if (AudioCtx) {
+      if (!window.appAudioCtx) window.appAudioCtx = new AudioCtx();
+      if (window.appAudioCtx.state === 'suspended') window.appAudioCtx.resume();
+      var osc = window.appAudioCtx.createOscillator();
+      var gain = window.appAudioCtx.createGain();
+      gain.gain.value = 0.0001;
+      osc.connect(gain);
+      gain.connect(window.appAudioCtx.destination);
+      osc.start(0);
+      osc.stop(0.05);
+    }
+  } catch (e) {}
+
+  // 2. Запрос разрешения на микрофон
   if (navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
     navigator.mediaDevices.getUserMedia({ audio: true }).then(function(s) {
       window.localStream = s;
@@ -61,7 +78,7 @@ document.getElementById('btnNext').onclick = function() {
       if (box) {
         var d = document.createElement('div');
         d.className = 'msg sys';
-        d.textContent = '🎙️ Микрофон разрешён и работает';
+        d.textContent = '🎙️ Микрофон и звук (наушники) включены';
         box.appendChild(d);
       }
     }).catch(function(err) {
