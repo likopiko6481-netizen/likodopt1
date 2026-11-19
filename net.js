@@ -5,8 +5,11 @@ var myId = 'u_' + Math.random().toString(36).slice(2, 9);
 var netState = 'idle', partnerId = null, loop = null, lastId = 0;
 var lobby = {}, group = {}, seen = {};
 
-var bus = new BroadcastChannel('likodopt_room_bus');
-bus.onmessage = function(e) { onSignal(e.data); };
+var bus = null;
+try {
+  bus = new BroadcastChannel('likodopt_room_bus');
+  bus.onmessage = function(e) { onSignal(e.data); };
+} catch (e) {}
 
 function nick() { return window.myNick || 'Гость #' + myId.slice(-3); }
 function ava() { return window.myAvaUrl || ''; }
@@ -15,7 +18,7 @@ function send(pkt) {
   pkt.from = myId; pkt.nick = nick(); pkt.ava = ava();
   pkt.id = myId + '_' + Date.now() + '_' + Math.random();
   pkt.ts = Date.now();
-  bus.postMessage(pkt);
+  if (bus) try { bus.postMessage(pkt); } catch (e) {}
 
   fetch(SB_URL + '/rest/v1/room_signals', {
     method: 'POST',
@@ -37,9 +40,17 @@ async function poll() {
       }
     }
   } catch (e) {}
-  setTimeout(poll, 900);
+  setTimeout(poll, 850);
 }
-poll();
+
+fetch(SB_URL + '/rest/v1/room_signals?select=id&order=id.desc&limit=1', {
+  headers: { 'apikey': SB_KEY }
+}).then(function(r) { return r.json(); }).then(function(rows) {
+  if (Array.isArray(rows) && rows.length > 0 && rows[0].id) {
+    lastId = rows[0].id;
+  }
+  poll();
+}).catch(function() { poll(); });
 
 function log(txt, cls, n) {
   var box = document.getElementById('messages');
@@ -98,6 +109,11 @@ function openSoloRoom(pName, pAva) {
 
 window.netStartSearch = async function(mode) {
   window.netStopSession();
+  try {
+    var AC = window.AudioContext || window.webkitAudioContext;
+    if (AC) { var ctx = new AC(); if (ctx.state === 'suspended') ctx.resume(); }
+  } catch (e) {}
+
   await initAudio();
   if (mode === 'solo') {
     netState = 'search'; lobby[myId] = nick(); drawLobby(); log('Поиск собеседника...');
