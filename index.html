@@ -22,7 +22,7 @@ body {
   padding: 15px;
 }
 .app {
-  background: rgba(24, 27, 34, 0.93);
+  background: rgba(24, 27, 34, 0.94);
   width: 100%;
   max-width: 460px;
   border-radius: 20px;
@@ -37,12 +37,10 @@ body {
 .online-badge { background: #232834; padding: 6px 12px; border-radius: 20px; font-size: 0.82rem; color: #a0aab8; display: flex; align-items: center; }
 .online-dot { width: 8px; height: 8px; background: #00e676; border-radius: 50%; margin-right: 6px; }
 
-/* Переключатель режимов: Соло / Групповой (до 6) */
 .mode-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: rgba(18, 20, 26, 0.9); padding: 5px; border-radius: 14px; border: 1px solid #222630; margin-bottom: 14px; }
-.mode-btn { padding: 10px 8px; border: none; border-radius: 10px; font-size: 0.88rem; font-weight: 700; cursor: pointer; background: transparent; color: #8c96a6; touch-action: manipulation; }
+.mode-btn { padding: 11px 8px; border: none; border-radius: 10px; font-size: 0.88rem; font-weight: 700; cursor: pointer; background: transparent; color: #8c96a6; }
 .mode-btn.active { background: #00e676; color: #000; }
 
-/* Блок экранов */
 .voice-box { background: rgba(18, 20, 26, 0.88); border-radius: 16px; padding: 20px 15px; text-align: center; margin-bottom: 14px; border: 1px solid #222630; min-height: 185px; display: flex; flex-direction: column; justify-content: center; }
 .avatar { width: 70px; height: 70px; border-radius: 50%; background: #232834; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
 .avatar.speaking { box-shadow: 0 0 0 6px rgba(0, 230, 118, 0.35); background: #1c382c; border: 2px solid #00e676; }
@@ -59,16 +57,13 @@ body {
 .queue-sub { font-size: 0.84rem; color: #a0aab8; margin-bottom: 8px; }
 .timer-pill { background: #232834; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 0.84rem; font-weight: 600; border: 1px solid #323846; }
 
-/* Список в окне ожидания */
 .lobby-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-bottom: 8px; }
 .chip { background: #232834; border: 1px solid #00e676; color: #fff; padding: 3px 10px; border-radius: 14px; font-size: 0.76rem; }
 
-/* Сетка комнаты на 6 человек */
 .group-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; margin-bottom: 10px; }
 .seat { background: #1d212b; border: 1px solid #2e3444; border-radius: 12px; padding: 9px 4px; font-size: 0.76rem; color: #788292; display: flex; flex-direction: column; align-items: center; gap: 3px; }
 .seat.occupied { background: #1c382c; border-color: #00e676; color: #fff; font-weight: 600; }
 
-/* Чат */
 .chat-box { background: rgba(18, 20, 26, 0.88); border-radius: 14px; height: 155px; display: flex; flex-direction: column; margin-bottom: 14px; border: 1px solid #222630; overflow: hidden; }
 #messages { flex: 1; padding: 10px; overflow-y: auto; font-size: 0.9rem; display: flex; flex-direction: column; gap: 7px; }
 .msg { padding: 7px 11px; border-radius: 10px; max-width: 82%; word-wrap: break-word; }
@@ -81,9 +76,8 @@ body {
 .chat-input button { background: transparent; border: none; color: #00e676; font-weight: bold; padding: 0 16px; font-size: 1.15rem; cursor: pointer; }
 .chat-input button:disabled { color: #555; cursor: not-allowed; }
 
-/* Нижние кнопки управления */
-.controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; position: relative; z-index: 20; }
-.btn { padding: 14px; border: none; border-radius: 12px; font-size: 0.98rem; font-weight: 700; cursor: pointer; touch-action: manipulation; }
+.controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+.btn { padding: 14px; border: none; border-radius: 12px; font-size: 0.98rem; font-weight: 700; cursor: pointer; }
 .btn:active:not(:disabled) { transform: scale(0.97); }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 #btnNext { background: #00e676; color: #000; }
@@ -91,11 +85,10 @@ body {
 #btnMute { grid-column: span 2; background: #262b38; color: #fff; font-weight: 600; }
 #btnMute.muted { background: #ff9800; color: #000; }
 
-/* Плашка Cookie */
 .cookie-banner { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); width: calc(100% - 30px); max-width: 460px; background: rgba(24, 27, 34, 0.98); border: 1px solid rgba(0, 230, 118, 0.4); border-radius: 16px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; z-index: 9999; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
 .cookie-text { font-size: 0.85rem; color: #e6ecf5; line-height: 1.35; }
 .cookie-text span { color: #00e676; font-weight: 700; }
-.cookie-close { background: #262b38; color: #fff; border: 1px solid #353b4d; border-radius: 50%; width: 32px; height: 32px; min-width: 32px; display: flex; align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; touch-action: manipulation; }
+.cookie-close { background: #262b38; color: #fff; border: 1px solid #353b4d; border-radius: 50%; width: 32px; height: 32px; min-width: 32px; display: flex; align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; }
 </style>
 </head>
 <body>
@@ -106,10 +99,10 @@ body {
     <div class="online-badge"><span class="online-dot"></span><span id="netStatus">Онлайн: В сети</span></div>
   </div>
 
-  <!-- Кнопки переключения: Соло / Групповой -->
+  <!-- Переключатель: Соло / Групповой -->
   <div class="mode-switch">
-    <button type="button" class="mode-btn active" id="btnModeSolo" onclick="switchMode('solo')">👤 Соло (1 на 1)</button>
-    <button type="button" class="mode-btn" id="btnModeGroup" onclick="switchMode('group')">👥 Групповой (до 6)</button>
+    <button type="button" class="mode-btn active" id="btnModeSolo">👤 Соло (1 на 1)</button>
+    <button type="button" class="mode-btn" id="btnModeGroup">👥 Групповой (до 6)</button>
   </div>
 
   <div class="voice-box">
@@ -129,7 +122,7 @@ body {
       <div class="timer-pill">Время ожидания: <span id="searchTimerText">00:00</span></div>
     </div>
 
-    <!-- Экран 3: Окно «Собеседник найден» (Соло) -->
+    <!-- Экран 3: Окно «Собеседник найден» -->
     <div class="screen-view" id="callView">
       <div class="avatar speaking">🎧</div>
       <div class="queue-title" style="color:#fff">Собеседник найден!</div>
@@ -137,7 +130,7 @@ body {
       <div class="timer-pill" style="color:#00e676">● Разговор: <span id="callTimerText">00:00</span></div>
     </div>
 
-    <!-- Экран 4: Комната на 6 человек (Групповой) -->
+    <!-- Экран 4: Групповая комната на 6 человек -->
     <div class="screen-view" id="groupView">
       <div class="group-grid" id="groupGrid"></div>
       <div class="timer-pill" style="color:#00e676">● Комната (<span id="groupCountText">1</span>/6) • <span id="groupTimerText">00:00</span></div>
@@ -146,114 +139,115 @@ body {
 
   <div class="chat-box">
     <div id="messages"></div>
-    <form class="chat-input" onsubmit="sendMsg(event)">
+    <form class="chat-input" id="chatForm">
       <input type="text" id="msgInput" placeholder="Написать сообщение..." disabled autocomplete="off">
       <button type="submit" id="btnSend" disabled>➤</button>
     </form>
   </div>
 
   <div class="controls">
-    <button type="button" class="btn" id="btnNext" onclick="onNext()">Найти / Далее</button>
-    <button type="button" class="btn" id="btnStop" onclick="onStop(true)" disabled>Стоп</button>
-    <button type="button" class="btn" id="btnMute" onclick="onMute()">Выключить микрофон</button>
+    <button type="button" class="btn" id="btnNext">Найти / Далее</button>
+    <button type="button" class="btn" id="btnStop" disabled>Стоп</button>
+    <button type="button" class="btn" id="btnMute">Выключить микрофон</button>
   </div>
 
   <div id="audioPool"></div>
 </div>
 
+<!-- Плашка Cookie -->
 <div class="cookie-banner" id="cookieBanner">
   <div class="cookie-text">🍪 Мы используем ваши файлы <span>Cookie</span> для улучшения работы сайта.</div>
-  <button type="button" class="cookie-close" onclick="closeCk()">✕</button>
+  <button type="button" class="cookie-close" id="btnCloseCookie">✕</button>
 </div>
 
 <script>
-  var myId = 'u_' + Math.random().toString(36).slice(2, 10);
-  var myName = 'Участник #' + Math.floor(100 + Math.random() * 899);
+(function() {
+  const $ = id => document.getElementById(id);
 
-  var mode = 'solo'; // 'solo' | 'group'
-var state = 'idle'; // 'idle' | 'search' | 'call' | 'group'
-var partnerId = null;
-var stream = null;
-var muted = false;
-var timer = null;
-var searchLoop = null;
-var sec = 0;
-var peers = {};
-var lobby = {};
-var grp = {};
-var seen = {};
-if (localStorage.GetItem('lk_ck') === '1') {
-document.getElementById('cookieBanner').style.display = 'нет';
+  // =========================================================
+  // 1. МГНОВЕННАЯ ЛОГИКА ВСЕХ КНОПОК И ПЕРЕКЛЮЧЕНИЯ ЭКРАНОВ
+  // =========================================================
+  let mode = 'solo';
+  let state = 'idle';
+  let partnerId = null;
+  let stream = null;
+  let muted = false;
+  let timer = null;
+  let searchLoop = null;
+  let sec = 0;
+
+  const myId = 'u_' + Math.random().toString(36).slice(2, 10);
+  const myName = 'Участник #' + Math.floor(100 + Math.random() * 899);
+  const peers = {};
+  const lobby = {};
+  const grp = {};
+  const seen = {};
+
+// Кнопка закрытия плашки Файл cookie
+if (localStorage.GetItem('lk_ck') === '1') { 
+$('cookieBanner').style.display = 'нет';
 }
-функция closeCk() {
+$('btnCloseCookie').addEventListener('click', функция() {
 localStorage.setItem('lk_ck', '1');
-document.getElementById('cookieBanner').style.display = 'нет';
-}
-журнал функций(text, cls) {
-var d = document.createElement('div');
-d.className = 'msg ' + (cls || 'sys');
-d.textContent = text;
-var m = document.getElementById('сообщения');
-m.appendChild(d);
-m.scrollTop = m.scrollHeight;
-}
+$('cookieBanner').style.display = 'нет';
+});
+// Функция смены экранов
 функция setScreen(ViewID) {
 clearInterval(таймер);
 сек = 0;
-['idleView', 'queueView', 'callView', 'GroupView'].forEach(функция(id) {
-document.getElementById(id).classList.remove('активный');
+['idleView', 'queueView', 'callView', 'GroupView'].forEach(id => {
+$(id).classList.remove('активный');
 });
-document.getElementById(ViewID).classList.add('активный');
+$(ViewID).classList.add('активный');
 if (ViewID !== 'idleView') {
-var tId = ViewID === 'Просмотр очереди' ? 'searchTimerText' : (ViewID === 'callView' ? 'callTimerText' : 'groupTimerText');
-var el = document.getElementById(tId);
+const tId = ViewID === 'Просмотр очереди' ? 'searchTimerText' : (ViewID === 'callView' ? 'callTimerText' : 'groupTimerText');
+const el = $(tId);
 el.textContent = '00:00';
 timer = setInterval(функция() {
 сек.++;
-var m = строка (Математический этаж(сек. / 60)).padStart(2, '0');
-var s = строка (сек. % 60).padStart(2, '0');
-el.textContent = m + ':' + s ;
-}, 1000);
+const m = строка (Математический этаж(сек. / 60)).padStart(2, '0');
+const s = строка (сек. % 60).padStart(2, '0');
+el.textContent = m + ':' + s;
+}, 1000) ;
 }
 }
-функции инверторный(использованием newmode) {
-если (состояние !== 'ожидание') методе onStop(ложь);
-режим = использованием newmode;
-документ.метода getElementById('btnModeSolo').classList.переключатель('активный', режим === 'соло');
-документ.метода getElementById('btnModeGroup').classList.переключатель('активный', режим === 'группа');
-документ.метода getElementById('idleIcon').текстового содержимого = режим === 'соло' ? '🎙️' : '👥';
-документ.метода getElementById('статус').текстового содержимого = режим === 'соло' ? 'Режим: Соло (1 на 1)' : 'Режим: Групповой (до 6 чел.)';
-setScreen('idleView');
+function log(text, cls) {
+const d = document.createElement('div');
+d.className = 'msg ' + (cls || 'sys');
+d.textContent = text;
+const m = $('messages');
+m.appendChild(d);
+m.scrollTop = m.scrollHeight;
 }
-функция ChatON(вкл.) {
-document.getElementById('msgInput').disabled = !вкл.;
-document.getElementById('btnSend').disabled = !вкл.;
-if (!вкл.) document.getElementById('msgInput').value = ";
+функция ChatON(on) {
+$('msgInput').disabled = !on;
+$('btnSend').disabled = !on;
+if (!on) $('msgInput').value = ";
 }
 функция renderLobby() {
-var box = document.getElementById('lobbyChips');
+const box = $('lobbyChips');
 box.innerHTML = ";
-var now = Date.now();
-Object.keys(lobby).forEach(функция(u) {
+const now = Date.now();
+Object.keys(lobby).forEach(u => {
 if (u !== myId && now - lobby[u].ts > 8000) удалить lobby[u];
 });
-Object.keys(lobby).forEach(функция(u) {
-var c = document.createElement( 'div');
-c.className = 'chip';
+Object.keys(lobby).forEach(u => {
+const c = document.createElement('div');
+c .className = 'чип';
 c.textContent = u === myId ? '🟢 Вы' : '⏳ ' + lobby[u].name;
 box.appendChild(c);
 });
 }
 функция renderGroup() {
-var grid = document.getElementById('groupGrid');
+const grid = $('groupGrid');
 grid.innerHTML = ";
-var ids = Object.keys(grp);
-document.getElementById('groupCountText').textContent = ids.length;
-for (var i = 0; i < 6; i++) {
-var seat = document.createElement('div');
+const ids = Object.keys(grp);
+$('groupCountText').textContent = ids.length;
+for (пусть i = 0; i < 6; i++) {
+const seat = document.createElement('div');
 if (ids[i]) {
-seat.className = 'место занято';
-seat.innerHTML = " + (ids[i] === myId ? '🎙️' : '🎧') + '' + (ids[i] === myId ? 'Вы' : grp[ids[i]]) + '';
+seat.className = 'занятое место';
+seat.innerHTML = " + (идентификаторы[i] === myId ? '🎙️' : '🎧') + '' + (ids[i] === myId ? 'Вы' : grp[ids[i]]) + '';
 } else {
 seat.className = 'seat';
 seat.innerHTML = '➕Свободно';
@@ -261,54 +255,28 @@ seat.innerHTML = '➕Свободно';
 grid.appendChild(seat);
 }
 }
-function closePeer(uid) {
-if (peers[uid]) {
-try { peers[uid].close(); } catch (e) {}
-удалить peers[uid];
+// Кнопки «Соло (1 на 1)» и «Групповой (до 6)»
+function switchMode(newMode) {
+if (state !== 'idle') stopAll(false);
+mode = newMode;
+$('btnModeSolo').classList.toggle('active', mode === 'solo');
+$('btnModeGroup').classList.toggle('active', mode === 'group');
+$('idleIcon').textContent = mode === 'solo' ? '🎙️' : '👥';
+$('status').textContent = mode === 'solo' ? 'Режим: Соло (1 на 1)' : 'Режим: Групповой (до 6 чел.)';
+setScreen('idleView');
 }
-var a = document.getElementById('aud_' + uid);
-if (a) a.remove();
-}
-// Протокол подключения собеседников (WebSocket + WebRTC)
-var ws = null;
-функция connectNet() {
-попробуйте {
-ws = new WebSocket('wss://socketsbay.com');
-ws.onopen = функция() {
-document.getElementById('netStatus').textContent = 'Онлайн: В сети';
-sendSig({cmd: 'connect', to: '*' });
-};
-ws.onmessage = функция(e) {
- var pkt = null;
-try { pkt = JSON.parse(например,данные); } catch (ошибка) { return; }
-if (!pkt || pkt.app !== 'likodopt_full_v1' || pkt.uco === myId || видел[pkt.одноразовый номер]) return;
-видел[pkt.одноразовый номер] = true;
-handlePacket(pkt);
-};
-ws.onclose = function() {
-setTimeout( connectNet, 2000);
-};
-} catch (e) {}
-}
-connectNet();
-function sendSig(data) {
-if (!ws || ws.readyState !== 1) return;
-data.app = 'likodopt_full_v1';
-data.uco = myId;
-data.name = myName;
-data.session = '1';
-data.nonce = myId + '' + Date.now() + '' + Math.random().toString(36).slice(2, 6);
-try { ws.send(JSON.stringify(data)); } catch (e) {}
-}
-function onNext() {
-onStop(false);
-document.getElementById('btnStop').disabled = false;
-document.getElementById('messages').innerHTML = '';
+$('btnModeSolo').addEventListener('click', () => switchMode('solo'));
+$('btnModeGroup').addEventListener('click', () => switchMode('group'));
+// Кнопка «Найти / Далее» -> переводит в окно ожидания или групповую комнату
+$('btnNext').addEventListener('click', function() {
+stopAll(false);
+$('btnStop').disabled = false;
+$('messages').innerHTML = '';
 if (!stream && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
 navigator.mediaDevices.getUserMedia({ audio: true })
 .then(function(s) {
 stream = s;
-if (muted) stream.getAudioTracks().forEach(function(t) { t.enabled = false; });
+if (muted) stream.getAudioTracks().forEach(t => t.enabled = false);
 })
 .catch(function() { log('Микрофон недоступен — работает текстовый чат'); });
 }
@@ -340,56 +308,103 @@ sendSig({ cmd: 'wait_group', to: '' });
 }
 }, 2000);
 }
-}
-function onStop(showMsg) {
+});
+// Кнопка «Стоп» -> возвращает на главный экран
+function stopAll(showStopped) {
 clearInterval(searchLoop);
 clearInterval(timer);
 if (partnerId) sendSig({ cmd: 'bye', to: partnerId, kind: 'solo' });
 if (state === 'group') {
-Object.keys(grp).forEach(function(u) {
+Object.keys(grp).forEach(u => {
 if (u !== myId) sendSig({ cmd: 'bye', to: u, kind: 'group' });
 });
 }
 Object.keys(peers).forEach(closePeer);
-grp = {};
-lobby = {};
+для (const k в grp) удалить grp[k];
+для (const k в лобби) удалить lobby[k];
 partnerId = null;
 state = 'idle';
-chatOn(false);
-if (showMsg) {
-document.getElementById('btnStop').disabled = true;
-document.getElementById('status').textContent = 'Поиск остановлен';
+ChatON(false);
+if (showStopped) {
+$('btnStop').disabled = true;
+$('status').textContent = 'Поиск остановлен';
 setScreen('idleView');
-log('Вы вышли из комнаты');
+log('Вы вышли на главный экран');
 }
 }
-function onMute() {
+$('btnStop').addEventListener('click', () => stopAll(true));
+// Кнопка «Выключить микрофон»
+$('btnMute').addEventListener('click', function() {
 muted = !muted;
-if (stream) stream.getAudioTracks().forEach(function(t) { t.enabled = !muted; });
-var b = document.getElementById('btnMute');
-b.textContent = muted ? 'Включить микрофон' : 'Выключить микрофон';
-b.classList.toggle('muted', muted);
+if (stream) {
+stream.getAudioTracks().forEach(t => { t.enabled = !muted; });
 }
-function sendMsg(e) {
-e.preventDefault();
-var inp = document.getElementById('msgInput');
-var txt = inp.value.trim();
-if (!txt) return;
-if (state === 'call' && partnerId) {
-log(txt, 'me');
-sendSig({ cmd: 'comm', to: partnerId, kind: 'solo', data: txt });
-inp.value = '';
-} else if (state === 'group') {
-log(txt, 'me');
-Object.keys(grp).forEach(функция(u) {
-if (u !== myId) отправляет сигнал({ cmd: 'comm', кому: u, вид: 'group', данные: txt });
+this.textContent = muted ? 'Включить микрофон' : 'Выключить микрофон';
+this.classList.toggle('muted', muted);
+log(muted ? 'Микрофон выключен' : 'Микрофон включён');
 });
+// Отправка сообщений в чат
+$('chatForm').addEventListener('submit', function(e) {
+e.preventDefault();
+const inp = $('msgInput');
+const txt = inp.value.trim();
+if (!txt) return;
+if (state === 'вызов' && partnerId) {
+журнал (txt, 'я');
+Отправка ({ cmd: 'comm', кому: partnerId, вид: 'соло', данные: txt });
 inp.value = ";
+} else if (state === 'группа') {
+log(txt, 'me');
+Object.keys(grp).forEach(u => {
+if (u !== myId) sendSig({ cmd: 'comm', to: u, kind: 'group', data: txt });
+});
+inp.value = '';
 }
+});
+// =========================================================
+// 2. ПРОТОКОЛ СОЕДИНЕНИЯ СОБЕСЕДНИКОВ (WEBSOCKET + WEBRTC)
+// =========================================================
+function closePeer(uid) {
+if (peers[uid]) {
+try { peers[uid].close(); } catch (e) {}
+удалить peers[uid];
+}
+const a = $('aud_' + uid);
+if (a) a.remove();
+}
+пусть ws = null;
+функция connectNet() {
+попробуйте {
+ws = new WebSocket('wss://postman-echo.com');
+ws.onopen = функция() {
+$('netStatus').textContent = 'Онлайн: В сети';
+sendSig({ cmd: 'connect', to: '*' });
+};
+ws.onmessage = функция(e) {
+позвольте pkt = null;
+попробуйте { pkt = JSON.parse(e .data); } catch (err) { return; }
+if (!pkt || pkt.app !== 'likodopt_ru_v2' || pkt.uco === myId || видел[pkt.одноразовый номер]) return;
+видел[pkt.одноразовый номер] = true;
+handlePacket(pkt);
+};
+ws.onclose = function() {
+setTimeout(connectNet, 2500);
+};
+} catch (e) {}
+}
+ Подключенная сеть();
+функция отправляет sendSig(data) {
+if (!ws || ws.readyState !== 1) return;
+data.app = 'likodopt_ru_v2';
+data.uco = myId;
+data.name = Мое имя;
+data.session = '1';
+data.nonce = myId + '' + Date.now() + '' + Math.random().toString(36).slice(2, 6);
+try { ws.send(JSON.stringify(data)); } catch (e) {}
 }
 асинхронная функция startRtc(to, init, kind) {
 closePeer(to);
-var pc = новое RTCPeerConnection({
+const pc = новое RTCPeerConnection({
 iceServers: [
 { urls: 'stun:google.com ' },
 { urls: 'turn:openrelay.metered.ca:443', имя пользователя: 'openrelayproject', учетные данные: 'openrelayproject' }
@@ -397,29 +412,29 @@ iceServers: [
 });
 peers[to] = pc;
 if (stream) {
-stream.getTracks().forEach(функция(t) { pc.addTrack(t, поток); });
+stream.getTracks().forEach(t => pc.addTrack(t, stream));
 }
-pc.ontrack = функция(e) {
-var a = document.getElementById('aud_' + to);
+pc.ontrack = function(e) {
+let a = $('aud_' + to);
 if (!a) {
 a = document.createElement('audio');
 a.id = 'aud_' + to;
-a.автозапуск = true;
+a.autoplay = true;
 a.playsInline = true;
-document.getElementById('audioPool').appendChild(a);
+$('audioPool').appendChild(a);
 }
-a.srcObject = новый медиапоток ([например,дорожка]);
-a.play().catch(функция() {});
+a.srcObject = new MediaStream([e.track]);
+a.play().catch(() => {});
 };
-pc.onicecandidate = функция(e) {
-if (e.кандидат) {
-Отправляет сигнал ({ cmd: 'ice', to: кому, данные: e.кандидат });
+pc.onicecandidate = function(e) {
+if (e.candidate) {
+sendSig({ cmd: 'ice', to: to, data: e.candidate });
 }
 };
 if (init) {
-var off = ожидает pc.createOffer();
-ожидает pc.setLocalDescription(выкл.);
-отправляет сигнал ({ cmd: 'предложение', кому: to, данные: выкл., вид: kind });
+const off = await pc.createOffer();
+await pc.setLocalDescription(off);
+sendSig({ cmd: 'offer', to: to, data: off, kind: kind });
 }
 }
 асинхронная функция handlePacket(pkt) {
@@ -430,11 +445,11 @@ if (myId > pkt.ucoo) {
 state = 'вызов';
 partnerId = pkt.ucoo;
 clearInterval(searchLoop);
-sendSig({ cmd: 'pair', кому: partnerId, вид: 'solo' });
+sendSig({ cmd: 'pair', кому: partnerId, kind: 'solo' });
 setScreen('callView');
 ChatON(true);
-document.getElementById('сообщения').innerHTML = ";
-log ('Собеседник найден! Приятного общения 👋');
+$('сообщения').innerHTML = ";
+log('Собеседник найден! Приятного общения 👋');
 startRtc(partnerId, true, 'solo');
 }
 } else if (pkt.cmd === 'пара' && pkt.to === myId && pkt.kind === 'соло' && state === 'поиск') {
@@ -443,28 +458,28 @@ partnerId = pkt.uco;
 clearInterval(searchLoop);
 setScreen('callView');
 ChatON(true);
-document.getElementById('сообщения').innerHTML = ";
+$('сообщения').innerHTML = ";
 log('Собеседник найден! Приятного общения 👋');
 startRtc(partnerId, false, 'solo');
-} else if (pkt.cmd === 'wait_group' && state === 'group' && !grp[pkt.uco] && Object.keys(grp).length < 6) {
+} else if (pkt.cmd === 'wait_group' && state === 'group' && !grp[pkt.uco] && Object.keys(grp).длина < 6) {
 grp[pkt.uco] = pkt.name;
 renderGroup();
 log(pkt.name + ' зашёл в комнату');
-sendSig({ cmd: 'pair', to: pkt.uco, kind: 'group' });
+Отправляет ({ cmd: 'pair', кому: pkt.uco, вид: 'group' });
 if (myId > pkt.uco) startRtc(pkt.uco, true, 'group');
-} else if (pkt.cmd === 'pair' && pkt.to === myId && pkt.kind === 'group' && state === 'group' && !grp[pkt.uco] && Object.keys(grp).длина < 6) {
-grp[pkt.uco] = pkt.name ;
+} else if (pkt.cmd === 'pair' && pkt.to === myId && pkt.kind === 'group' && state === 'группа' && !grp[pkt.uco] && Object.keys(grp).length < 6) {
+grp[pkt.uco] = pkt.name;
 renderGroup();
 if (myId > pkt.uco) startRtc(pkt.uco, true, 'group');
 } else if (pkt.to === myId) {
-if (pkt.cmd === 'предложение') {
-if (pkt.kind === 'группа' && state === 'группа' && !grp[pkt.uco] && Object.keys(grp).длина < 6) {
+if (pkt.cmd === 'offer') {
+if (pkt.kind === 'group' && state === 'group' && !grp[pkt.uco] && Object.keys(grp).длина < 6) {
 grp[pkt.uco] = pkt.name ;
 renderGroup();
 }
 ожидает startRtc(pkt.uco, false, pkt.kind);
 ожидает одноранговые узлы[pkt.uco].setRemoteDescription(новое RTCSessionDescription(pkt.data));
-var ans = ожидает одноранговые узлы[pkt.uco].createAnswer();
+const ans = ожидает одноранговые узлы[pkt.uco].createAnswer();
 ожидает одноранговые узлы[pkt.uco].setLocalDescription(ans);
 Отправляет ({ cmd: 'answer', кому: pkt. uco, данные: ans });
 } else if (pkt.cmd === 'answer' && peers[pkt.uco]) {
@@ -473,11 +488,11 @@ var ans = ожидает одноранговые узлы[pkt.uco].createAnswer
 try { await peers[pkt.uco].addIceCandidate(новый RTCIceCandidate(pkt.data)); } catch (e) {}
 } else if (pkt.cmd === 'comm') {
 if (pkt.kind === 'solo' && pkt.uco === partnerId) log(pkt.data, 'partner');
-if (pkt.kind === 'group' && state === 'group' && grp[ пкт.uco]) войти(pkt.name + ': ' + pkt.data, 'партнер');
+if (pkt.kind === 'group' && state === 'group' && grp[ пкт.uco]) войти(pkt.name + ': ' + pkt.data, 'partner');
 } else if (pkt.cmd === 'bye') {
 if (pkt.kind === 'solo' && pkt.uco === partnerId) {
-onStop(true);
-document.getElementById('status').textContent = 'Собеседник отключился';
+stopAll(true);
+$('status').textContent = 'Собеседник отключился';
 }
 if (pkt.kind === 'group' && state === 'group' && grp[pkt.uco]) {
 log(grp[pkt.uco] + ' покинул комнату');
@@ -488,5 +503,6 @@ renderGroup();
 }
 }
 }
+})();
 
 
