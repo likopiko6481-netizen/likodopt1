@@ -1,7 +1,6 @@
 const $ = id => document.getElementById(id);
 const me = 'u_' + Math.random().toString(36).slice(2, 9);
 const myName = 'Участник #' + Math.floor(100 + Math.random() * 899);
-const TOPIC = 'likodopt/ru/voice/lobby/2026';
 
 let mode = 'solo'; // 'solo' | 'group'
 let st = 'home';   // 'home' | 'wait' | 'call' | 'group'
@@ -15,6 +14,7 @@ let sec = 0;
 const peers = {};
 const waitingPeople = {};
 const grp = {};
+const seen = new Set();
 
 // 1. Закрытие плашки Cookie
 if (localStorage.getItem('lk_ck_ok') === '1' && $('ckBox')) $('ckBox').classList.add('hide');
@@ -25,27 +25,36 @@ if ($('ckClose')) {
   });
 }
 
-// 2. Подключение к быстрому WebSocket-серверу (порт 443, работает в РФ без VPN)
-const client = mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
-  clientId: 'lk_' + me,
-  clean: true,
-  reconnectPeriod: 2000
-});
-
-client.on('connect', () => {
-  client.subscribe(TOPIC);
-  const badge = document.querySelector('.badge');
-  if (badge) badge.textContent = '● Онлайн: В сети';
-});
-
-client.on('offline', () => {
-  const badge = document.querySelector('.badge');
-  if (badge) badge.textContent = '● Переподключение...';
-});
+// 2. Прямой встроенный WebSocket для поиска людей в РФ без внешних библиотек
+let ws = null;
+function connectSocket() {
+  try {
+    ws = new WebSocket('wss://://socketsbay.com');
+    ws.onopen = () => {
+      if ($('netBadge')) $('netBadge').textContent = '● Онлайн: В сети';
+    };
+    ws.onmessage = event => {
+      let m = null;
+      try { m = JSON.parse(event.data); } catch (e) { return; }
+      if (!m || m.app !== 'likodopt_2026' || m.from === me || seen.has(m.id)) return;
+      seen.add(m.id);
+      handleSignal(m);
+    };
+    ws.onclose = () => {
+      if ($('netBadge')) $('netBadge').textContent = '● Переподключение...';
+      setTimeout(connectSocket, 2000);
+    };
+    ws.onerror = () => {};
+  } catch (e) {}
+}
+connectSocket();
 
 function sendSig(data) {
-  if (!client || !client.connected) return;
-  client.publish(TOPIC, JSON.stringify({ from: me, name: myName, ts: Date.now(), ...data }));
+  if (!ws || ws.readyState !== 1) return;
+  const id = me + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+  try {
+    ws.send(JSON.stringify({ app: 'likodopt_2026', id, from: me, name: myName, ts: Date.now(), ...data }));
+  } catch (e) {}
 }
 
 // 3. Переключение экранов
@@ -128,7 +137,7 @@ function closePeer(uid) {
   if (a) a.remove();
 }
 
-// 5. Кнопка «Найти / Далее»
+// 5. Кнопка «Найти / Далее» — открывает комнату ожидания
 $('bNext').addEventListener('click', () => {
   stopAll(false);
   $('bStop').disabled = false;
@@ -145,7 +154,7 @@ $('bNext').addEventListener('click', () => {
   if (mode === 'solo') {
     st = 'wait';
     waitingPeople[me] = { name: myName, ts: Date.now() };
-    $('waitSub').textContent = 'Вы в комнате ожидания (1 на 1)...';
+    $('waitSub').textContent = 'Вы в комнате ожидания (режим 1 на 1)...';
     renderLobby();
     showScr('sWait');
     log('Вы вошли в комнату ожидания собеседника...');
@@ -244,12 +253,7 @@ async function rtc(to, init, kind) {
   }
 }
 
-// 9. Мгновенная обработка сообщений от других людей
-client.on('message', async (topic, payload) => {
-  let m = null;
-  try { m = JSON.parse(payload.toString()); } catch (e) { return; }
-  if (!m || m.from === me) return;
-
+async function handleSignal(m) {
   if (m.type === 'wait_solo' && st === 'wait') {
     waitingPeople[m.from] = { name: m.name || 'Участник', ts: Date.now() };
     renderLobby();
@@ -295,23 +299,23 @@ client.on('message', async (topic, payload) => {
       await peers[m.from].setRemoteDescription(new RTCSessionDescription(m.o));
       const a = await peers[m.from].createAnswer();
       await peers[m.from].setLocalDescription(a);
-      sendSig({ to: m.from, type: 'ans', a });
-    } else if (m.type === 'ans' && peers[m.from]) {
-      await peers[m.from].setRemoteDescription(new RTCSessionDescription(m.a));
+Отправляет сигнал({ кому: m.from, тип: 'ans', a });
+} else if (m.type === 'ans' && peers[m.from]) {
+ожидает peers[m.from].setRemoteDescription(новое RTCSessionDescription(m.a));
 } else if (m.type === 'ice' && peers[m.from]) {
-try { await peers[m.from].addIceCandidate(новый RTCIceCandidate(m.c)); } catch (e) {}
+try { ожидает peers[m.from].addIceCandidate(новое RTCIceCandidate( m.c)); } catch (e) {}
 } else if (m.type === 'txt1' && m.from === soloPid) {
-log(m.v, 'he');
-} else if (m.type === 'txt6' && st === 'группа' && grp[m.from]) {
-log(grp[m.from] + ': ' + m.v, 'he');
-} else if (m.type === 'bye1' && m.from === soloPid) {
+log(m.v, 'он');
+} else if (m.type === 'txt6' && st === 'group' && grp[m.from]) {
+log(grp[m.from] + ': ' + m.v, 'он');
+} else if (m.type === ' bye1' && m.from === soloPid) {
 stopAll(true);
 $('hTitle').textContent = 'Собеседник отключился';
 } else if (m.type === 'bye6' && st === 'group' && grp[m.from]) {
-log (grp[m.from] + ' вышел');
-удалить grp[m.from];
+log(grp[m.from] + ' вышел');
+delete grp[m.from];
 closePeer(m.from);
 draw6();
 }
 }
-});
+}
