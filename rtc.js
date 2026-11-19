@@ -1,7 +1,10 @@
 window.localStream = window.localStream || null;
 var connections = {};
+var pendingCandidates = {};
+
 var rtcConfig = {
   iceServers: [
+    { urls: 'stun:://google.com' },
     { urls: 'stun:://google.com' },
     { urls: 'stun:://google.com' },
     { urls: 'stun:://cloudflare.com' }
@@ -24,13 +27,47 @@ function initAudio() {
 }
 
 function closePeer(uid) {
-  if (connections[uid]) { try { connections[uid].close(); } catch (e) {} delete connections[uid]; }
+  if (connections[uid]) {
+    try { connections[uid].close(); } catch (e) {}
+    delete connections[uid];
+  }
+  delete pendingCandidates[uid];
   var a = document.getElementById('aud_' + uid);
   if (a) a.remove();
 }
 
+// Буфер ICE-кандидатов, чтобы сетевые адреса не терялись до установки соединения
+window.saveOrAddIce = function(uid, cand) {
+  var pc = connections[uid];
+  if (pc && pc.remoteDescription && pc.remoteDescription.type) {
+    pc.addIceCandidate(new RTCIceCandidate(cand)).catch(function() {});
+  } else {
+    if (!pendingCandidates[uid]) pendingCandidates[uid] = [];
+    pendingCandidates[uid].push(cand);
+  }
+};
+
+window.flushIce = function(uid) {
+  var pc = connections[uid];
+  var list = pendingCandidates[uid];
+  if (pc && list && list.length > 0) {
+    while (list.length > 0) {
+      var c = list.shift();
+      pc.addIceCandidate(new RTCIceCandidate(c)).catch(function() {});
+    }
+  }
+};
+
 async function getPeer(uid, sendFn) {
-  if (connections[uid]) return connections[uid];
+  if (connections[uid]) {
+    if (window.localStream && connections[uid].getSenders().length === 0) {
+      window.localStream.getTracks().forEach(function(t) {
+        connections[uid].addTrack(t, window.localStream);
+      });
+    }
+    return connections[uid];
+  }
+
   if (!window.localStream) await initAudio();
 
   var pc = new RTCPeerConnection(rtcConfig);
@@ -49,6 +86,14 @@ async function getPeer(uid, sendFn) {
     stream.addTrack(e.track);
     a.srcObject = stream;
     a.play().catch(function() {});
+
+    var box = document.getElementById('messages');
+    if (box) {
+      var d = document.createElement('div');
+      d.className = 'msg sys';
+      d.textContent = '🔊 Голосовой канал с собеседником подключён!';
+      box.appendChild(d);
+    }
   };
 
   pc.onicecandidate = function(e) {
