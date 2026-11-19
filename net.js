@@ -12,13 +12,23 @@ var lobby = {};
 var group = {};
 var seen = {};
 
+// 1. Мгновенный локальный канал между вкладками браузера (работает за 1 мс без интернета)
+var localBus = null;
+try {
+  localBus = new BroadcastChannel('likodopt_local_tabs');
+  localBus.onmessage = function(e) {
+    var pkt = e.data;
+    if (!pkt || pkt.uco === myId || seen[pkt.nonce]) return;
+    seen[pkt.nonce] = true;
+    onPacket(pkt);
+  };
+} catch (e) {}
+
 var rtcConfig = {
   iceServers: [
     { urls: 'stun:://google.com' },
     { urls: 'stun:://google.com' },
-    { urls: 'stun:://cloudflare.com' },
-    { urls: 'turn:a.relay.metered.ca:80', username: 'e8dd65b92f62d3e36cafeb80', credential: 'uWdWNcQbcGnxB214' },
-    { urls: 'turn:a.relay.metered.ca:443', username: 'e8dd65b92f62d3e36cafeb80', credential: 'uWdWNcQbcGnxB214' }
+    { urls: 'stun:://cloudflare.com' }
   ],
   iceCandidatePoolSize: 10
 };
@@ -150,13 +160,17 @@ function closePeer(u) {
   if (a) a.remove();
 }
 
-// ВАЖНО: для ключа sb_publishable_ передаём ТОЛЬКО apikey (без Authorization: Bearer)
+// Отправка сигнала сразу во все вкладки ПК + в облако Supabase
 function sendSig(data) {
   data.uco = myId;
   data.name = getMyNick();
   data.ava = getMyAva();
   data.nonce = myId + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
   data.ts = Date.now();
+
+  if (localBus) {
+    try { localBus.postMessage(data); } catch (e) {}
+  }
 
   fetch(SUPABASE_URL + '/rest/v1/room_signals', {
     method: 'POST',
@@ -166,24 +180,16 @@ function sendSig(data) {
       'Prefer': 'return=minimal'
     },
     body: JSON.stringify({ payload: data })
-  }).then(function(r) {
-    if (!r.ok) {
-      logMsg('Ошибка отправки (' + r.status + ') — проверьте права таблицы');
-    }
-  }).catch(function() {
-    logMsg('Сеть блокирует доступ к Supabase (попробуйте с VPN или другой сетью)');
-  });
+  }).catch(function() {});
 }
 
 async function pollSignals() {
   try {
     var url = SUPABASE_URL + '/rest/v1/room_signals?select=id,payload&id=gt.' + lastRowId + '&order=id.asc&limit=50';
-    var res = await fetch(url, {
-      headers: { 'apikey': SUPABASE_KEY }
-    });
+    var res = await fetch(url, { headers: { 'apikey': SUPABASE_KEY } });
     var st = document.getElementById('netStatus');
     if (res.ok) {
-      if (st) st.textContent = 'Онлайн: База подключена';
+      if (st) st.textContent = 'Онлайн: В сети';
       var rows = await res.json();
       for (var i = 0; i < rows.length; i++) {
         if (rows[i].id > lastRowId) lastRowId = rows[i].id;
@@ -192,29 +198,15 @@ async function pollSignals() {
         seen[pkt.nonce] = true;
         onPacket(pkt);
       }
-    } else {
-      if (st) st.textContent = 'Ошибка БД: ' + res.status;
     }
-  } catch (e) {
-    var st2 = document.getElementById('netStatus');
-    if (st2) st2.textContent = 'Нет связи с сервером';
-  }
-  setTimeout(pollSignals, 800);
+  } catch (e) {}
+  setTimeout(pollSignals, 900);
 }
-
 pollSignals();
 
 window.netStartSearch = function(mode) {
   window.netStopSession();
   initMic();
-
-  try {
-    var AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (AudioCtx) {
-      var ctx = new AudioCtx();
-      if (ctx.state === 'suspended') ctx.resume();
-    }
-  } catch (e) {}
 
   if (mode === 'solo') {
     netState = 'search';
@@ -228,7 +220,7 @@ window.netStartSearch = function(mode) {
         drawLobby();
         sendSig({ cmd: 'wait_solo', to: '*' });
       }
-    }, 1500);
+    }, 1000);
   } else {
     netState = 'group';
     group[myId] = { name: getMyNick(), ava: getMyAva() };
@@ -241,7 +233,7 @@ window.netStartSearch = function(mode) {
       if (netState === 'group' && Object.keys(group).length < 6) {
         sendSig({ cmd: 'wait_group', to: '*' });
       }
-    }, 2000);
+    }, 1500);
   }
 };
 
@@ -279,10 +271,10 @@ function showFoundPartner(pName, pAva) {
   var meCard = document.getElementById('roomMeCard');
   if (meCard) {
     var myAva = getMyAva();
-meCard.innerHTML = (myAva ? '' : '🎙️') + '' + getMyNick() + ' (Вы)';
-}
-var partnerCard = document.getElementById('roomPartnerCard');
-if (partnerCard) {
+    meCard.innerHTML = (myAva ? '<img src="' + myAva + '" style="width:32px;height:32px;border-radius:6px;image-rendering:pixelated;border:1px solid #00e676;margin-bottom:4px;">' : '<span style="font-size:1.5rem;">🎙️</span>') + '<span>' + getMyNick() + ' (Вы)</span>';
+  }
+  var partnerCard = document.getElementById('roomPartnerCard');
+  if (partnerCard) {
 partnerCard.innerHTML = (pAva ? '' : '🎧') + '' + (pName || 'Собеседник') + '';
 }
 logMsg('Вы вошли в руму с пользователем ' + (pName || 'Собеседник') + ' 👋');
