@@ -171,16 +171,18 @@ async function onSignal(p) {
       send({ ev: 'off', to: p.from, off: off6 });
     }
   } else if (p.to === myId) {
-    if (p.ev === 'off') {
+       if (p.ev === 'off') {
       var pcIn = await getPeer(p.from, send);
       await pcIn.setRemoteDescription(new RTCSessionDescription(p.off));
+      if (window.flushIce) window.flushIce(p.from);
       var ans = await pcIn.createAnswer();
       await pcIn.setLocalDescription(ans);
       send({ ev: 'ans', to: p.from, ans: ans });
     } else if (p.ev === 'ans' && connections[p.from]) {
       await connections[p.from].setRemoteDescription(new RTCSessionDescription(p.ans));
-    } else if (p.ev === 'ice' && connections[p.from]) {
-      try { await connections[p.from].addIceCandidate(new RTCIceCandidate(p.cand)); } catch (e) {}
+      if (window.flushIce) window.flushIce(p.from);
+    } else if (p.ev === 'ice') {
+      if (window.saveOrAddIce) window.saveOrAddIce(p.from, p.cand);
     } else if (p.ev === 'msg') {
       log(p.txt, 'partner', p.nick);
     } else if (p.ev === 'bye' && p.from === partnerId) {
