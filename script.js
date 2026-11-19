@@ -1,14 +1,8 @@
-var SUPABASE_URL = 'ВСТАВЬТЕ_СЮДА_PROJECT_URL';
-var SUPABASE_KEY = 'sb_publishable_6Y72t3-gkgmLmoRJGECLMQ_d1azrPSN';
-
-var uiMode = 'solo';
-var uiMuted = false;
-var uiTimer = null;
-var uiSec = 0;
+var SUPABASE_URL = 'https://supabase.co';
+var SUPABASE_KEY = 'ВСТАВЬТЕ_СЮДА_ВАШ_КЛЮЧ_eyJhbGci...';
 
 var myId = 'u_' + Math.random().toString(36).slice(2, 9);
-var myName = 'Участник #' + Math.floor(100 + Math.random() * 899);
-var state = 'idle';
+var netState = 'idle';
 var partnerId = null;
 var localStream = null;
 var searchLoop = null;
@@ -23,54 +17,48 @@ var rtcConfig = {
   iceServers: [
     { urls: 'stun:://google.com' },
     { urls: 'stun:://google.com' },
-    { urls: 'stun:://twilio.com' },
-    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443?transport=tcp', username: 'openrelayproject', credential: 'openrelayproject' }
+    { urls: 'stun:://google.com' },
+    { urls: 'stun:://cloudflare.com' }
   ],
   iceCandidatePoolSize: 10
 };
 
-if (localStorage.getItem('likodopt_cookie_ok') === '1') {
-  var cb = document.getElementById('cookieBanner');
-  if (cb) cb.style.display = 'none';
+function getMyNick() {
+  return window.myNick || 'Участник #' + myId.slice(-3);
 }
 
-function uiCloseCookie() {
-  localStorage.setItem('likodopt_cookie_ok', '1');
-  var cb = document.getElementById('cookieBanner');
-  if (cb) cb.style.display = 'none';
+function getMyAva() {
+  return window.myAvaUrl || '';
 }
 
-function uiShowView(id) {
-  clearInterval(uiTimer);
-  uiSec = 0;
-  ['idleView', 'queueView', 'callView', 'groupView'].forEach(function(v) {
-    var el = document.getElementById(v);
-    if (el) el.classList.remove('active');
-  });
-  var target = document.getElementById(id);
-  if (target) target.classList.add('active');
-
-  if (id !== 'idleView') {
-    var tId = id === 'queueView' ? 'searchTimerText' : (id === 'callView' ? 'callTimerText' : 'groupTimerText');
-    var tEl = document.getElementById(tId);
-    if (tEl) tEl.textContent = '00:00';
-    uiTimer = setInterval(function() {
-      uiSec++;
-      var m = String(Math.floor(uiSec / 60)).padStart(2, '0');
-      var s = String(uiSec % 60).padStart(2, '0');
-      if (tEl) tEl.textContent = m + ':' + s;
-    }, 1000);
-  }
-}
-
-function logMsg(txt, cls) {
+function logMsg(txt, cls, senderNick, senderAva) {
   var box = document.getElementById('messages');
   if (!box) return;
   var d = document.createElement('div');
   d.className = 'msg ' + (cls || 'sys');
-  d.textContent = txt;
+
+  if (cls === 'me' || cls === 'partner') {
+    d.style.display = 'flex';
+    d.style.alignItems = 'flex-start';
+    d.style.gap = '7px';
+    if (senderAva) {
+      var img = document.createElement('img');
+      img.src = senderAva;
+      img.style.cssText = 'width:20px;height:20px;border-radius:4px;image-rendering:pixelated;flex-shrink:0;margin-top:2px;';
+      d.appendChild(img);
+    }
+    var wrap = document.createElement('div');
+    var nameTag = document.createElement('div');
+    nameTag.style.cssText = 'font-size:0.72rem;opacity:0.75;font-weight:700;margin-bottom:2px;';
+    nameTag.textContent = senderNick || (cls === 'me' ? getMyNick() : 'Собеседник');
+    var bodyTag = document.createElement('div');
+    bodyTag.textContent = txt;
+    wrap.appendChild(nameTag);
+    wrap.appendChild(bodyTag);
+    d.appendChild(wrap);
+  } else {
+    d.textContent = txt;
+  }
   box.appendChild(d);
   box.scrollTop = box.scrollHeight;
 }
@@ -79,14 +67,25 @@ function drawLobby() {
   var box = document.getElementById('lobbyChips');
   if (!box) return;
   box.innerHTML = '';
-  var now = Date.now();
   Object.keys(lobby).forEach(function(u) {
-    if (u !== myId && now - lobby[u].ts > 9000) delete lobby[u];
+    if (u !== myId && Date.now() - lobby[u].ts > 9000) delete lobby[u];
   });
   Object.keys(lobby).forEach(function(u) {
     var c = document.createElement('div');
     c.className = 'chip';
-    c.textContent = u === myId ? '🟢 Вы (' + myName + ')' : '⏳ ' + lobby[u].name;
+    c.style.display = 'inline-flex';
+    c.style.alignItems = 'center';
+    c.style.gap = '5px';
+    var avaSrc = u === myId ? getMyAva() : lobby[u].ava;
+    if (avaSrc) {
+      var img = document.createElement('img');
+      img.src = avaSrc;
+      img.style.cssText = 'width:14px;height:14px;border-radius:3px;image-rendering:pixelated;';
+      c.appendChild(img);
+    }
+    var span = document.createElement('span');
+    span.textContent = u === myId ? getMyNick() + ' (Вы)' : lobby[u].name;
+    c.appendChild(span);
     box.appendChild(c);
   });
 }
@@ -102,8 +101,14 @@ function drawGroup() {
     var s = document.createElement('div');
     if (ids[i]) {
       var isMe = ids[i] === myId;
+      var uName = isMe ? getMyNick() : group[ids[i]].name;
+      var uAva = isMe ? getMyAva() : group[ids[i]].ava;
       s.className = 'seat occupied';
-      s.innerHTML = '<span style="font-size:1.3rem">' + (isMe ? '🎙️' : '🎧') + '</span><span>' + (isMe ? 'Вы' : group[ids[i]]) + '</span>';
+      if (uAva) {
+        s.innerHTML = '<img src="' + uAva + '" style="width:24px;height:24px;border-radius:5px;image-rendering:pixelated;border:1px solid #00e676;"><span>' + uName + '</span>';
+      } else {
+        s.innerHTML = '<span>🎙️</span><span>' + uName + '</span>';
+      }
     } else {
       s.className = 'seat';
       s.innerHTML = '<span style="font-size:1.3rem">➕</span><span>Свободно</span>';
@@ -112,18 +117,20 @@ function drawGroup() {
   }
 }
 
-function uiSwitchMode(m) {
-  uiStopSession(false);
-  uiMode = m;
-  document.getElementById('btnModeSolo').classList.toggle('active', m === 'solo');
-  document.getElementById('btnModeGroup').classList.toggle('active', m === 'group');
-  document.getElementById('idleIcon').textContent = m === 'solo' ? '🎙️' : '👥';
-  document.getElementById('status').textContent = m === 'solo' ? 'Режим: Соло (1 на 1)' : 'Режим: Групповой (до 6 чел.)';
-  uiShowView('idleView');
-}
+window.netUpdateProfile = function() {
+  if (netState === 'search') drawLobby();
+  if (netState === 'group') {
+    group[myId] = { name: getMyNick(), ava: getMyAva() };
+    drawGroup();
+    sendSig({ cmd: 'upd_group', to: '*' });
+  }
+};
 
 function initMic() {
-  if (localStream) return;
+  if (localStream) {
+    localStream.getAudioTracks().forEach(function(t) { t.enabled = !window.uiMuted; });
+    return;
+  }
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
     logMsg('Микрофон недоступен — работает чат');
     return;
@@ -134,7 +141,7 @@ function initMic() {
   })
     .then(function(s) {
       localStream = s;
-      if (uiMuted) localStream.getAudioTracks().forEach(function(t) { t.enabled = false; });
+      localStream.getAudioTracks().forEach(function(t) { t.enabled = !window.uiMuted; });
       Object.keys(peers).forEach(function(u) {
         if (peers[u].getSenders().length === 0) {
           localStream.getTracks().forEach(function(t) { peers[u].addTrack(t, localStream); });
@@ -155,21 +162,30 @@ function closePeer(u) {
   if (a) a.remove();
 }
 
-// Подключение к Supabase Realtime (работает в РФ без VPN)
 function connectSupabase() {
-  if (!SUPABASE_URL || SUPABASE_URL.indexOf('http') !== 0) return;
+  var st = document.getElementById('netStatus');
+  if (!SUPABASE_KEY || SUPABASE_KEY.indexOf('ВСТАВЬТЕ') !== -1) {
+    if (st) st.textContent = 'Ошибка: вставьте ключ в net.js';
+    return;
+  }
+
   var host = SUPABASE_URL.replace('https://', '').replace('http://', '').replace(/\/$/, '');
-  var wsUrl = 'wss://' + host + '/realtime/v1/websocket?apikey=' + SUPABASE_KEY + '&vsn=1.0.0';
+  var wsUrl = 'wss://' + host + '/realtime/v1/websocket?apikey=' + encodeURIComponent(SUPABASE_KEY) + '&vsn=1.0.0';
 
   try {
     ws = new WebSocket(wsUrl);
     ws.onopen = function() {
-      var netEl = document.getElementById('netStatus');
-      if (netEl) netEl.textContent = 'Онлайн: В сети';
+      if (st) st.textContent = 'Онлайн: Подключено';
       ws.send(JSON.stringify({
-        topic: 'realtime:likodopt_room_2026',
+        topic: 'realtime:likodopt_global_room',
         event: 'phx_join',
-        payload: { config: { broadcast: { self: false } } },
+        payload: {
+          config: {
+            broadcast: { ack: false, self: false },
+            presence: { key: myId }
+          },
+          access_token: SUPABASE_KEY
+        },
         ref: '1'
       }));
       clearInterval(hbTimer);
@@ -177,20 +193,37 @@ function connectSupabase() {
         if (ws && ws.readyState === 1) {
           ws.send(JSON.stringify({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: 'hb' }));
         }
-      }, 25000);
+      }, 20000);
     };
 
     ws.onmessage = function(e) {
-      var frame = null;
-      try { frame = JSON.parse(e.data); } catch (err) { return; }
-      if (!frame || frame.event !== 'broadcast' || !frame.payload || !frame.payload.payload) return;
-      var pkt = frame.payload.payload;
+      var f = null;
+      try { f = JSON.parse(e.data); } catch (err) { return; }
+      if (!f) return;
+
+      if (f.event === 'phx_reply' && f.ref === '1') {
+        if (f.payload && f.payload.status === 'ok') {
+          if (st) st.textContent = 'Онлайн: Канал активен';
+        } else {
+          if (st) st.textContent = 'Ошибка доступа Supabase';
+          logMsg('Сервер отклонил вход: включите Allow public access в Realtime или проверьте ключ');
+        }
+        return;
+      }
+
+      if (f.event !== 'broadcast' || !f.payload || !f.payload.payload) return;
+      var pkt = f.payload.payload;
       if (!pkt || pkt.uco === myId || seen[pkt.nonce]) return;
       seen[pkt.nonce] = true;
       onPacket(pkt);
     };
 
+    ws.onerror = function() {
+      if (st) st.textContent = 'Ошибка сети WebSocket';
+    };
+
     ws.onclose = function() {
+      if (st) st.textContent = 'Переподключение...';
       clearInterval(hbTimer);
       setTimeout(connectSupabase, 2000);
     };
@@ -201,11 +234,12 @@ connectSupabase();
 function sendSig(data) {
   if (!ws || ws.readyState !== 1) return;
   data.uco = myId;
-  data.name = myName;
+  data.name = getMyNick();
+  data.ava = getMyAva();
   data.nonce = myId + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
   try {
     ws.send(JSON.stringify({
-      topic: 'realtime:likodopt_room_2026',
+      topic: 'realtime:likodopt_global_room',
       event: 'broadcast',
       payload: { type: 'broadcast', event: 'sig', payload: data },
       ref: String(Date.now())
@@ -213,10 +247,8 @@ function sendSig(data) {
   } catch (e) {}
 }
 
-function uiStartSearch() {
-  uiStopSession(false);
-  document.getElementById('btnStop').disabled = false;
-  document.getElementById('messages').innerHTML = '';
+window.netStartSearch = function(mode) {
+  window.netStopSession();
   initMic();
 
   try {
@@ -227,42 +259,43 @@ function uiStartSearch() {
     }
   } catch (e) {}
 
-  if (uiMode === 'solo') {
-    state = 'search';
-    lobby[myId] = { name: myName, ts: Date.now() };
+  if (!ws || ws.readyState !== 1) {
+    logMsg('Подключаемся к серверу поиска...');
+  }
+
+  if (mode === 'solo') {
+    netState = 'search';
+    lobby[myId] = { name: getMyNick(), ava: getMyAva(), ts: Date.now() };
     drawLobby();
-    uiShowView('queueView');
     logMsg('Вы в комнате ожидания собеседника...');
     sendSig({ cmd: 'wait_solo', to: '*' });
     searchLoop = setInterval(function() {
-      if (state === 'search') {
-        lobby[myId].ts = Date.now();
+      if (netState === 'search') {
+        lobby[myId] = { name: getMyNick(), ava: getMyAva(), ts: Date.now() };
         drawLobby();
         sendSig({ cmd: 'wait_solo', to: '*' });
       }
-    }, 1500);
+    }, 1200);
   } else {
-    state = 'group';
-    group[myId] = myName;
+    netState = 'group';
+    group[myId] = { name: getMyNick(), ava: getMyAva() };
     drawGroup();
-    uiShowView('groupView');
     document.getElementById('msgInput').disabled = false;
     document.getElementById('btnSend').disabled = false;
     logMsg('Вы вошли в групповую комнату (до 6 мест)');
     sendSig({ cmd: 'wait_group', to: '*' });
     searchLoop = setInterval(function() {
-      if (state === 'group' && Object.keys(group).length < 6) {
+      if (netState === 'group' && Object.keys(group).length < 6) {
         sendSig({ cmd: 'wait_group', to: '*' });
       }
-    }, 2000);
+    }, 1800);
   }
-}
+};
 
-function uiStopSession(toHome) {
-  clearInterval(uiTimer);
+window.netStopSession = function() {
   clearInterval(searchLoop);
   if (partnerId) sendSig({ cmd: 'bye', to: partnerId, kind: 'solo' });
-  if (state === 'group') {
+  if (netState === 'group') {
     Object.keys(group).forEach(function(u) {
       if (u !== myId) sendSig({ cmd: 'bye', to: u, kind: 'group' });
     });
@@ -271,46 +304,43 @@ function uiStopSession(toHome) {
   group = {};
   lobby = {};
   partnerId = null;
-  state = 'idle';
-  document.getElementById('msgInput').disabled = true;
-  document.getElementById('btnSend').disabled = true;
-  if (toHome) {
-    document.getElementById('btnStop').disabled = true;
-    document.getElementById('status').textContent = 'Поиск остановлен';
-    uiShowView('idleView');
-    logMsg('Вы вышли на главный экран');
-  }
-}
+  netState = 'idle';
+};
 
-function uiToggleMute() {
-  uiMuted = !uiMuted;
+window.netToggleMute = function(muted) {
   if (localStream) {
-    localStream.getAudioTracks().forEach(function(t) { t.enabled = !uiMuted; });
+    localStream.getAudioTracks().forEach(function(t) { t.enabled = !muted; });
   }
-  var btn = document.getElementById('btnMute');
-  btn.textContent = uiMuted ? 'Включить микрофон' : 'Выключить микрофон';
-  btn.classList.toggle('muted', uiMuted);
-  logMsg(uiMuted ? 'Микрофон выключен' : 'Микрофон включён');
-}
+  logMsg(muted ? '🔇 Вы выключили микрофон' : '🎙️ Вы включили микрофон');
+};
 
-function uiSendChat(e) {
-  e.preventDefault();
-  var inp = document.getElementById('msgInput');
-  var txt = inp.value.trim();
-  if (!txt) return;
-  if (state === 'call' && partnerId) {
-    logMsg(txt, 'me');
+window.netSendChat = function(txt) {
+  if (netState === 'call' && partnerId) {
+    logMsg(txt, 'me', getMyNick(), getMyAva());
     sendSig({ cmd: 'comm', to: partnerId, kind: 'solo', data: txt });
-    inp.value = '';
-  } else if (state === 'group') {
-    logMsg(txt, 'me');
-    Object.keys(group).forEach(function(u) {
-      if (u !== myId) sendSig({ cmd: 'comm', to: u, kind: 'group', data: txt });
-    });
-    inp.value = '';
-  }
+  } else if (netState === 'group') {
+logMsg(txt, 'me', getMyNick(), getMyAva());
+Object.keys(group).forEach(функция(u) {
+if (u !== myId) отправляет сигнал({ cmd: 'comm', кому: u, вид: 'group', данные: txt });
+});
 }
-
+};
+функция showFoundPartner(pName, pAva) {
+if (window.showScr) window.showScr('callView');
+document.getElementById('msgInput').disabled = false;
+document.getElementById('btnSend').disabled = false;
+document.getElementById('сообщения').innerHTML = ";
+var callView = document.getElementById('callView');
+if (callView) {
+var avaBox = callView.querySelector('.avatar');
+if (avaBox && pAva) {
+avaBox.innerHTML = '';
+}
+var sub = callView.querySelector('.queue-sub');
+if (sub) sub.textContent = 'Собеседник: ' + (pName || 'Участник');
+}
+logMsg('Собеседник найден: ' + (pName || 'Участник') + ' 👋');
+}
 асинхронная функция starttrtc(to, init, kind) {
 closePeer(to);
 var pc = новое RTCPeerConnection(rtcConfig);
@@ -341,66 +371,62 @@ sendSig({cmd: 'предложение', кому: to, данные: выключ
 }
 }
 асинхронная функция onPacket(pkt) {
-если (pkt.cmd === 'wait_solo' && state === 'search') {
-лобби[pkt.uco] = { название: pkt.name , ts: Date.now() };
+if (pkt.cmd === 'wait_solo' && netState === 'search') {
+лобби[pkt.uco] = { название: pkt.name , ava: pkt.ava, ts: Date.now() };
 drawLobby();
 if (myId > pkt.ucoo) {
-state = 'вызов';
+netState = 'вызов';
 partnerId = pkt.ucoo;
 clearInterval(searchLoop);
-sendSig({ cmd: 'pair', кому: partnerId, вид: 'solo' });
-uiShowView('callView');
-document.getElementById('msgInput').disabled = false;
-document.getElementById ('btnSend').отключено = false;
-document.getElementById('сообщения').innerHTML = ";
-logMsg('Собеседник найден! Поздоровайтесь 👋');
+sendSig({ cmd: 'пара', кому: partnerId, вид: 'соло' });
+showFoundPartner(pkt.name , pkt.ava);
 startRtc(partnerId, true, 'solo');
 }
-} else if (pkt.cmd === 'пара' && pkt.to === myId && pkt.kind === 'solo' && state === 'search') {
-state = 'call';
+} else if (pkt.cmd === 'пара' && pkt.to === myId && pkt.kind === 'соло' && netState === 'поиск') {
+netState = 'вызов';
 partnerId = pkt.uco;
 clearInterval(searchLoop);
-uiShowView('callView');
-document.getElementById('msgInput').disabled = false;
-document.getElementById('btnSend').disabled = false;
-document.getElementById('сообщения'). innerHTML = ";
-logMsg('Собеседник найден! Поздоровайтесь 👋');
+showFoundPartner(pkt.name , pkt.ava);
 startRtc(partnerId, false, 'solo');
-} else if (pkt.cmd === 'wait_group' && state === 'group' && !group[pkt.uco] && Object.keys(group).length < 6) {
-group[pkt.uco] = pkt.name;
+} else if ((pkt.cmd === 'wait_group' || pkt.cmd === 'upd_group') && netState === 'group') {
+var isNew = !group[pkt.uco];
+if (isNew && Object.keys(group).длина >= 6) возврат;
+group[pkt.uco] = { name: pkt.name, ava: pkt.ava };
 drawGroup();
+if (isNew) {
 logMsg(pkt.name + ' зашёл в комнату');
-Отправляет сигнал({ cmd: 'pair', кому: pkt.uco2, вид: 'group' });
-if (myId > pkt.uco2) startRtc(pkt.uco2, true, 'group');
-} else if (pkt.cmd === 'pair' && pkt.to === myId && pkt.kind === 'group' && state === 'group' && !группа[pkt.uco] && Object.keys(группа).длина < 6) {
-группа[pkt.uco] = pkt.name ;
+Отправляет ({ cmd: 'pair', кому: pkt.uco, вид: 'group' });
+if (myId > pkt.uco) startRtc(pkt.uco, true, 'group');
+}
+} else if (pkt.cmd === 'pair' && pkt.to === myId && pkt.kind === 'group' && netState === 'group' && !группа[pkt.uco] && Object.keys(группа).length < 6) {
+group[pkt.uco] = { name: pkt.name, ava: pkt.ava };
 drawGroup();
 if (myId > pkt.uco) startRtc(pkt.uco, true, 'group');
 } else if (pkt.to === myId) {
-if (pkt.cmd === 'предложение') {
-if (pkt.kind === 'группа' && state === 'группа' && !group[pkt.uco] && Object.keys(группа).длина < 6) {
-группа[pkt.uco] = pkt.name ;
+if (pkt.cmd === 'offer') {
+if (pkt.kind === 'group' && netState === 'group' && !group[pkt.uco] && Object.keys(group).длина < 6) {
+группа[pkt.uco] = { название: pkt.name , ava: pkt.ava };
 drawGroup();
 }
 ожидает startRtc(pkt.uco, false, pkt.kind);
 ожидает одноранговые узлы[pkt.uco].setRemoteDescription(новое RTCSessionDescription(pkt.data));
 var ans = ожидает одноранговые узлы[pkt.uco].createAnswer();
 ожидает одноранговые узлы[pkt.uco].setLocalDescription(ans);
-Отправляет ({ cmd: 'answer', кому: pkt. uco, данные: ans });
+Отправляет ({ cmd: 'ответ ', кому: pkt.uco, данные: ans });
 } else if (pkt.cmd === 'answer' && peers[pkt.uco]) {
 ожидают peers[pkt.uco].setRemoteDescription(новое RTCSessionDescription(pkt.data));
 } else if (pkt.cmd === 'ice' && peers[pkt.uco]) {
-try { await peers[pkt.uco].addIceCandidate(new RTCIceCandidate(pkt.data)); } catch (e) {}
+try { await peers[pkt.uco].addIceCandidate(новый RTCIceCandidate(pkt.data)); } catch (e) {}
 } else if (pkt.cmd === 'comm') {
-if (pkt.kind === 'solo' && pkt.uco === partnerId) logMsg(pkt.данные, 'партнер');
-if (pkt.kind === 'group' && state === 'group' && group[pkt.uco]) logMsg(pkt.name + ': ' + pkt.data, 'partner');
+if (pkt.kind === 'solo' && pkt.uco === partnerId) logMsg(pkt.data, 'партнер', pkt.name , pkt.ava);
+if (pkt.kind === 'group' && netState === 'group' && group[pkt.uco]) logMsg(pkt.data, 'партнер', pkt.name , pkt.ava);
 } else if (pkt.cmd === 'bye') {
 if (pkt.kind === 'solo' && pkt.uco === partnerId) {
-uiStopSession(true);
+document.getElementById('btnStop').click();
 document.getElementById('status').textContent = 'Собеседник отключился';
 }
-if (pkt.kind === 'group' && state === 'group' && group[pkt.uco] ) {
-logMsg(group[pkt.uco] + ' вышел');
+if (pkt.kind === 'group' && netState === 'group' && group[pkt.uco]) {
+logMsg(group[pkt.uco].name + ' вышел');
 delete group[pkt.uco];
 closePeer(pkt.uco);
 drawGroup();
