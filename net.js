@@ -1,51 +1,14 @@
-var myId = 'u_' + Math.random().toString(36).slice(2, 9);
-var netState = 'idle', partnerId = null, loop = null;
-var lobby = {}, group = {}, seen = {};
-var mqttClient = null;
-var ROOM_TOPIC = 'likodopt/global/v1/signaling';
+var SB_URL = 'https://supabase.co';
+var SB_KEY = 'sb_publishable_6Y72t3-gkgmLmoRJGECLMQ_d1azrPSN';
 
-var bus = null;
-try {
-  bus = new BroadcastChannel('likodopt_room_bus');
-  bus.onmessage = function(e) { onSignal(e.data); };
-} catch (e) {}
+var myId = 'u_' + Math.random().toString(36).slice(2, 9);
+var netState = 'idle', partnerId = null, loop = null, lastId = 0;
+var lobby = {}, group = {}, seen = {};
 
 function nick() { return window.myNick || 'Гость #' + myId.slice(-3); }
 function ava() { return window.myAvaUrl || ''; }
 
-// Подключение к глобальному серверу (связывает Инкогнито, телефон и любые города)
-function connectGlobalBroker() {
-  var st = document.getElementById('netStatus');
-  if (!window.mqtt) {
-    if (st) st.textContent = 'Локальный режим (вкладки)';
-    return;
-  }
-  try {
-    mqttClient = window.mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
-      clientId: 'lk_' + myId + '_' + Math.floor(Math.random() * 1000),
-      clean: true,
-      reconnectPeriod: 2000
-    });
-
-    mqttClient.on('connect', function() {
-      if (st) st.textContent = 'Онлайн: Глобальный сервер';
-      mqttClient.subscribe(ROOM_TOPIC);
-    });
-
-    mqttClient.on('message', function(topic, message) {
-      try {
-        var pkt = JSON.parse(message.toString());
-        onSignal(pkt);
-      } catch (e) {}
-    });
-
-    mqttClient.on('error', function() {
-      if (st) st.textContent = 'Переподключение...';
-    });
-  } catch (e) {}
-}
-connectGlobalBroker();
-
+// Отправка сигнала в вашу таблицу room_signals в Supabase
 function send(pkt) {
   pkt.from = myId;
   pkt.nick = nick();
@@ -53,13 +16,58 @@ function send(pkt) {
   pkt.id = myId + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
   pkt.ts = Date.now();
 
-  if (bus) {
-    try { bus.postMessage(pkt); } catch (e) {}
-  }
-  if (mqttClient && mqttClient.connected) {
-    try { mqttClient.publish(ROOM_TOPIC, JSON.stringify(pkt)); } catch (e) {}
-  }
+  fetch(SB_URL + '/rest/v1/room_signals', {
+    method: 'POST',
+    headers: {
+      'apikey': SB_KEY,
+      'Content-Type': 'application/json',
+      'Prefer': 'return=minimal'
+    },
+    body: JSON.stringify({ payload: pkt })
+  }).then(function(r) {
+    if (!r.ok) {
+      var st = document.getElementById('netStatus');
+      if (st) st.textContent = 'Ошибка записи SB: ' + r.status;
+    }
+  }).catch(function() {
+    var st = document.getElementById('netStatus');
+    if (st) st.textContent = 'Провайдер блокирует Supabase';
+  });
 }
+
+// Чтение новых сигналов из вашей таблицы room_signals
+async function poll() {
+  var st = document.getElementById('netStatus');
+  try {
+    var url = SB_URL + '/rest/v1/room_signals?select=id,payload&id=gt.' + lastId + '&order=id.asc&limit=40';
+    var r = await fetch(url, {
+      headers: { 'apikey': SB_KEY }
+    });
+    if (r.ok) {
+      if (st) st.textContent = 'Онлайн: Supabase подключён';
+      var rows = await r.json();
+      for (var i = 0; i < rows.length; i++) {
+        if (rows[i].id > lastId) lastId = rows[i].id;
+        onSignal(rows[i].payload);
+      }
+    } else {
+      if (st) st.textContent = 'Ошибка чтения SB: ' + r.status;
+    }
+  } catch (e) {
+    if (st) st.textContent = 'Нет доступа к Supabase (нужен прокси)';
+  }
+  setTimeout(poll, 800);
+}
+
+// Пропускаем старые записи при открытии страницы и запускаем опрос
+fetch(SB_URL + '/rest/v1/room_signals?select=id&order=id.desc&limit=1', {
+  headers: { 'apikey': SB_KEY }
+}).then(function(r) { return r.json(); }).then(function(rows) {
+  if (Array.isArray(rows) && rows.length > 0) {
+    lastId = rows.id;
+  }
+  poll();
+}).catch(function() { poll(); });
 
 function log(txt, cls, n) {
   var box = document.getElementById('messages');
@@ -125,14 +133,14 @@ window.netStartSearch = async function(mode) {
     netState = 'search';
     lobby[myId] = nick();
     drawLobby();
-    log('Поиск собеседника в глобальной сети...');
+    log('Поиск собеседника через Supabase...');
     send({ ev: 'w1' });
     loop = setInterval(function() { if (netState === 'search') send({ ev: 'w1' }); }, 1200);
   } else {
     netState = 'group';
     group[myId] = { nick: nick(), ava: ava() };
     drawGroup();
-    log('Вы в глобальной групповой руме');
+    log('Вы в групповой руме (Supabase)');
     send({ ev: 'w6' });
     loop = setInterval(function() { if (netState === 'group' && Object.keys(group).length < 6) send({ ev: 'w6' }); }, 1800);
   }
