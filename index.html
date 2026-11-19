@@ -7,13 +7,38 @@
     <title>LIKODOPT — Голосовая чат-рулетка</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif; }
-        body { background: radial-gradient(circle at top, #171c26 0%, #0b0d12 100%); color: #f1f5f9; display: flex; justify-content: center; align-items: center; min-height: 100vh; padding: 16px; }
-        .app-container { background: #14171f; width: 100%; max-width: 460px; border-radius: 24px; padding: 24px; border: 1px solid #262b38; box-shadow: 0 20px 50px rgba(0, 0, 0, 0.75); display: flex; flex-direction: column; gap: 16px; }
-        .header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid #262b38; }
+        body {
+            background-color: #0b0d12;
+            background-image: url('./bg.png'), url('./bg.jpg'), url('./bg.jpeg'), url('./bg.webp'), url('./BG.png'), url('./BG.jpg');
+            background-position: center center;
+            background-repeat: no-repeat;
+            background-size: cover;
+            background-attachment: fixed;
+            color: #f1f5f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 16px;
+        }
+        .app-container {
+            background: rgba(20, 23, 31, 0.84);
+            backdrop-filter: blur(6px);
+            width: 100%;
+            max-width: 460px;
+            border-radius: 24px;
+            padding: 24px;
+            border: 1px solid rgba(255, 255, 255, 0.12);
+            box-shadow: 0 20px 50px rgba(0, 0, 0, 0.8);
+            display: flex;
+            flex-direction: column;
+            gap: 16px;
+        }
+        .header { display: flex; justify-content: space-between; align-items: center; padding-bottom: 12px; border-bottom: 1px solid rgba(255, 255, 255, 0.08); }
         .logo { font-size: 1.5rem; font-weight: 900; color: #00e676; letter-spacing: 1px; }
-        .status-badge { background: #1e2330; padding: 6px 12px; border-radius: 20px; font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; gap: 7px; border: 1px solid #2e3548; }
+        .status-badge { background: rgba(30, 35, 48, 0.85); padding: 6px 12px; border-radius: 20px; font-size: 0.82rem; font-weight: 600; display: flex; align-items: center; gap: 7px; border: 1px solid #2e3548; }
         .status-dot { width: 9px; height: 9px; border-radius: 50%; background: #00e676; }
-        .stage-box { background: #0e1016; border-radius: 18px; padding: 24px 16px; border: 1px solid #262b38; min-height: 190px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
+        .stage-box { background: rgba(14, 16, 22, 0.72); border-radius: 18px; padding: 24px 16px; border: 1px solid rgba(255, 255, 255, 0.08); min-height: 190px; display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; }
         .screen { display: none; flex-direction: column; align-items: center; width: 100%; }
         .screen.active { display: flex; }
         .avatar-circle { width: 76px; height: 76px; border-radius: 50%; background: #1e2330; border: 2px solid #2e3548; display: flex; align-items: center; justify-content: center; font-size: 2.2rem; margin-bottom: 12px; }
@@ -23,13 +48,13 @@
         .stage-title { font-size: 1.1rem; font-weight: 700; margin-bottom: 6px; }
         .stage-subtitle { font-size: 0.85rem; color: #94a3b8; margin-bottom: 12px; }
         .timer-badge { background: #1e2330; border: 1px solid #333b50; padding: 5px 14px; border-radius: 12px; font-size: 0.85rem; font-weight: 700; }
-        .chat-wrapper { background: #0e1016; border-radius: 16px; border: 1px solid #262b38; display: flex; flex-direction: column; height: 170px; overflow: hidden; }
+        .chat-wrapper { background: rgba(14, 16, 22, 0.72); border-radius: 16px; border: 1px solid rgba(255, 255, 255, 0.08); display: flex; flex-direction: column; height: 170px; overflow: hidden; }
         #messages { flex: 1; padding: 12px; overflow-y: auto; display: flex; flex-direction: column; gap: 8px; font-size: 0.9rem; }
         .msg { padding: 8px 12px; border-radius: 12px; max-width: 82%; word-wrap: break-word; }
         .msg.me { background: #00e676; color: #000; align-self: flex-end; font-weight: 600; }
         .msg.partner { background: #232836; color: #fff; align-self: flex-start; }
         .msg.sys { color: #94a3b8; align-self: center; font-size: 0.8rem; text-align: center; }
-        .chat-form { display: flex; border-top: 1px solid #262b38; }
+        .chat-form { display: flex; border-top: 1px solid rgba(255, 255, 255, 0.08); }
         .chat-form input { flex: 1; background: transparent; border: none; padding: 12px; color: #fff; outline: none; font-size: 0.95rem; }
         .chat-form button { background: transparent; border: none; color: #00e676; font-weight: 800; padding: 0 18px; font-size: 1.2rem; cursor: pointer; }
         .chat-form button:disabled { color: #475569; cursor: not-allowed; }
@@ -38,9 +63,9 @@
         .btn:disabled { opacity: 0.4; cursor: not-allowed; }
         #btnNext { background: #00e676; color: #000; }
         #btnStop { background: #ff5252; color: #fff; }
-        #btnMute { grid-column: span 2; background: #232836; color: #fff; border: 1px solid #32394d; }
+        #btnMute { grid-column: span 2; background: rgba(35, 40, 54, 0.9); color: #fff; border: 1px solid #32394d; }
         #btnMute.muted { background: #ff9800; color: #000; }
-        .cookie-banner { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); width: calc(100% - 32px); max-width: 460px; background: #14171f; border: 1px solid #00e676; border-radius: 16px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; z-index: 9999; box-shadow: 0 12px 35px rgba(0, 0, 0, 0.85); }
+        .cookie-banner { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); width: calc(100% - 32px); max-width: 460px; background: rgba(20, 23, 31, 0.96); border: 1px solid #00e676; border-radius: 16px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; z-index: 9999; box-shadow: 0 12px 35px rgba(0, 0, 0, 0.85); }
         .cookie-banner.hidden { display: none; }
         .cookie-text { font-size: 0.84rem; color: #e2e8f0; }
         .cookie-text b { color: #00e676; }
@@ -59,14 +84,12 @@
     </div>
 
     <div class="stage-box">
-        <!-- Экран 1: Главный -->
         <div class="screen active" id="screenHome">
             <div class="avatar-circle">🎙️</div>
             <div class="stage-title" id="homeTitle">Нажмите «Найти / Далее»</div>
             <div class="stage-subtitle" id="homeSub">Голосовая и текстовая чат-рулетка</div>
         </div>
 
-        <!-- Экран 2: Поиск собеседника -->
         <div class="screen" id="screenSearch">
             <div class="radar-ring">🔍</div>
             <div class="stage-title" style="color: #00e676;">Поиск собеседника...</div>
@@ -74,7 +97,6 @@
             <div class="timer-badge">Время поиска: <span id="searchTimer">00:00</span></div>
         </div>
 
-        <!-- Экран 3: Собеседник найден -->
         <div class="screen" id="screenCall">
             <div class="partner-avatar">🎧</div>
             <div class="stage-title">Собеседник на связи!</div>
@@ -120,7 +142,6 @@
     let sec = 0;
     const seen = new Set();
 
-    // Закрытие плашки Cookie
     if (localStorage.getItem('likodopt_ck') === '1') {
         $('cookieBanner').classList.add('hidden');
     }
@@ -151,26 +172,23 @@
         d.className = 'msg ' + type;
         d.textContent = text;
         $('messages').appendChild(d);
-        $('messages').scrollTop = $('messages').scrollHeight;
-    }
-
-    function setChat(on) {
-        $('msgInput').disabled = !on;
-        $('btnSend').disabled = !on;
-        if (!on) $('msgInput').value = '';
-    }
-
-    async function sendSig(to, data) {
-        try {
-            await fetch(DB + '/in/' + to + '.json', {
-                method: 'POST',
-                body: JSON.stringify({ from: myId, ts: Date.now(), ...data })
-            });
-        } catch (e) {}
-    }
-
-    $('btnNext').onclick = function() {
-        stopAll(false);
+$('messages').scrollTop = $('messages').scrollHeight;
+}
+функция setChat(on) {
+$('msgInput').disabled = !on;
+$('btnSend').disabled = !on;
+if (!on) $('msgInput').value = ";
+}
+асинхронная функция отправляет sendSig(to, data) {
+try {
+await fetch(DB + '/in/' + to + '.json', {
+метод: 'POST',
+тело: JSON.stringify({ from: myId, ts: Date.now(), ...data })
+});
+} catch (e) {}
+}
+$('btnNext').onclick = function() {
+stopAll(false);
 state = 'search';
 $('btnStop').disabled = false;
 $('messages').innerHTML = '';
@@ -187,19 +205,19 @@ $('btnMute').disabled = false;
 findStep();
 searchInt = setInterval(findStep, 1500);
 };
-$('btnStop').onclick = function() {
+$('btnStop').onclick = функция() {
 stopAll(true);
 };
-function stopAll(showStop) {
+функция stopAll(showStop) {
 clearInterval(searchInt);
-fetch(DB + '/q/' + myId + '.json', { method: 'DELETE' }).catch(() => {});
-if (partnerId) sendSig(partnerId, { type: 'bye' });
+fetch(DB + '/q/' + myId + '.json', { метод: 'DELETE' }).catch(() => {});
+if (partnerId) отправляет сигнал (partnerId, { тип: 'bye' });
 partnerId = null;
 state = 'home';
 setChat(false);
 if (pc) {
 try { pc.close(); } catch (e) {}
-pc = null;
+ pc = null;
 }
 if (showStop) {
 $('btnStop').disabled = true;
@@ -238,20 +256,20 @@ if (k !== myId && q[k] && (Date.now() - q[k].ts < 10000) && myId > k) {
 state = 'conn';
 partnerId = k;
 clearInterval(searchInt);
-await fetch(DB + '/q/' + myId + '.json', { метод: 'DELETE' });
-await fetch(DB + '/q/' + partnerId + '.json', { метод: 'DELETE' });
-ожидание отправки (partnerId, { тип: 'accept' });
+await fetch(DB + '/q/' + myId + '.json', { method: 'DELETE' });
+await fetch(DB + '/q/' + partnerId + '.json', { method: 'DELETE' });
+await sendSig(partnerId, { type: 'accept' });
 startCall(true);
-возврат;
+return;
 }
 }
 } catch (e) {}
 }
-асинхронная функция startCall(init) {
-state = 'вызов';
-switchScreen('вызов');
+async function startCall(init) {
+state = 'call';
+switchScreen('call');
 setChat(true);
-$('сообщения').innerHTML = ";
+$('messages').innerHTML = '';
 addMsg('Собеседник найден! Вы в комнате общения 👋');
 pc = new RTCPeerConnection({
 iceServers: [
@@ -262,11 +280,11 @@ iceServers: [
 });
 if (localStream) localStream.getTracks().forEach(t => pc.addTrack(t, localStream));
 pc.ontrack = e => {
-$('remoteAudio').srcObject = новый медиапоток ([электронная дорожка]);
+$('remoteAudio').srcObject = new MediaStream([e.track]);
 $('remoteAudio').play().catch(() => {});
 };
 pc.onicecandidate = e => {
-if (e.candidate && partnerId) отправляет сигнал(partnerId, { тип: 'cand', cand: e.candidate });
+if (e.candidate && partnerId) sendSig(partnerId, { type: 'cand', cand: e.candidate });
 };
 if (init) {
 const off = ожидать pc.createOffer();
