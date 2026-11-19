@@ -148,7 +148,6 @@ function closePeer(u) {
   if (a) a.remove();
 }
 
-// Отправка сигнала в таблицу Supabase по HTTPS (работает на телефоне и ПК в РФ без VPN)
 function sendSig(data) {
   data.uco = myId;
   data.name = getMyNick();
@@ -165,10 +164,14 @@ function sendSig(data) {
       'Prefer': 'return=minimal'
     },
     body: JSON.stringify({ payload: data })
+  }).then(function(r) {
+    if (!r.ok) {
+      var st = document.getElementById('netStatus');
+      if (st) st.textContent = 'Ошибка записи БД: ' + r.status;
+    }
   }).catch(function() {});
 }
 
-// Опрос новых сигналов из таблицы Supabase каждые 800 мс
 async function pollSignals() {
   try {
     var url = SUPABASE_URL + '/rest/v1/room_signals?select=id,payload&id=gt.' + lastRowId + '&order=id.asc&limit=50';
@@ -178,27 +181,30 @@ async function pollSignals() {
         'Authorization': 'Bearer ' + SUPABASE_KEY
       }
     });
+    var st = document.getElementById('netStatus');
     if (res.ok) {
-      var st = document.getElementById('netStatus');
-      if (st) st.textContent = 'Онлайн: В сети';
+      if (st) st.textContent = 'Онлайн: База подключена';
       var rows = await res.json();
       for (var i = 0; i < rows.length; i++) {
         if (rows[i].id > lastRowId) lastRowId = rows[i].id;
         var pkt = rows[i].payload;
-        if (!pkt || pkt.uco === myId || seen[pkt.nonce] || Date.now() - pkt.ts > 15000) continue;
+        if (!pkt || pkt.uco === myId || seen[pkt.nonce] || Date.now() - pkt.ts > 20000) continue;
         seen[pkt.nonce] = true;
         onPacket(pkt);
       }
+    } else {
+      if (st) st.textContent = 'Ошибка чтения БД: ' + res.status;
     }
   } catch (e) {}
   setTimeout(pollSignals, 800);
 }
 
-// Пропускаем старые записи при открытии страницы и запускаем опрос
 fetch(SUPABASE_URL + '/rest/v1/room_signals?select=id&order=id.desc&limit=1', {
   headers: { 'apikey': SUPABASE_KEY, 'Authorization': 'Bearer ' + SUPABASE_KEY }
 }).then(function(r) { return r.json(); }).then(function(rows) {
-  if (rows && rows[0]) lastRowId = rows[0].id;
+  if (Array.isArray(rows) && rows.length > 0 && rows[0].id) {
+    lastRowId = rows[0].id;
+  }
   pollSignals();
 }).catch(function() { pollSignals(); });
 
