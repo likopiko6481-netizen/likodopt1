@@ -8,13 +8,11 @@ var rtcConfig = {
     { urls: 'stun:://google.com' },
     { urls: 'stun:://cloudflare.com' },
     { urls: 'turn:a.relay.metered.ca:80', username: 'e8dd65b92f62d3e36cafeb80', credential: 'uWdWNcQbcGnxB214' },
-    { urls: 'turn:a.relay.metered.ca:443', username: 'e8dd65b92f62d3e36cafeb80', credential: 'uWdWNcQbcGnxB214' },
-    { urls: 'turn:a.relay.metered.ca:443?transport=tcp', username: 'e8dd65b92f62d3e36cafeb80', credential: 'uWdWNcQbcGnxB214' }
+    { urls: 'turn:a.relay.metered.ca:443', username: 'e8dd65b92f62d3e36cafeb80', credential: 'uWdWNcQbcGnxB214' }
   ]
 };
 
-
-function showAudioStatus(text) {
+function sayRtc(text) {
   var box = document.getElementById('messages');
   if (!box) return;
   var d = document.createElement('div');
@@ -26,39 +24,38 @@ function showAudioStatus(text) {
 
 async function initAudio() {
   if (window.localStream) {
-    window.localStream.getAudioTracks().forEach(function(track) {
-      track.enabled = !window.uiMuted;
-    });
+    window.localStream.getAudioTracks().forEach(function(t) { t.enabled = !window.uiMuted; });
     return window.localStream;
   }
-
+  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+    sayRtc('⚠️ Браузер не поддерживает микрофон');
+    return null;
+  }
   try {
     var stream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
     window.localStream = stream;
-    stream.getAudioTracks().forEach(function(track) {
-      track.enabled = !window.uiMuted;
-    });
-    showAudioStatus('🎙️ Микрофон активен');
+    stream.getAudioTracks().forEach(function(t) { t.enabled = !window.uiMuted; });
+    sayRtc('🎙️ Микрофон включён');
     return stream;
   } catch (err) {
-    showAudioStatus('⚠️ Ошибка микрофона: ' + err.name + ' (проверьте замок в адресной строке)');
+    sayRtc('⚠️ Доступ к микрофону запрещён (' + err.name + ') — разрешите в адресной строке');
     return null;
   }
 }
 
 function closePeer(uid) {
   if (connections[uid]) {
-    connections[uid].close();
+    try { connections[uid].close(); } catch (e) {}
     delete connections[uid];
   }
   delete iceQueue[uid];
-  var audioEl = document.getElementById('aud_' + uid);
-  if (audioEl) audioEl.remove();
+  var a = document.getElementById('aud_' + uid);
+  if (a) a.remove();
 }
 
 window.saveOrAddIce = function(uid, cand) {
   var pc = connections[uid];
-  if (pc && pc.remoteDescription) {
+  if (pc && pc.remoteDescription && pc.remoteDescription.type) {
     pc.addIceCandidate(new RTCIceCandidate(cand)).catch(function() {});
   } else {
     if (!iceQueue[uid]) iceQueue[uid] = [];
@@ -88,22 +85,22 @@ async function getPeer(uid, sendFn) {
   }
 
   pc.ontrack = function(event) {
-    var audioEl = document.getElementById('aud_' + uid);
-    if (!audioEl) {
-      audioEl = document.createElement('audio');
-      audioEl.id = 'aud_' + uid;
-      audioEl.autoplay = true;
-      audioEl.playsInline = true;
-      audioEl.volume = 1.0;
-      document.body.appendChild(audioEl);
+    var a = document.getElementById('aud_' + uid);
+    if (!a) {
+      a = document.createElement('audio');
+      a.id = 'aud_' + uid;
+      a.autoplay = true;
+      a.playsInline = true;
+      a.volume = 1.0;
+      document.body.appendChild(a);
     }
     var remoteStream = new MediaStream();
     remoteStream.addTrack(event.track);
-    audioEl.srcObject = remoteStream;
-    audioEl.play().then(function() {
-      showAudioStatus('🔊 Звук собеседника пошёл в наушники');
-    }).catch(function(e) {
-      showAudioStatus('🔇 Браузер заглушил звук: нажмите в любое место экрана (' + e.name + ')');
+    a.srcObject = remoteStream;
+    a.play().then(function() {
+      sayRtc('🔊 Голос собеседника подключён');
+    }).catch(function() {
+      sayRtc('🔇 Нажмите на экран, чтобы включить звук собеседника');
     });
   };
 
