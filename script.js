@@ -1,4 +1,4 @@
-document.addEventListener('DOMContentLoaded', function() {
+document.addEventListener('DOMContentLoaded', () => {
   const $ = id => document.getElementById(id);
   const DB = 'https://firebasedatabase.app';
   const me = 'u_' + Math.random().toString(36).slice(2, 9);
@@ -18,11 +18,15 @@ document.addEventListener('DOMContentLoaded', function() {
   const groupMembers = {};
   const seen = new Set();
 
-  if (localStorage.getItem('lk_ck') === '1') $('ckBox').style.display = 'none';
-  $('ckClose').addEventListener('click', function() {
-    localStorage.setItem('lk_ck', '1');
+  if (localStorage.getItem('lk_ck') === '1' && $('ckBox')) {
     $('ckBox').style.display = 'none';
-  });
+  }
+  if ($('ckClose')) {
+    $('ckClose').addEventListener('click', () => {
+      localStorage.setItem('lk_ck', '1');
+      if ($('ckBox')) $('ckBox').style.display = 'none';
+    });
+  }
 
   function setMode(newMode) {
     if (st !== 'home') clickStop(false);
@@ -168,7 +172,7 @@ document.addEventListener('DOMContentLoaded', function() {
   $('bStop').addEventListener('click', () => clickStop(true));
   $('bMute').addEventListener('click', clickMute);
 
-  $('chatForm').addEventListener('submit', function(e) {
+  $('chatForm').addEventListener('submit', e => {
     e.preventDefault();
     const inp = $('inp');
     const txt = inp.value.trim();
@@ -196,7 +200,9 @@ document.addEventListener('DOMContentLoaded', function() {
       if (!q || st !== 'search') return;
       for (const k of Object.keys(q)) {
         if (k !== me && q[k] && (Date.now() - q[k].t < 10000) && me > k) {
-          st = 'conn'; soloPid = k; clearInterval(sInt);
+          st = 'conn';
+          soloPid = k;
+          clearInterval(sInt);
           fetch(DB + '/q_solo/' + me + '.json', { method: 'DELETE' }).catch(() => {});
           fetch(DB + '/q_solo/' + soloPid + '.json', { method: 'DELETE' }).catch(() => {});
           post(soloPid, { tp: 'ok' });
@@ -208,7 +214,9 @@ document.addEventListener('DOMContentLoaded', function() {
   }
 
   async function startSoloCall(init) {
-    st = 'call'; goScr('call'); chatOn(true);
+    st = 'call';
+    goScr('call');
+    chatOn(true);
     $('msgs').innerHTML = '';
     log('Собеседник найден! Вы в комнате 1 на 1 👋');
     await createRtcWith(soloPid, init, 'solo');
@@ -303,12 +311,11 @@ document.addEventListener('DOMContentLoaded', function() {
         aud.playsInline = true;
         $('audioPool').appendChild(aud);
       }
-      aud.srcObject = new MediaStream([e.track]);
-      aud.play().catch(() => {});
-    };
-
+aud.srcObject = новый медиапоток ([например,дорожка]);
+aud.play().catch(() => {});
+};
 pc.onicecandidate = e => {
-if (e.candidate) post(targetId, { tp: 'c', c: e.candidate });
+if (e.кандидат) post(TargetID, { tp: 'c', c: e.кандидат });
 };
 if (isInitiator) {
 const o = ожидание pc.createOffer();
@@ -321,19 +328,21 @@ try {
 const r = await fetch(DB + '/in/' + me + '.json');
 const msgs = await r.json();
 if (!msgs) return;
-fetch(DB + '/in/' + me + '.json', { метод: 'DELETE' }).catch(() => {});
-для (const k объектных ключей(msgs)) {
+fetch(DB + '/in/' + me + '.json', { method: 'DELETE' }).catch(() => {});
+for (const k of Object.keys(msgs)) {
 if (seen.has(k)) continue;
 seen.add(k);
 const m = msgs[k];
 if (!m || Date.now() - m.t > 20000) continue;
 если (m.tp === 'ok' && st === 'search') {
-st = 'conn'; soloPid = m.f; clearInterval(sInt);
+st = 'conn';
+soloPid = m.f;
+clearInterval(sInt);
 startSoloCall(false);
 } иначе, если (m.tp === 'o') {
 if (m.CallType === 'group' && st === 'группа') {
-if (!Члены группы[m.f] && Object.keys(Члены группы).длина < 6) {
-Члены группы[m.f] = m.name || 'Участник';
+if (!GroupMembers[m.f] && Object.keys(GroupMembers).длина < 6) {
+Участники группы[m.f] = m.name || 'Участник';
 renderGroupGrid();
 }
 ожидает createRtcWith(m.f, false, 'group');
@@ -343,7 +352,7 @@ if (pc) {
 ожидает pc.setRemoteDescription(новое RTCSessionDescription(m.o));
 const a = ожидает pc.createAnswer();
 ожидает pc.setLocalDescription(a);
-post(m.f, { tp: 'a' , a });
+post(m.f, { tp : 'a', a });
 }
 } иначе, если (m.tp === 'a' && peers[m.f]) {
 ожидают peers[m.f].setRemoteDescription(новое RTCSessionDescription(m.a));
@@ -352,8 +361,8 @@ try { await peers[m.f].addIceCandidate(новый RTCIceCandidate(m.c)); } catch
 } else if (m.tp === 'txt' && m.f === soloPid) {
 log(m.v, 'he');
 } иначе, если (m.tp === 'g_txt' && st === 'group' && GroupMembers[m.f]) {
-журнал((m.name || 'Участник') + ': ' + m.v, 'он');
-} иначе, если (m.tp === 'bye' && m.f === soloPid) {
+журнал((m.name || 'Участник') + ': ' + m.v, 'he');
+} еще, если (m.tp === 'bye' && m.f === soloPid) {
 clickStop(true);
 $('hTitle').textContent = 'Собеседник отключился';
 } иначе, если (m.tp === 'g_bye' && st === 'group' && GroupMembers[m.f]) {
