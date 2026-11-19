@@ -150,6 +150,7 @@ function closePeer(u) {
   if (a) a.remove();
 }
 
+// ВАЖНО: для ключа sb_publishable_ передаём ТОЛЬКО apikey (без Authorization: Bearer)
 function sendSig(data) {
   data.uco = myId;
   data.name = getMyNick();
@@ -161,17 +162,16 @@ function sendSig(data) {
     method: 'POST',
     headers: {
       'apikey': SUPABASE_KEY,
-      'Authorization': 'Bearer ' + SUPABASE_KEY,
       'Content-Type': 'application/json',
       'Prefer': 'return=minimal'
     },
     body: JSON.stringify({ payload: data })
   }).then(function(r) {
     if (!r.ok) {
-      logMsg('Ошибка отправки сигнала (' + r.status + ')');
+      logMsg('Ошибка отправки (' + r.status + ') — проверьте права таблицы');
     }
-  }).catch(function(err) {
-    logMsg('Нет связи с сервером: проверьте интернет');
+  }).catch(function() {
+    logMsg('Сеть блокирует доступ к Supabase (попробуйте с VPN или другой сетью)');
   });
 }
 
@@ -179,10 +179,7 @@ async function pollSignals() {
   try {
     var url = SUPABASE_URL + '/rest/v1/room_signals?select=id,payload&id=gt.' + lastRowId + '&order=id.asc&limit=50';
     var res = await fetch(url, {
-      headers: {
-        'apikey': SUPABASE_KEY,
-        'Authorization': 'Bearer ' + SUPABASE_KEY
-      }
+      headers: { 'apikey': SUPABASE_KEY }
     });
     var st = document.getElementById('netStatus');
     if (res.ok) {
@@ -200,12 +197,11 @@ async function pollSignals() {
     }
   } catch (e) {
     var st2 = document.getElementById('netStatus');
-    if (st2) st2.textContent = 'Нет ответа от БД';
+    if (st2) st2.textContent = 'Нет связи с сервером';
   }
   setTimeout(pollSignals, 800);
 }
 
-// Старт опроса без привязки к старым записям
 pollSignals();
 
 window.netStartSearch = function(mode) {
