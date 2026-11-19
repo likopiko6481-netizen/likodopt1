@@ -1,9 +1,8 @@
-var SB_URL = 'https://supabase.co';
-var SB_KEY = 'sb_publishable_6Y72t3-gkgmLmoRJGECLMQ_d1azrPSN';
-
 var myId = 'u_' + Math.random().toString(36).slice(2, 9);
-var netState = 'idle', partnerId = null, loop = null, lastId = 0;
+var netState = 'idle', partnerId = null, loop = null;
 var lobby = {}, group = {}, seen = {};
+var mqttClient = null;
+var ROOM_TOPIC = 'likodopt/global/v1/signaling';
 
 var bus = null;
 try {
@@ -14,43 +13,53 @@ try {
 function nick() { return window.myNick || 'Гость #' + myId.slice(-3); }
 function ava() { return window.myAvaUrl || ''; }
 
-function send(pkt) {
-  pkt.from = myId; pkt.nick = nick(); pkt.ava = ava();
-  pkt.id = myId + '_' + Date.now() + '_' + Math.random();
-  pkt.ts = Date.now();
-  if (bus) try { bus.postMessage(pkt); } catch (e) {}
-
-  fetch(SB_URL + '/rest/v1/room_signals', {
-    method: 'POST',
-    headers: { 'apikey': SB_KEY, 'Content-Type': 'application/json', 'Prefer': 'return=minimal' },
-    body: JSON.stringify({ payload: pkt })
-  }).catch(function() {});
-}
-
-async function poll() {
-  try {
-    var r = await fetch(SB_URL + '/rest/v1/room_signals?select=id,payload&id=gt.' + lastId + '&order=id.asc&limit=40', {
-      headers: { 'apikey': SB_KEY }
-    });
-    if (r.ok) {
-      var rows = await r.json();
-      for (var i = 0; i < rows.length; i++) {
-        if (rows[i].id > lastId) lastId = rows[i].id;
-        onSignal(rows[i].payload);
-      }
-    }
-  } catch (e) {}
-  setTimeout(poll, 850);
-}
-
-fetch(SB_URL + '/rest/v1/room_signals?select=id&order=id.desc&limit=1', {
-  headers: { 'apikey': SB_KEY }
-}).then(function(r) { return r.json(); }).then(function(rows) {
-  if (Array.isArray(rows) && rows.length > 0 && rows[0].id) {
-    lastId = rows[0].id;
+// Подключение к глобальному серверу (связывает Инкогнито, телефон и любые города)
+function connectGlobalBroker() {
+  var st = document.getElementById('netStatus');
+  if (!window.mqtt) {
+    if (st) st.textContent = 'Локальный режим (вкладки)';
+    return;
   }
-  poll();
-}).catch(function() { poll(); });
+  try {
+    mqttClient = window.mqtt.connect('wss://broker.emqx.io:8084/mqtt', {
+      clientId: 'lk_' + myId + '_' + Math.floor(Math.random() * 1000),
+      clean: true,
+      reconnectPeriod: 2000
+    });
+
+    mqttClient.on('connect', function() {
+      if (st) st.textContent = 'Онлайн: Глобальный сервер';
+      mqttClient.subscribe(ROOM_TOPIC);
+    });
+
+    mqttClient.on('message', function(topic, message) {
+      try {
+        var pkt = JSON.parse(message.toString());
+        onSignal(pkt);
+      } catch (e) {}
+    });
+
+    mqttClient.on('error', function() {
+      if (st) st.textContent = 'Переподключение...';
+    });
+  } catch (e) {}
+}
+connectGlobalBroker();
+
+function send(pkt) {
+  pkt.from = myId;
+  pkt.nick = nick();
+  pkt.ava = ava();
+  pkt.id = myId + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
+  pkt.ts = Date.now();
+
+  if (bus) {
+    try { bus.postMessage(pkt); } catch (e) {}
+  }
+  if (mqttClient && mqttClient.connected) {
+    try { mqttClient.publish(ROOM_TOPIC, JSON.stringify(pkt)); } catch (e) {}
+  }
+}
 
 function log(txt, cls, n) {
   var box = document.getElementById('messages');
@@ -79,7 +88,8 @@ function drawGroup() {
   if (!grid) return;
   grid.innerHTML = '';
   var ids = Object.keys(group);
-  document.getElementById('groupCountText').textContent = ids.length;
+  var cnt = document.getElementById('groupCountText');
+  if (cnt) cnt.textContent = ids.length;
   for (var i = 0; i < 6; i++) {
     var s = document.createElement('div');
     if (ids[i]) {
@@ -109,18 +119,20 @@ function openSoloRoom(pName, pAva) {
 
 window.netStartSearch = async function(mode) {
   window.netStopSession();
-  try {
-    var AC = window.AudioContext || window.webkitAudioContext;
-    if (AC) { var ctx = new AC(); if (ctx.state === 'suspended') ctx.resume(); }
-  } catch (e) {}
+  if (typeof initAudio === 'function') await initAudio();
 
-  await initAudio();
   if (mode === 'solo') {
-    netState = 'search'; lobby[myId] = nick(); drawLobby(); log('Поиск собеседника...');
+    netState = 'search';
+    lobby[myId] = nick();
+    drawLobby();
+    log('Поиск собеседника в глобальной сети...');
     send({ ev: 'w1' });
     loop = setInterval(function() { if (netState === 'search') send({ ev: 'w1' }); }, 1200);
   } else {
-    netState = 'group'; group[myId] = { nick: nick(), ava: ava() }; drawGroup(); log('Вы в групповой руме');
+    netState = 'group';
+    group[myId] = { nick: nick(), ava: ava() };
+    drawGroup();
+    log('Вы в глобальной групповой руме');
     send({ ev: 'w6' });
     loop = setInterval(function() { if (netState === 'group' && Object.keys(group).length < 6) send({ ev: 'w6' }); }, 1800);
   }
@@ -129,18 +141,28 @@ window.netStartSearch = async function(mode) {
 window.netStopSession = function() {
   clearInterval(loop);
   if (partnerId) send({ ev: 'bye', to: partnerId });
-  Object.keys(connections).forEach(closePeer);
-  lobby = {}; group = {}; partnerId = null; netState = 'idle';
+  if (typeof closePeer === 'function' && typeof connections === 'object') {
+    Object.keys(connections).forEach(closePeer);
+  }
+  lobby = {};
+  group = {};
+  partnerId = null;
+  netState = 'idle';
 };
 
 window.netToggleMute = function(m) {
-  if (localStream) localStream.getAudioTracks().forEach(function(t) { t.enabled = !m; });
+  if (window.localStream) {
+    window.localStream.getAudioTracks().forEach(function(t) { t.enabled = !m; });
+  }
+  log(m ? '🔇 Микрофон выключен' : '🎙️ Микрофон включён');
 };
 
 window.netSendChat = function(txt) {
   log(txt, 'me', nick());
   if (netState === 'call' && partnerId) send({ ev: 'msg', to: partnerId, txt: txt });
-  if (netState === 'group') Object.keys(group).forEach(function(u) { if (u !== myId) send({ ev: 'msg', to: u, txt: txt }); });
+  if (netState === 'group') {
+    Object.keys(group).forEach(function(u) { if (u !== myId) send({ ev: 'msg', to: u, txt: txt }); });
+  }
 };
 
 async function onSignal(p) {
@@ -148,9 +170,12 @@ async function onSignal(p) {
   seen[p.id] = 1;
 
   if (p.ev === 'w1' && netState === 'search') {
-    lobby[p.from] = p.nick; drawLobby();
+    lobby[p.from] = p.nick;
+    drawLobby();
     if (myId > p.from) {
-      netState = 'call'; partnerId = p.from; clearInterval(loop);
+      netState = 'call';
+      partnerId = p.from;
+      clearInterval(loop);
       send({ ev: 'p1', to: partnerId });
       openSoloRoom(p.nick, p.ava);
       var pc = await getPeer(partnerId, send);
@@ -159,10 +184,13 @@ async function onSignal(p) {
       send({ ev: 'off', to: partnerId, off: off });
     }
   } else if (p.ev === 'p1' && p.to === myId && netState === 'search') {
-    netState = 'call'; partnerId = p.from; clearInterval(loop);
+    netState = 'call';
+    partnerId = p.from;
+    clearInterval(loop);
     openSoloRoom(p.nick, p.ava);
   } else if (p.ev === 'w6' && netState === 'group' && !group[p.from] && Object.keys(group).length < 6) {
-    group[p.from] = { nick: p.nick, ava: p.ava }; drawGroup();
+    group[p.from] = { nick: p.nick, ava: p.ava };
+    drawGroup();
     send({ ev: 'w6' });
     if (myId > p.from) {
       var pc6 = await getPeer(p.from, send);
@@ -171,7 +199,7 @@ async function onSignal(p) {
       send({ ev: 'off', to: p.from, off: off6 });
     }
   } else if (p.to === myId) {
-       if (p.ev === 'off') {
+    if (p.ev === 'off') {
       var pcIn = await getPeer(p.from, send);
       await pcIn.setRemoteDescription(new RTCSessionDescription(p.off));
       if (window.flushIce) window.flushIce(p.from);
