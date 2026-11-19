@@ -6,7 +6,8 @@ var rtcConfig = {
     { urls: 'stun:://google.com' },
     { urls: 'stun:://cloudflare.com' },
     { urls: 'turn:a.relay.metered.ca:80', username: 'e8dd65b92f62d3e36cafeb80', credential: 'uWdWNcQbcGnxB214' },
-    { urls: 'turn:a.relay.metered.ca:443', username: 'e8dd65b92f62d3e36cafeb80', credential: 'uWdWNcQbcGnxB214' }
+    { urls: 'turn:a.relay.metered.ca:443', username: 'e8dd65b92f62d3e36cafeb80', credential: 'uWdWNcQbcGnxB214' },
+    { urls: 'turn:a.relay.metered.ca:443?transport=tcp', username: 'e8dd65b92f62d3e36cafeb80', credential: 'uWdWNcQbcGnxB214' }
   ]
 };
 
@@ -43,10 +44,11 @@ async function getPeer(uid, sendFn) {
       a.id = 'aud_' + uid;
       a.autoplay = true;
       a.playsInline = true;
+      a.volume = 1.0;
       var p = document.getElementById('audioPool');
       if (p) p.appendChild(a);
     }
-    a.srcObject = (e.streams && e.streams) ? e.streams : new MediaStream([e.track]);
+    a.srcObject = (e.streams && e.streams[0]) ? e.streams[0] : new MediaStream([e.track]);
     a.play().catch(function() {});
   };
   pc.onicecandidate = function(e) {
