@@ -22,51 +22,68 @@ body {
   padding: 15px;
 }
 .app {
-  background: rgba(24, 27, 34, 0.92);
+  background: rgba(24, 27, 34, 0.93);
   width: 100%;
   max-width: 460px;
   border-radius: 20px;
-  padding: 25px;
+  padding: 22px;
   box-shadow: 0 12px 40px rgba(0,0,0,0.65);
   border: 1px solid #262a35;
   position: relative;
   z-index: 10;
 }
-.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+.header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; }
 .logo { font-size: 1.5rem; font-weight: 800; color: #00e676; letter-spacing: 1px; }
-.online-badge { background: #232834; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; color: #a0aab8; display: flex; align-items: center; }
+.online-badge { background: #232834; padding: 6px 12px; border-radius: 20px; font-size: 0.82rem; color: #a0aab8; display: flex; align-items: center; }
 .online-dot { width: 8px; height: 8px; background: #00e676; border-radius: 50%; margin-right: 6px; }
 
-.voice-box { background: rgba(18, 20, 26, 0.88); border-radius: 16px; padding: 22px 15px; text-align: center; margin-bottom: 15px; border: 1px solid #222630; min-height: 170px; display: flex; flex-direction: column; justify-content: center; }
-.avatar { width: 72px; height: 72px; border-radius: 50%; background: #232834; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+/* Переключатель режимов: Соло / Групповой (до 6) */
+.mode-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: rgba(18, 20, 26, 0.9); padding: 5px; border-radius: 14px; border: 1px solid #222630; margin-bottom: 14px; }
+.mode-btn { padding: 10px 8px; border: none; border-radius: 10px; font-size: 0.88rem; font-weight: 700; cursor: pointer; background: transparent; color: #8c96a6; touch-action: manipulation; }
+.mode-btn.active { background: #00e676; color: #000; }
+
+/* Блок экранов */
+.voice-box { background: rgba(18, 20, 26, 0.88); border-radius: 16px; padding: 20px 15px; text-align: center; margin-bottom: 14px; border: 1px solid #222630; min-height: 185px; display: flex; flex-direction: column; justify-content: center; }
+.avatar { width: 70px; height: 70px; border-radius: 50%; background: #232834; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
 .avatar.speaking { box-shadow: 0 0 0 6px rgba(0, 230, 118, 0.35); background: #1c382c; border: 2px solid #00e676; }
-#status { font-size: 1rem; color: #cfd8e3; font-weight: 500; }
+#status { font-size: 1rem; color: #cfd8e3; font-weight: 600; }
 
-.queue-window, .call-window { display: none; flex-direction: column; align-items: center; }
-.queue-window.active, .call-window.active { display: flex; }
+.screen-view { display: none; flex-direction: column; align-items: center; width: 100%; }
+.screen-view.active { display: flex; }
 
-.radar { position: relative; width: 72px; height: 72px; border-radius: 50%; background: rgba(0, 230, 118, 0.12); border: 2px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin-bottom: 12px; pointer-events: none; }
+.radar { position: relative; width: 70px; height: 70px; border-radius: 50%; background: rgba(0, 230, 118, 0.12); border: 2px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin-bottom: 10px; pointer-events: none; }
 .radar::before { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid #00e676; animation: pulseRing 2s infinite ease-out; pointer-events: none; }
 @keyframes pulseRing { 0% { transform: scale(0.95); opacity: 0.8; } 100% { transform: scale(1.55); opacity: 0; } }
 
 .queue-title { font-size: 1.05rem; font-weight: 700; color: #00e676; margin-bottom: 4px; }
-.queue-sub { font-size: 0.85rem; color: #a0aab8; margin-bottom: 10px; }
-.timer-pill { background: #232834; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; border: 1px solid #323846; }
+.queue-sub { font-size: 0.84rem; color: #a0aab8; margin-bottom: 8px; }
+.timer-pill { background: #232834; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 0.84rem; font-weight: 600; border: 1px solid #323846; }
 
-.chat-box { background: rgba(18, 20, 26, 0.88); border-radius: 14px; height: 180px; display: flex; flex-direction: column; margin-bottom: 15px; border: 1px solid #222630; overflow: hidden; }
-#messages { flex: 1; padding: 12px; overflow-y: auto; font-size: 0.9rem; display: flex; flex-direction: column; gap: 8px; }
-.msg { padding: 8px 12px; border-radius: 10px; max-width: 82%; word-wrap: break-word; }
+/* Список в окне ожидания */
+.lobby-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-bottom: 8px; }
+.chip { background: #232834; border: 1px solid #00e676; color: #fff; padding: 3px 10px; border-radius: 14px; font-size: 0.76rem; }
+
+/* Сетка комнаты на 6 человек */
+.group-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; margin-bottom: 10px; }
+.seat { background: #1d212b; border: 1px solid #2e3444; border-radius: 12px; padding: 9px 4px; font-size: 0.76rem; color: #788292; display: flex; flex-direction: column; align-items: center; gap: 3px; }
+.seat.occupied { background: #1c382c; border-color: #00e676; color: #fff; font-weight: 600; }
+
+/* Чат */
+.chat-box { background: rgba(18, 20, 26, 0.88); border-radius: 14px; height: 155px; display: flex; flex-direction: column; margin-bottom: 14px; border: 1px solid #222630; overflow: hidden; }
+#messages { flex: 1; padding: 10px; overflow-y: auto; font-size: 0.9rem; display: flex; flex-direction: column; gap: 7px; }
+.msg { padding: 7px 11px; border-radius: 10px; max-width: 82%; word-wrap: break-word; }
 .msg.me { background: #00e676; color: #000; align-self: flex-end; font-weight: 500; }
 .msg.partner { background: #262b38; color: #fff; align-self: flex-start; }
 .msg.sys { background: transparent; color: #788292; align-self: center; font-size: 0.8rem; text-align: center; }
 
 .chat-input { display: flex; border-top: 1px solid #222630; }
-.chat-input input { flex: 1; background: transparent; border: none; padding: 12px; color: #fff; outline: none; font-size: 16px; }
-.chat-input button { background: transparent; border: none; color: #00e676; font-weight: bold; padding: 0 18px; font-size: 1.1rem; cursor: pointer; }
+.chat-input input { flex: 1; background: transparent; border: none; padding: 11px; color: #fff; outline: none; font-size: 16px; }
+.chat-input button { background: transparent; border: none; color: #00e676; font-weight: bold; padding: 0 16px; font-size: 1.15rem; cursor: pointer; }
 .chat-input button:disabled { color: #555; cursor: not-allowed; }
 
+/* Нижние кнопки управления */
 .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; position: relative; z-index: 20; }
-.btn { padding: 15px; border: none; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; touch-action: manipulation; }
+.btn { padding: 14px; border: none; border-radius: 12px; font-size: 0.98rem; font-weight: 700; cursor: pointer; touch-action: manipulation; }
 .btn:active:not(:disabled) { transform: scale(0.97); }
 .btn:disabled { opacity: 0.4; cursor: not-allowed; }
 #btnNext { background: #00e676; color: #000; }
@@ -74,10 +91,11 @@ body {
 #btnMute { grid-column: span 2; background: #262b38; color: #fff; font-weight: 600; }
 #btnMute.muted { background: #ff9800; color: #000; }
 
-.cookie-banner { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); width: calc(100% - 30px); max-width: 460px; background: rgba(24, 27, 34, 0.98); border: 1px solid rgba(0, 230, 118, 0.4); border-radius: 16px; padding: 14px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; z-index: 9999; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
-.cookie-text { font-size: 0.88rem; color: #e6ecf5; line-height: 1.4; }
+/* Плашка Cookie */
+.cookie-banner { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); width: calc(100% - 30px); max-width: 460px; background: rgba(24, 27, 34, 0.98); border: 1px solid rgba(0, 230, 118, 0.4); border-radius: 16px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; z-index: 9999; box-shadow: 0 10px 30px rgba(0,0,0,0.8); }
+.cookie-text { font-size: 0.85rem; color: #e6ecf5; line-height: 1.35; }
 .cookie-text span { color: #00e676; font-weight: 700; }
-.cookie-close { background: #262b38; color: #fff; border: 1px solid #353b4d; border-radius: 50%; width: 34px; height: 34px; min-width: 34px; display: flex; align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; touch-action: manipulation; }
+.cookie-close { background: #262b38; color: #fff; border: 1px solid #353b4d; border-radius: 50%; width: 32px; height: 32px; min-width: 32px; display: flex; align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; touch-action: manipulation; }
 </style>
 </head>
 <body>
@@ -88,27 +106,41 @@ body {
     <div class="online-badge"><span class="online-dot"></span><span id="netStatus">Онлайн: В сети</span></div>
   </div>
 
+  <!-- Кнопки переключения: Соло / Групповой -->
+  <div class="mode-switch">
+    <button type="button" class="mode-btn active" id="btnModeSolo" onclick="switchMode('solo')">👤 Соло (1 на 1)</button>
+    <button type="button" class="mode-btn" id="btnModeGroup" onclick="switchMode('group')">👥 Групповой (до 6)</button>
+  </div>
+
   <div class="voice-box">
-    <!-- Главный экран -->
-    <div id="idleView">
-      <div class="avatar">🎙️</div>
-      <div id="status">Нажмите «Найти / Далее»</div>
+    <!-- Экран 1: Главный -->
+    <div class="screen-view active" id="idleView">
+      <div class="avatar" id="idleIcon">🎙️</div>
+      <div id="status">Режим: Соло (1 на 1)</div>
+      <div class="queue-sub" style="margin-top:4px;margin-bottom:0">Нажмите «Найти / Далее»</div>
     </div>
 
-    <!-- Окно поиска собеседника -->
-    <div class="queue-window" id="queueView">
-      <div class="radar">🔍</div>
-      <div class="queue-title">Вы в очереди ожидания</div>
-      <div class="queue-sub">Подбираем свободного собеседника...</div>
-      <div class="timer-pill">Время поиска: <span id="searchTimerText">00:00</span></div>
+    <!-- Экран 2: Окно ожидания собеседника -->
+    <div class="screen-view" id="queueView">
+      <div class="radar">⏳</div>
+      <div class="queue-title">Окно ожидания собеседника</div>
+      <div class="queue-sub">Вы в очереди. Подбираем свободного человека...</div>
+      <div class="lobby-chips" id="lobbyChips"></div>
+      <div class="timer-pill">Время ожидания: <span id="searchTimerText">00:00</span></div>
     </div>
 
-    <!-- Окно: Собеседник найден -->
-    <div class="call-window" id="callView">
+    <!-- Экран 3: Окно «Собеседник найден» (Соло) -->
+    <div class="screen-view" id="callView">
       <div class="avatar speaking">🎧</div>
-      <div class="queue-title" style="color:#fff">Собеседник на связи</div>
-      <div class="queue-sub" style="color:#00e676">Собеседник найден! Приятного общения</div>
+      <div class="queue-title" style="color:#fff">Собеседник найден!</div>
+      <div class="queue-sub" style="color:#00e676">Вы на связи 1 на 1</div>
       <div class="timer-pill" style="color:#00e676">● Разговор: <span id="callTimerText">00:00</span></div>
+    </div>
+
+    <!-- Экран 4: Комната на 6 человек (Групповой) -->
+    <div class="screen-view" id="groupView">
+      <div class="group-grid" id="groupGrid"></div>
+      <div class="timer-pill" style="color:#00e676">● Комната (<span id="groupCountText">1</span>/6) • <span id="groupTimerText">00:00</span></div>
     </div>
   </div>
 
@@ -126,7 +158,7 @@ body {
     <button type="button" class="btn" id="btnMute" onclick="onMute()">Выключить микрофон</button>
   </div>
 
-  <audio id="remoteAudio" autoplay playsinline></audio>
+  <div id="audioPool"></div>
 </div>
 
 <div class="cookie-banner" id="cookieBanner">
@@ -136,202 +168,6 @@ body {
 
 <script>
   var myId = 'u_' + Math.random().toString(36).slice(2, 10);
-  var partnerId = null;
-  var state = 'idle';
-  var stream = null;
-  var pc = null;
-  var muted = false;
-  var timer = null;
-  var searchLoop = null;
-  var sec = 0;
-  var seen = {};
+  var myName = 'Участник #' + Math.floor(100 + Math.random() * 899);
 
-  if (localStorage.getItem('lk_ck') === '1') {
-    document.getElementById('cookieBanner').style.display = 'none';
-  }
-
-  function closeCk() {
-    localStorage.setItem('lk_ck', '1');
-    document.getElementById('cookieBanner').style.display = 'none';
-  }
-
-  function log(text, cls) {
-    var d = document.createElement('div');
-    d.className = 'msg ' + (cls || 'sys');
-    d.textContent = text;
-    var m = document.getElementById('messages');
-    m.appendChild(d);
-    m.scrollTop = m.scrollHeight;
-  }
-
-  function setScreen(mode) {
-    clearInterval(timer);
-    sec = 0;
-    document.getElementById('idleView').style.display = mode === 'idle' ? 'block' : 'none';
-    document.getElementById('queueView').classList.toggle('active', mode === 'queue');
-    document.getElementById('callView').classList.toggle('active', mode === 'call');
-
-    if (mode === 'queue' || mode === 'call') {
-      var el = document.getElementById(mode === 'queue' ? 'searchTimerText' : 'callTimerText');
-      el.textContent = '00:00';
-      timer = setInterval(function() {
-        sec++;
-        var m = String(Math.floor(sec / 60)).padStart(2, '0');
-        var s = String(sec % 60).padStart(2, '0');
-        el.textContent = m + ':' + s;
-      }, 1000);
-    }
-  }
-
-  function chatOn(on) {
-    document.getElementById('msgInput').disabled = !on;
-    document.getElementById('btnSend').disabled = !on;
-    if (!on) document.getElementById('msgInput').value = '';
-  }
-
-  // Протокол подключения собеседников (WebSocket + WebRTC)
-  var ws = null;
-  function connectNet() {
-    try {
-      ws = new WebSocket('wss://://socketsbay.com');
-      ws.onopen = function() {
-        document.getElementById('netStatus').textContent = 'Онлайн: В сети';
-        sendSig({ cmd: 'connect', to: '*' });
-      };
-      ws.onmessage = function(e) {
-        var pkt = null;
-        try { pkt = JSON.parse(e.data); } catch (err) { return; }
-        if (!pkt || pkt.app !== 'likodopt_proto_v1' || pkt.uco === myId || seen[pkt.nonce]) return;
-        seen[pkt.nonce] = true;
-handlePacket(pkt);
-};
-ws.onclose = function() {
-setTimeout(connectNet, 2000);
-};
-} catch (e) {}
-}
-connectNet();
-функция sendSig(data) {
-if (!ws || ws.readyState !== 1) возвращает;
-data.app = 'likodopt_proto_v1';
-data.uco = myId;
-data.session = '1';
-data.nonce = myId + '' + Date.now() + '' + Math.random().toString(36).slice(2, 6);
-try { ws.send(JSON.stringify(data)); } catch (e) { }
-}
-function onNext() {
-onStop(false);
-state = 'search';
-document.getElementById('btnStop').disabled = false;
-document.getElementById('messages').innerHTML = '';
-setScreen('queue');
-log('Вы вошли в очередь ожидания собеседника...');
-if (!stream && navigator.mediaDevices && navigator.mediaDevices.getUserMedia) {
-navigator.mediaDevices.getUserMedia({ audio: true })
-.then(function(s) {
-stream = s;
-if (muted) stream.getAudioTracks().forEach(function(t) { t.enabled = false; });
-})
-.catch(function() { log('Микрофон недоступен — работает текстовый чат'); });
-}
-sendSig({ cmd: 'wait', to: '' });
-searchLoop = setInterval(функция() {
-if (state === 'search') sendSig({cmd: 'wait', to: '' });
-}, 1500);
-}
-функция onStop(showMsg) {
-clearInterval(searchLoop);
-if (partnerId) отправляет сигнал ({ cmd: 'bye', to: partnerId });
-partnerId = null;
-state = 'idle';
-ChatON(false);
-if (pc) {
-try { pc.close(); } catch (e) {}
-pc = null;
-}
-if (showMsg) {
-document.getElementById('btnStop').disabled = true;
-document .getElementById('status').textContent = 'Поиск остановлен';
-setScreen('idle');
-log('Вы вышли из очереди');
-}
-}
-функция onMute() {
-отключено = !отключено;
-if (stream) stream.getAudioTracks().forEach(функция(t) { t.включено = !отключено; });
-var b = document.getElementById('btnMute');
-b.textContent = отключено ? 'Включить микрофон' : 'Выключить микрофон';
-b.classList.toggle('muted', muted);
-}
-function sendMsg(e) {
-e.preventDefault();
-var inp = document.getElementById('msgInput');
-var txt = inp.value.trim();
-if (!txt || !partnerId) return;
-log(txt, 'me');
-sendSig({ cmd: 'comm', to: partnerId, data: txt });
-inp.value = '';
-}
-async function startCall(init) {
-state = 'call';
-setScreen('call');
-chatOn(true);
-document.getElementById('messages').innerHTML = '';
-log('Собеседник найден! Вы в комнате общения 👋');
-pc = new RTCPeerConnection({
-iceServers: [
-{ urls: 'stun:google.com' },
-{ urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
-]
-});
-if (stream) {
-stream.getTracks().forEach(function(t) { pc.addTrack(t, stream); });
-}
-pc.ontrack = function(e) {
-var a = document.getElementById('remoteAudio');
-a.srcObject = new MediaStream([e.track]);
-a.play().catch(function() {});
-};
-pc.onicecandidate = function(e) {
-if (e.candidate && partnerId) {
-sendSig({ cmd: 'ice', to: partnerId, data: e.candidate });
-}
-};
-if (init) {
-var off = await pc.createOffer();
-await pc.setLocalDescription(off);
-sendSig({ cmd: 'offer', to: partnerId, data: off });
-}
-}
-async function handlePacket(pkt) {
-if (pkt.cmd === 'wait' && state === 'search' && myId > pkt.uco) {
-state = 'conn';
-partnerId = pkt.uco;
-clearInterval(searchLoop);
-sendSig({ cmd: 'pair', to: partnerId });
-startCall(true);
-} else if (pkt.cmd === 'pair' && pkt.to === myId && state === 'search') {
-state = 'conn';
-partnerId = pkt.uco;
-clearInterval(searchLoop);
-startCall(false);
-} else if (pkt.to === myId && pkt.uco === partnerId) {
-if (pkt.cmd === 'offer' && pc) {
-await pc.setRemoteDescription(new RTCSessionDescription(pkt.data));
-var ans = await pc.createAnswer();
-await pc.setLocalDescription(ans);
-sendSig({ cmd: 'answer', to: partnerId, data: ans });
-} else if (pkt.cmd === 'answer' && pc) {
-await pc.setRemoteDescription(new RTCSessionDescription(pkt.data));
-} else if (pkt.cmd === 'ice' && pc) {
-try { await pc.addIceCandidate(new RTCIceCandidate(pkt.data)); } catch (e) {}
-} else if (pkt.cmd === 'comm') {
-log(pkt.data, 'partner');
-} else if (pkt.cmd === 'bye') {
-onStop(true);
-document.getElementById('status').textContent = 'Собеседник отключился';
-}
-}
-}
-
-
+  var mode = 'solo'; // 'solo' | 'group'
