@@ -123,11 +123,20 @@
         <div class="timer-pill">Время ожидания: <span id="searchTimerText">00:00</span></div>
       </div>
 
+            <!-- Экран-рума: Собеседник найден (1 на 1) -->
       <div class="screen-view" id="callView">
-        <div class="avatar speaking">🎧</div>
-        <div class="queue-title" style="color: #ffffff;">Собеседник найден!</div>
-        <div class="queue-sub" style="color: #00e676;">Вы на связи 1 на 1</div>
-        <div class="timer-pill" style="color: #00e676;">● Разговор: <span id="callTimerText">00:00</span></div>
+        <div class="queue-title" style="color: #00e676; margin-bottom: 10px;">● Рума 1 на 1 • Собеседник найден!</div>
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-bottom: 12px;">
+          <div class="seat occupied" id="roomMeCard" style="padding: 12px 6px;">
+            <span style="font-size: 1.5rem;">🎙️</span>
+            <span>Вы</span>
+          </div>
+          <div class="seat occupied" id="roomPartnerCard" style="padding: 12px 6px;">
+            <span style="font-size: 1.5rem;">🎧</span>
+            <span>Собеседник</span>
+          </div>
+        </div>
+        <div class="timer-pill" style="color: #00e676; border-color: #00e676;">В эфире: <span id="callTimerText">00:00</span></div>
       </div>
 
       <div class="screen-view" id="groupView">
