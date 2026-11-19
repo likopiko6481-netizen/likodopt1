@@ -1,5 +1,5 @@
 var SUPABASE_URL = 'https://supabase.co';
-var SUPABASE_KEY = 'sb_publishable_6Y72t3-gkgmLmoRJGECLMQ_d1azrPSN';
+var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmZHB0cnljamZ0anFrcHJuY3pkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUxMDcxMjIsImV4cCI6MjExMDY4MzEyMn0.6tuWAb7f5u8Hy3t_4Qqy0bT_Tefa38HZn4AsTG2ZiEY';
 
 var myId = 'u_' + Math.random().toString(36).slice(2, 9);
 var netState = 'idle';
