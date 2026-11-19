@@ -1,13 +1,12 @@
 var SUPABASE_URL = 'https://supabase.co';
-var SUPABASE_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6ImxmZHB0cnljamZ0anFrcHJuY3pkIiwicm9sZSI6ImFub24iLCJpYXQiOjE3OTUxMDcxMjIsImV4cCI6MjExMDY4MzEyMn0.6tuWAb7f5u8Hy3t_4Qqy0bT_Tefa38HZn4AsTG2ZiEY';
+var SUPABASE_KEY = 'sb_publishable_6Y72t3-gkgmLmoRJGECLMQ_d1azrPSN';
 
 var myId = 'u_' + Math.random().toString(36).slice(2, 9);
 var netState = 'idle';
 var partnerId = null;
 var localStream = null;
 var searchLoop = null;
-var hbTimer = null;
-var ws = null;
+var channel = null;
 var peers = {};
 var lobby = {};
 var group = {};
@@ -17,22 +16,18 @@ var rtcConfig = {
   iceServers: [
     { urls: 'stun:://google.com' },
     { urls: 'stun:://google.com' },
-    { urls: 'stun:://twilio.com' },
-    { urls: 'turn:openrelay.metered.ca:80', username: 'openrelayproject', credential: 'openrelayproject' },
-    { urls: 'turn:openrelay.metered.ca:443', username: 'openrelayproject', credential: 'openrelayproject' }
-  ],
-  iceCandidatePoolSize: 10
+    { urls: 'stun:://cloudflare.com' }
+  ]
 };
 
 function getMyNick() {
-  return window.myNick || 'Участник';
+  return window.myNick || 'Участник #' + myId.slice(-3);
 }
 
 function getMyAva() {
   return window.myAvaUrl || '';
 }
 
-// Вывод сообщений в чат с ником и пиксельной аватаркой 10x10
 function logMsg(txt, cls, senderNick, senderAva) {
   var box = document.getElementById('messages');
   if (!box) return;
@@ -43,29 +38,24 @@ function logMsg(txt, cls, senderNick, senderAva) {
     d.style.display = 'flex';
     d.style.alignItems = 'flex-start';
     d.style.gap = '7px';
-
     if (senderAva) {
       var img = document.createElement('img');
       img.src = senderAva;
       img.style.cssText = 'width:20px;height:20px;border-radius:4px;image-rendering:pixelated;flex-shrink:0;margin-top:2px;';
       d.appendChild(img);
     }
-
     var wrap = document.createElement('div');
     var nameTag = document.createElement('div');
     nameTag.style.cssText = 'font-size:0.72rem;opacity:0.75;font-weight:700;margin-bottom:2px;';
     nameTag.textContent = senderNick || (cls === 'me' ? getMyNick() : 'Собеседник');
-
     var bodyTag = document.createElement('div');
     bodyTag.textContent = txt;
-
     wrap.appendChild(nameTag);
     wrap.appendChild(bodyTag);
     d.appendChild(wrap);
   } else {
     d.textContent = txt;
   }
-
   box.appendChild(d);
   box.scrollTop = box.scrollHeight;
 }
@@ -83,7 +73,6 @@ function drawLobby() {
     c.style.display = 'inline-flex';
     c.style.alignItems = 'center';
     c.style.gap = '5px';
-
     var avaSrc = u === myId ? getMyAva() : lobby[u].ava;
     if (avaSrc) {
       var img = document.createElement('img');
@@ -143,10 +132,7 @@ function initMic() {
     logMsg('Микрофон недоступен — работает чат');
     return;
   }
-  navigator.mediaDevices.getUserMedia({
-    audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true },
-    video: false
-  })
+  navigator.mediaDevices.getUserMedia({ audio: true, video: false })
     .then(function(s) {
       localStream = s;
       localStream.getAudioTracks().forEach(function(t) { t.enabled = !window.uiMuted; });
@@ -170,74 +156,52 @@ function closePeer(u) {
   if (a) a.remove();
 }
 
-function connectSupabase() {
-  var host = SUPABASE_URL.replace('https://', '').replace('http://', '').replace(/\/$/, '');
-  var wsUrl = 'wss://' + host + '/realtime/v1/websocket?apikey=' + SUPABASE_KEY + '&vsn=1.0.0';
+// Подключение через официальный клиент Supabase
+function initSupabaseChannel() {
+  var st = document.getElementById('netStatus');
+  if (!window.supabase) {
+    if (st) st.textContent = 'Ошибка загрузки SDK';
+    return;
+  }
 
-  try {
-    ws = new WebSocket(wsUrl);
-    ws.onopen = function() {
-      var st = document.getElementById('netStatus');
-      if (st) st.textContent = 'Онлайн: В сети';
-      ws.send(JSON.stringify({
-        topic: 'realtime:likodopt_room_2026',
-        event: 'phx_join',
-        payload: { config: { broadcast: { self: false } } },
-        ref: '1'
-      }));
-      clearInterval(hbTimer);
-      hbTimer = setInterval(function() {
-        if (ws && ws.readyState === 1) {
-          ws.send(JSON.stringify({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: 'hb' }));
-        }
-      }, 25000);
-    };
+  var client = window.supabase.createClient(SUPABASE_URL, SUPABASE_KEY);
+  channel = client.channel('likodopt_live_room', {
+    config: { broadcast: { self: false } }
+  });
 
-    ws.onmessage = function(e) {
-      var f = null;
-      try { f = JSON.parse(e.data); } catch (err) { return; }
-      if (!f || f.event !== 'broadcast' || !f.payload || !f.payload.payload) return;
-      var pkt = f.payload.payload;
+  channel
+    .on('broadcast', { event: 'sig' }, function(msg) {
+      var pkt = msg.payload;
       if (!pkt || pkt.uco === myId || seen[pkt.nonce]) return;
       seen[pkt.nonce] = true;
       onPacket(pkt);
-    };
-
-    ws.onclose = function() {
-      clearInterval(hbTimer);
-      setTimeout(connectSupabase, 2000);
-    };
-  } catch (e) {}
+    })
+    .subscribe(function(status) {
+      if (status === 'SUBSCRIBED') {
+        if (st) st.textContent = 'Онлайн: Сервер подключён';
+      } else if (status === 'CHANNEL_ERROR' || status === 'TIMED_OUT') {
+        if (st) st.textContent = 'Ошибка канала: ' + status;
+      }
+    });
 }
-connectSupabase();
+initSupabaseChannel();
 
 function sendSig(data) {
-  if (!ws || ws.readyState !== 1) return;
+  if (!channel) return;
   data.uco = myId;
   data.name = getMyNick();
   data.ava = getMyAva();
   data.nonce = myId + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-  try {
-    ws.send(JSON.stringify({
-      topic: 'realtime:likodopt_room_2026',
-      event: 'broadcast',
-      payload: { type: 'broadcast', event: 'sig', payload: data },
-      ref: String(Date.now())
-    }));
-  } catch (e) {}
+  channel.send({
+    type: 'broadcast',
+    event: 'sig',
+    payload: data
+  });
 }
 
 window.netStartSearch = function(mode) {
   window.netStopSession();
   initMic();
-
-  try {
-    var AudioCtx = window.AudioContext || window.webkitAudioContext;
-    if (AudioCtx) {
-      var ctx = new AudioCtx();
-      if (ctx.state === 'suspended') ctx.resume();
-    }
-  } catch (e) {}
 
   if (mode === 'solo') {
     netState = 'search';
@@ -251,7 +215,7 @@ window.netStartSearch = function(mode) {
         drawLobby();
         sendSig({ cmd: 'wait_solo', to: '*' });
       }
-    }, 1500);
+    }, 1200);
   } else {
     netState = 'group';
     group[myId] = { name: getMyNick(), ava: getMyAva() };
@@ -264,7 +228,7 @@ window.netStartSearch = function(mode) {
       if (netState === 'group' && Object.keys(group).length < 6) {
         sendSig({ cmd: 'wait_group', to: '*' });
       }
-    }, 2000);
+    }, 1800);
   }
 };
 
@@ -312,44 +276,46 @@ function showFoundPartner(pName, pAva) {
   if (callView) {
     var avaBox = callView.querySelector('.avatar');
     if (avaBox && pAva) {
-avaBox.innerHTML = '';
+      avaBox.innerHTML = '<img src="' + pAva + '" style="width:100%;height:100%;border-radius:50%;image-rendering:pixelated;">';
+    }
+    var sub = callView.querySelector('.queue-sub');
+    if (sub) sub.textContent = 'Собеседник: ' + (pName || 'Участник');
+  }
+  logMsg('Собеседник найден: ' + (pName || 'Участник') + ' 👋');
 }
-var sub = callView.querySelector('.queue-sub');
-if (sub) sub.textContent = 'Собеседник: ' + (pName || 'Участник');
+
+async function startRtc(to, init, kind) {
+  closePeer(to);
+  var pc = new RTCPeerConnection(rtcConfig);
+  peers[to] = pc;
+  if (localStream) {
+    localStream.getTracks().forEach(function(t) { pc.addTrack(t, localStream); });
+  }
+  pc.ontrack = function(e) {
+    var a = document.getElementById('aud_' + to);
+    if (!a) {
+      a = document.createElement('audio');
+      a.id = 'aud_' + to;
+      a.autoplay = true;
+      a.playsInline = true;
+      var pool = document.getElementById('audioPool');
+      if (pool) pool.appendChild(a);
+    }
+    a.srcObject = new MediaStream([e.track]);
+    a.play().catch(function() {});
+  };
+  pc.onicecandidate = function(e) {
+    if (e.candidate) sendSig({ cmd: 'ice', to: to, data: e.candidate });
+  };
+  if (init) {
+    var off = await pc.createOffer();
+    await pc.setLocalDescription(off);
+    sendSig({ cmd: 'offer', to: to, data: off, kind: kind });
+  }
 }
-logMsg('Собеседник найден: ' + (pName || 'Участник') + ' 👋');
-}
-асинхронная функция starttrtc(to, init, kind) {
-closePeer(to);
-var pc = новое RTCPeerConnection(rtcConfig);
-peers[to] = pc;
-if (localStream) {
-localStream.getTracks().forEach(функция(t) { pc.addTrack(t, localStream); });
-}
-pc.ontrack = функция(e) {
-var a = document.getElementById('aud_' + to);
-if ( !a) {
-a = document.createElement('аудио');
-a.id = 'aud_' + to;
-a.autoplay = true;
-a.playsInline = true;
-var pool = document.getElementById('аудиопул');
-if (pool) pool.appendChild(a);
-}
-a.srcObject = новый медиапоток ([например,дорожка]);
-a.play().catch(функция() {});
-};
-pc.onicecandidate = функция(e) {
-если (например,кандидат) отправляет сигнал ( { cmd: 'ice', кому: to, данные: e.candidate });
-};
-if (init) {
-var off = ожидание pc.createOffer();
-ожидание pc.setLocalDescription(выключено);
-sendSig({cmd: 'предложение', кому: to, данные: выключены, вид: kind });
-}
-}
-асинхронная функция onPacket(pkt) {
-if (pkt.cmd === 'wait_solo' && netState === 'search') {
+
+async function onPacket(pkt) {
+если (pkt.cmd === «wait_solo» и netState === «search») {
 лобби[pkt.uco] = { название: pkt.name , ava: pkt.ava, ts: Date.now() };
 drawLobby();
 if (myId > pkt.ucoo) {
