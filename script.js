@@ -1,3 +1,6 @@
+var SUPABASE_URL = 'ВСТАВЬТЕ_СЮДА_PROJECT_URL';
+var SUPABASE_KEY = 'sb_publishable_6Y72t3-gkgmLmoRJGECLMQ_d1azrPSN';
+
 var uiMode = 'solo';
 var uiMuted = false;
 var uiTimer = null;
@@ -9,19 +12,15 @@ var state = 'idle';
 var partnerId = null;
 var localStream = null;
 var searchLoop = null;
+var hbTimer = null;
+var ws = null;
 var peers = {};
 var lobby = {};
 var group = {};
 var seen = {};
 
-// Два параллельных канала связи (WebSocket + HTTPS), чтобы работало у всех в РФ без VPN
-var WS_URL = 'wss://://socketsbay.com';
-var HTTP_URL = 'https://ntfy.sh';
-var ws = null;
-
 var rtcConfig = {
   iceServers: [
-    { urls: 'stun:://google.com' },
     { urls: 'stun:://google.com' },
     { urls: 'stun:://google.com' },
     { urls: 'stun:://twilio.com' },
@@ -137,8 +136,7 @@ function initMic() {
       localStream = s;
       if (uiMuted) localStream.getAudioTracks().forEach(function(t) { t.enabled = false; });
       Object.keys(peers).forEach(function(u) {
-        var senders = peers[u].getSenders();
-        if (senders.length === 0) {
+        if (peers[u].getSenders().length === 0) {
           localStream.getTracks().forEach(function(t) { peers[u].addTrack(t, localStream); });
         }
       });
@@ -157,38 +155,61 @@ function closePeer(u) {
   if (a) a.remove();
 }
 
-// Подключение основного WebSocket-канала (работает у всех операторов РФ)
-function connectWs() {
+// Подключение к Supabase Realtime (работает в РФ без VPN)
+function connectSupabase() {
+  if (!SUPABASE_URL || SUPABASE_URL.indexOf('http') !== 0) return;
+  var host = SUPABASE_URL.replace('https://', '').replace('http://', '').replace(/\/$/, '');
+  var wsUrl = 'wss://' + host + '/realtime/v1/websocket?apikey=' + SUPABASE_KEY + '&vsn=1.0.0';
+
   try {
-    ws = new WebSocket(WS_URL);
+    ws = new WebSocket(wsUrl);
+    ws.onopen = function() {
+      var netEl = document.getElementById('netStatus');
+      if (netEl) netEl.textContent = 'Онлайн: В сети';
+      ws.send(JSON.stringify({
+        topic: 'realtime:likodopt_room_2026',
+        event: 'phx_join',
+        payload: { config: { broadcast: { self: false } } },
+        ref: '1'
+      }));
+      clearInterval(hbTimer);
+      hbTimer = setInterval(function() {
+        if (ws && ws.readyState === 1) {
+          ws.send(JSON.stringify({ topic: 'phoenix', event: 'heartbeat', payload: {}, ref: 'hb' }));
+        }
+      }, 25000);
+    };
+
     ws.onmessage = function(e) {
-      var pkt = null;
-      try { pkt = JSON.parse(e.data); } catch (err) { return; }
-      if (!pkt || pkt.app !== 'likodopt_global_26' || pkt.uco === myId || seen[pkt.nonce]) return;
+      var frame = null;
+      try { frame = JSON.parse(e.data); } catch (err) { return; }
+      if (!frame || frame.event !== 'broadcast' || !frame.payload || !frame.payload.payload) return;
+      var pkt = frame.payload.payload;
+      if (!pkt || pkt.uco === myId || seen[pkt.nonce]) return;
       seen[pkt.nonce] = true;
       onPacket(pkt);
     };
+
     ws.onclose = function() {
-      setTimeout(connectWs, 2000);
+      clearInterval(hbTimer);
+      setTimeout(connectSupabase, 2000);
     };
   } catch (e) {}
 }
-connectWs();
+connectSupabase();
 
-// Отправка сигнала сразу по обоим каналам для 100% доставки
 function sendSig(data) {
-  data.app = 'likodopt_global_26';
+  if (!ws || ws.readyState !== 1) return;
   data.uco = myId;
   data.name = myName;
   data.nonce = myId + '_' + Date.now() + '_' + Math.random().toString(36).slice(2, 6);
-  data.ts = Date.now();
-  var raw = JSON.stringify(data);
-
-  if (ws && ws.readyState === 1) {
-    try { ws.send(raw); } catch (e) {}
-  }
   try {
-    fetch(HTTP_URL, { method: 'POST', body: raw }).catch(function() {});
+    ws.send(JSON.stringify({
+      topic: 'realtime:likodopt_room_2026',
+      event: 'broadcast',
+      payload: { type: 'broadcast', event: 'sig', payload: data },
+      ref: String(Date.now())
+    }));
   } catch (e) {}
 }
 
@@ -198,7 +219,6 @@ function uiStartSearch() {
   document.getElementById('messages').innerHTML = '';
   initMic();
 
-  // Разблокировка аудио на мобильных устройствах (iOS / Android)
   try {
     var AudioCtx = window.AudioContext || window.webkitAudioContext;
     if (AudioCtx) {
@@ -291,33 +311,33 @@ function uiSendChat(e) {
   }
 }
 
-async function startRtc(to, init, kind) {
-  closePeer(to);
-  var pc = new RTCPeerConnection(rtcConfig);
-  peers[to] = pc;
-  if (localStream) {
-    localStream.getTracks().forEach(function(t) { pc.addTrack(t, localStream); });
-  }
-  pc.ontrack = function(e) {
-    var a = document.getElementById('aud_' + to);
-    if (!a) {
-      a = document.createElement('audio');
-      a.id = 'aud_' + to;
-      a.autoplay = true;
-      a.playsInline = true;
-      var pool = document.getElementById('audioPool');
-      if (pool) pool.appendChild(a);
-    }
-    a.srcObject = new MediaStream([e.track]);
-    a.play().catch(function() {});
-  };
-  pc.onicecandidate = function(e) {
-if (e.candidate) sendSig({ cmd: 'ice', to: to, data: e.candidate });
+асинхронная функция starttrtc(to, init, kind) {
+closePeer(to);
+var pc = новое RTCPeerConnection(rtcConfig);
+peers[to] = pc;
+if (localStream) {
+localStream.getTracks().forEach(функция(t) { pc.addTrack(t, localStream); });
+}
+pc.ontrack = функция(e) {
+var a = document.getElementById('aud_' + to);
+if ( !a) {
+a = document.createElement('аудио');
+a.id = 'aud_' + to;
+a.autoplay = true;
+a.playsInline = true;
+var pool = document.getElementById('аудиопул');
+if (pool) pool.appendChild(a);
+}
+a.srcObject = новый медиапоток ([например,дорожка]);
+a.play().catch(функция() {});
+};
+pc.onicecandidate = функция(e) {
+если (например,кандидат) отправляет сигнал ( { cmd: 'ice', кому: to, данные: e.candidate });
 };
 if (init) {
-var off = await pc.createOffer();
-await pc.setLocalDescription(off);
-sendSig({ cmd: 'offer', to: to, data: off, kind: kind });
+var off = ожидание pc.createOffer();
+ожидание pc.setLocalDescription(выключено);
+sendSig({cmd: 'предложение', кому: to, данные: выключены, вид: kind });
 }
 }
 асинхронная функция onPacket(pkt) {
@@ -388,22 +408,3 @@ drawGroup();
 }
 }
 }
-асинхронная функция poll() {
-try {
-var res = await fetch(HTTP_URL + '/json?poll=1&since=12s');
-if (res.ok) {
-var lines = (await res.text()).trim().split('\n');
-for (var i = 0; i < lines.длина; i++) {
-if (!строки[i]) продолжить;
-var w = JSON.parse(строки[i]);
-if (!без сообщения) продолжить;
-var pkt = JSON.parse(без сообщения);
-if (!pkt || pkt.app !== 'likodopt_global_26' || pkt.uco === myId || видел[pkt.одноразовый номер] || Date.now() - pkt.ts > 16000) продолжить ;
-замечено[pkt.одноразовый номер] = true;
-onPacket(pkt);
-}
-}
-} catch (e) {}
-setTimeout(опрос, 1000);
-}
-poll();
