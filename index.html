@@ -18,49 +18,99 @@
             padding: 15px;
         }
         .app {
-            background: rgba(24, 27, 34, 0.92);
+            background: rgba(24, 27, 34, 0.93);
             backdrop-filter: blur(10px);
             width: 100%;
-            max-width: 440px;
+            max-width: 460px;
             border-radius: 20px;
-            padding: 24px;
+            padding: 22px;
             box-shadow: 0 12px 40px rgba(0,0,0,0.65);
             border: 1px solid #262a35;
+            position: relative;
+            z-index: 10;
         }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 18px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
         .logo { font-size: 1.5rem; font-weight: 800; color: #00e676; letter-spacing: 1px; }
         .online-badge { background: #232834; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; color: #a0aab8; display: flex; align-items: center; }
-        .online-dot { width: 8px; height: 8px; background: #ff5252; border-radius: 50%; margin-right: 6px; }
+        .online-dot { width: 8px; height: 8px; background: #ff5252; border-radius: 50%; margin-right: 6px; transition: background 0.3s; }
         .online-dot.connected { background: #00e676; }
 
-        .voice-box { background: rgba(18, 20, 26, 0.85); border-radius: 16px; padding: 24px 15px; text-align: center; margin-bottom: 15px; border: 1px solid #222630; }
-        .avatar { width: 72px; height: 72px; border-radius: 50%; background: #232834; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 2rem; transition: 0.2s; }
+        /* Профиль: аватарка + ник + кнопка рандома */
+        .profile-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; background: #181c24; padding: 8px 12px; border-radius: 14px; border: 1px solid #262a35; }
+        .my-ava { width: 40px; height: 40px; border-radius: 8px; border: 1px solid #00e676; image-rendering: pixelated; cursor: pointer; background: #232834; transition: transform 0.1s; }
+        .my-ava:active { transform: scale(0.92); }
+        .profile-row input { flex: 1; background: transparent; border: none; color: #fff; font-size: 0.95rem; outline: none; }
+        .ava-reroll { background: #232834; border: 1px solid #323846; color: #00e676; border-radius: 10px; padding: 8px 11px; cursor: pointer; font-size: 0.95rem; transition: transform 0.1s, background 0.15s; }
+        .ava-reroll:hover { background: #2d3444; }
+        .ava-reroll:active { transform: scale(0.92); }
+
+        /* Переключатель режимов */
+        .mode-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
+        .tab-btn { background: #1b1f29; border: 1px solid #2c3240; color: #a0aab8; padding: 11px; border-radius: 12px; font-weight: 700; cursor: pointer; font-size: 0.88rem; transition: transform 0.1s, background 0.15s, border-color 0.15s; }
+        .tab-btn:hover { background: #232836; }
+        .tab-btn:active { transform: scale(0.96); }
+        .tab-btn.active { background: rgba(0, 230, 118, 0.15); border-color: #00e676; color: #00e676; }
+
+        /* Окно статуса / звонка / комнаты */
+        .voice-box { background: rgba(18, 20, 26, 0.85); border-radius: 16px; padding: 20px 15px; text-align: center; margin-bottom: 14px; border: 1px solid #222630; min-height: 160px; display: flex; flex-direction: column; justify-content: center; }
+        .avatar { width: 68px; height: 68px; border-radius: 50%; background: #232834; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 1.9rem; transition: 0.2s; }
         .avatar.active { box-shadow: 0 0 0 6px rgba(0, 230, 118, 0.3); background: #1c382c; }
         #status { font-size: 1rem; color: #cfd8e3; font-weight: 500; }
 
-        .radar { position: relative; width: 72px; height: 72px; border-radius: 50%; background: rgba(0, 230, 118, 0.12); border: 2px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 1.8rem; margin: 0 auto 12px; }
+        .radar { position: relative; width: 68px; height: 68px; border-radius: 50%; background: rgba(0, 230, 118, 0.12); border: 2px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 1.7rem; margin: 0 auto 10px; }
         .radar::before { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid #00e676; animation: pulseRing 1.8s infinite ease-out; }
         @keyframes pulseRing { 0% { transform: scale(0.95); opacity: 0.8; } 100% { transform: scale(1.5); opacity: 0; } }
         .queue-timer { display: inline-block; background: #232834; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; margin-top: 8px; border: 1px solid #323846; }
 
-        .chat-box { background: rgba(18, 20, 26, 0.85); border-radius: 14px; height: 185px; display: flex; flex-direction: column; margin-bottom: 15px; border: 1px solid #222630; overflow: hidden; }
-        #messages { flex: 1; padding: 12px; overflow-y: auto; font-size: 0.9rem; display: flex; flex-direction: column; gap: 8px; }
-        .msg { padding: 8px 12px; border-radius: 10px; max-width: 82%; word-wrap: break-word; }
+        .duo-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .user-card { background: #1d212b; border: 1px solid #00e676; border-radius: 14px; padding: 14px 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 600; }
+        .user-card img { width: 38px; height: 38px; border-radius: 6px; image-rendering: pixelated; border: 1px solid #00e676; }
+
+        .group-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+        .seat { background: #1d212b; border: 1px dashed #2c3240; border-radius: 12px; padding: 10px 6px; display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: 0.78rem; color: #788292; }
+        .seat.occupied { border-style: solid; border-color: #00e676; color: #fff; }
+        .seat img { width: 28px; height: 28px; border-radius: 5px; image-rendering: pixelated; border: 1px solid #00e676; }
+
+        /* Чат */
+        .chat-box { background: rgba(18, 20, 26, 0.85); border-radius: 14px; height: 170px; display: flex; flex-direction: column; margin-bottom: 14px; border: 1px solid #222630; overflow: hidden; }
+        #messages { flex: 1; padding: 12px; overflow-y: auto; font-size: 0.9rem; display: flex; flex-direction: column; gap: 7px; }
+        .msg { padding: 7px 12px; border-radius: 10px; max-width: 84%; word-wrap: break-word; }
         .msg.me { background: #00e676; color: #000; align-self: flex-end; font-weight: 500; }
         .msg.partner { background: #262b38; color: #fff; align-self: flex-start; }
         .msg.sys { background: transparent; color: #788292; align-self: center; font-size: 0.8rem; text-align: center; }
         .chat-input { display: flex; border-top: 1px solid #222630; }
         .chat-input input { flex: 1; background: transparent; border: none; padding: 12px; color: #fff; outline: none; font-size: 0.9rem; }
-        .chat-input button { background: transparent; border: none; color: #00e676; font-weight: bold; padding: 0 18px; font-size: 1.1rem; cursor: pointer; }
-        .chat-input button:disabled { color: #555; }
+        .chat-input button { background: transparent; border: none; color: #00e676; font-weight: bold; padding: 0 18px; font-size: 1.15rem; cursor: pointer; transition: transform 0.1s; }
+        .chat-input button:active:not(:disabled) { transform: scale(0.88); }
+        .chat-input button:disabled { color: #555; cursor: not-allowed; }
 
+        /* Главные кнопки управления с четкой кликабельностью */
         .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .btn { padding: 15px; border: none; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; transition: 0.15s; }
-        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        #btnNext { background: #00e676; color: #000; }
-        #btnStop { background: #ff5252; color: #fff; }
-        #btnMute { grid-column: span 2; background: #262b38; color: #fff; font-weight: 600; }
-        #btnMute.muted { background: #ff9800; color: #000; }
+        .btn {
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+            user-select: none;
+            transition: transform 0.08s ease, filter 0.15s ease, box-shadow 0.15s ease;
+        }
+        .btn:hover:not(:disabled) { filter: brightness(1.08); }
+        .btn:active:not(:disabled) { transform: scale(0.95); filter: brightness(0.92); }
+        .btn:disabled { opacity: 0.35; cursor: not-allowed; transform: none; }
+        #btnNext { background: #00e676; color: #000; box-shadow: 0 4px 14px rgba(0, 230, 118, 0.25); }
+        #btnStop { background: #ff5252; color: #fff; box-shadow: 0 4px 14px rgba(255, 82, 82, 0.25); }
+        #btnMute { grid-column: span 2; background: #262b38; color: #fff; font-weight: 600; border: 1px solid #353b4b; }
+        #btnMute.muted { background: #ff9800; color: #000; border-color: #ff9800; }
+
+        /* Cookie баннер */
+        .cookie-banner { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); width: calc(100% - 30px); max-width: 460px; background: rgba(24, 27, 34, 0.97); border: 1px solid rgba(0, 230, 118, 0.4); border-radius: 16px; padding: 12px 15px; display: none; align-items: center; justify-content: space-between; gap: 10px; z-index: 999; box-shadow: 0 8px 25px rgba(0,0,0,0.6); }
+        .cookie-banner.show { display: flex; }
+        .cookie-text { font-size: 0.84rem; color: #e6ecf5; }
+        .cookie-text span { color: #00e676; font-weight: 700; }
+        .cookie-close { background: #262b38; color: #fff; border: 1px solid #353b4d; border-radius: 50%; width: 32px; height: 32px; min-width: 32px; display: flex; align-items: center; justify-content: center; cursor: pointer; transition: transform 0.1s; }
+        .cookie-close:active { transform: scale(0.9); }
     </style>
 </head>
 <body>
@@ -70,50 +120,98 @@
         <div class="online-badge"><span class="online-dot" id="connDot"></span>Онлайн: <span id="onlineCount">1</span></div>
     </div>
 
+    <div class="profile-row">
+        <img id="myAvaImg" class="my-ava" alt="ava" title="Нажмите, чтобы сменить аватарку">
+        <input type="text" id="nickInput" placeholder="Ваш никнейм..." maxlength="20">
+        <button type="button" class="ava-reroll" id="btnRerollAva" title="Новая аватарка">🎲</button>
+    </div>
+
+    <div class="mode-tabs">
+        <button type="button" class="tab-btn active" id="modeSolo">1 на 1 (Рулетка)</button>
+        <button type="button" class="tab-btn" id="modeGroup">Комната (до 6 чел.)</button>
+    </div>
+
     <div class="voice-box">
         <div id="idleView">
             <div class="avatar" id="avatarIcon">🎙️</div>
             <div id="status">Нажмите «Найти / Далее»</div>
         </div>
+
         <div id="queueView" style="display:none;">
             <div class="radar">🔍</div>
             <div style="font-weight:700;color:#00e676;">Ищем собеседника...</div>
-            <div class="queue-timer">Поиск: <span id="timerText">00:00</span></div>
-        </div>
-    </div>
+Поиск: 00:00
+Участников: 1 / 6
 
-    <div class="chat-box">
-        <div id="messages"></div>
-        <form class="chat-input" id="chatForm">
-            <input type="text" id="msgInput" placeholder="Написать сообщение..." disabled autocomplete="off">
-            <button type="submit" id="btnSend" disabled>➤</button>
-        </form>
-    </div>
 
-    <div class="controls">
-        <button type="button" class="btn" id="btnNext">Найти / Далее</button>
-        <button type="button" class="btn" id="btnStop" disabled>Стоп</button>
-        <button type="button" class="btn" id="btnMute">Выключить микрофон</button>
-    </div>
+➤
 
-    <audio id="remoteAudio" autoplay playsinline></audio>
-</div>
-
-<script>
+Найти / Далее
+Стоп
+Выключить микрофон
+🍪 Мы используем файлы Cookie для сохранения ника и аватарки.
+✕
 const myId = 'u_' + Math.random().toString(36).slice(2, 10) + Date.now().toString(36);
 let localStream = null;
-let pc = null;
 let isMuted = false;
+let currentMode = 'solo';
 let timerInt = null;
-let pendingIce = [];
-
+const peers = {}; // remoteId -> { pc, pendingIce: [] }
 const rtcConfig = {
-    iceServers: [
-        { urls: 'stun:://google.com' },
-        { urls: 'stun:://google.com' }
-    ]
+iceServers: [
+{ urls: 'stun:google.com' },
+{ urls: 'stun:google.com' }
+]
 };
-
+// --- ПРОФИЛЬ И АВАТАРКА ---
+function makePixelAva() {
+const c = document.createElement('canvas');
+c.width = 8; c.height = 8;
+const ctx = c.getContext('2d');
+const colors = ['#00e676', '#00b0ff', '#ff4081', '#ffd740', '#7c4dff', '#ff6e40'];
+const col = colors[Math.floor(Math.random() * colors.length)];
+ctx.fillStyle = '#181c24';
+ctx.fillRect(0, 0, 8, 8);
+ctx.fillStyle = col;
+for (let y = 1; y < 7; y++) {
+for (let x = 1; x < 4; x++) {
+if (Math.random() > 0.45) {
+ctx.fillRect(x, y, 1, 1);
+ctx.fillRect(7 - x, y, 1, 1);
+}
+}
+}
+return c.toDataURL();
+}
+let myAva = localStorage.getItem('liko_ava') || makePixelAva();
+localStorage.setItem('liko_ava', myAva);
+const myAvaImg = document.getElementById('myAvaImg');
+const nickInput = document.getElementById('nickInput');
+myAvaImg.src = myAva;
+nickInput.value = localStorage.getItem('liko_nick') || '';
+nickInput.addEventListener('input', () => {
+localStorage.setItem('liko_nick', nickInput.value.trim());
+});
+function rerollAva() {
+myAva = makePixelAva();
+localStorage.setItem('liko_ava', myAva);
+myAvaImg.src = myAva;
+}
+myAvaImg.addEventListener('click', rerollAva);
+document.getElementById('btnRerollAva').addEventListener('click', rerollAva);
+function getNick() {
+return nickInput.value.trim() || ('Гость #' + myId.slice(-3));
+}
+// --- COOKIE БАННЕР ---
+const cookieBanner = document.getElementById('cookieBanner');
+if (!localStorage.getItem('liko_cookie_ok')) {
+cookieBanner.classList.add('show');
+}
+document.getElementById('btnCloseCookie').addEventListener('click', () => {
+localStorage.setItem('liko_cookie_ok', '1');
+cookieBanner.classList.remove('show');
+});
+// --- UI И ЭКРАНЫ ---
 const btnNext = document.getElementById('btnNext');
 const btnStop = document.getElementById('btnStop');
 const btnMute = document.getElementById('btnMute');
@@ -123,119 +221,127 @@ const messages = document.getElementById('messages');
 const statusEl = document.getElementById('status');
 const idleView = document.getElementById('idleView');
 const queueView = document.getElementById('queueView');
-const avatarIcon = document.getElementById('avatarIcon');
-const remoteAudio = document.getElementById('remoteAudio');
-
+const callView = document.getElementById('callView');
+const groupView = document.getElementById('groupView');
+function showView(viewName) {
+idleView.style.display = viewName === 'idle' ? 'block' : 'none';
+queueView.style.display = viewName === 'queue' ? 'block' : 'none';
+callView.style.display = viewName === 'call' ? 'block' : 'none';
+groupView.style.display = viewName === 'group' ? 'block' : 'none';
+}
 function addMsg(text, cls) {
-    const d = document.createElement('div');
-    d.className = 'msg ' + cls;
-    d.textContent = text;
-    messages.appendChild(d);
-    messages.scrollTop = messages.scrollHeight;
+const d = document.createElement('div');
+d.className = 'msg ' + cls;
+d.textContent = text;
+messages.appendChild(d);
+messages.scrollTop = messages.scrollHeight;
 }
-
 function startSearchTimer() {
-    clearInterval(timerInt);
-    let sec = 0;
-    document.getElementById('timerText').textContent = '00:00';
-    timerInt = setInterval(() => {
-        sec++;
-        const m = String(Math.floor(sec / 60)).padStart(2, '0');
-        const s = String(sec % 60).padStart(2, '0');
-        document.getElementById('timerText').textContent = m + ':' + s;
-    }, 1000);
+clearInterval(timerInt);
+let sec = 0;
+document.getElementById('timerText').textContent = '00:00';
+timerInt = setInterval(() => {
+sec++;
+const m = String(Math.floor(sec / 60)).padStart(2, '0');
+const s = String(sec % 60).padStart(2, '0');
+document.getElementById('timerText').textContent = m + ':' + s;
+}, 1000);
 }
-
-function setUIState(state) {
-    clearInterval(timerInt);
-    if (state === 'idle') {
-        idleView.style.display = 'block';
-        queueView.style.display = 'none';
-        avatarIcon.classList.remove('active');
-        btnStop.disabled = true;
-        msgInput.disabled = true;
-        btnSend.disabled = true;
-    } else if (state === 'searching') {
-        idleView.style.display = 'none';
-        queueView.style.display = 'block';
-        btnStop.disabled = false;
-        msgInput.disabled = true;
-        btnSend.disabled = true;
-        startSearchTimer();
-    } else if (state === 'connected') {
-        idleView.style.display = 'block';
-        queueView.style.display = 'none';
-        avatarIcon.classList.add('active');
-        statusEl.textContent = 'Собеседник на связи 🎧';
-        btnStop.disabled = false;
-        msgInput.disabled = false;
-        btnSend.disabled = false;
-    }
+function renderGroupSeats(members) {
+const grid = document.getElementById('groupGrid');
+document.getElementById('groupCountText').textContent = members.length;
+grid.innerHTML = '';
+for (let i = 0; i < 6; i++) {
+const seat = document.createElement('div');
+if (members[i]) {
+seat.className = 'seat occupied';
+const img = document.createElement('img');
+img.src = members[i].ava || myAva;
+const span = document.createElement('span');
+span.textContent = members[i].id === myId ? (getNick() + ' (Вы)') : members[i].nick;
+seat.appendChild(img);
+seat.appendChild(span);
+} else {
+seat.className = 'seat';
+seat.innerHTML = '➕Свободно';
 }
-
+grid.appendChild(seat);
+}
+}
+// --- МИКРОФОН И WEBRTC ---
 async function ensureMic() {
-    if (localStream) return true;
-    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-        addMsg('⚠️ Откройте сайт по https:// для работы микрофона', 'sys');
-        return false;
-    }
-    try {
-        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-        localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
-        return true;
-    } catch (e) {
-        addMsg('⚠️ Доступ к микрофону запрещён (работает только чат)', 'sys');
-        return false;
-    }
+if (localStream) return true;
+if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+addMsg('⚠️ Для голоса откройте сайт по https://', 'sys');
+return false;
 }
-
-function closeRTC() {
-    if (pc) {
-        pc.close();
-        pc = null;
-    }
-    pendingIce = [];
-    remoteAudio.srcObject = null;
+try {
+localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+return true;
+} catch (e) {
+addMsg('⚠️ Микрофон недоступен (работает текстовый чат)', 'sys');
+return false;
 }
-
-async function createRTC(isInitiator) {
-    closeRTC();
-    pc = new RTCPeerConnection(rtcConfig);
-
-    if (localStream) {
-        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
-    }
-
-    pc.onicecandidate = (e) => {
-        if (e.candidate) {
-            fetch('/api/signal', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ id: myId, signal: { candidate: e.candidate } })
-            });
-        }
-    };
-
-    pc.ontrack = (e) => {
-        remoteAudio.srcObject = e.streams[0];
-    };
-
-    if (isInitiator) {
-        const offer = await pc.createOffer();
-        await pc.setLocalDescription(offer);
-        await fetch('/api/signal', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-body: JSON.stringify({ id: myId, signal: { sdp: pc.localDescription } })
+}
+function closePeer(remoteId) {
+if (peers[remoteId]) {
+peers[remoteId].pc.close();
+delete peers[remoteId];
+}
+const audio = document.getElementById('audio_' + remoteId);
+if (audio) audio.remove();
+}
+function closeAllPeers() {
+Object.keys(peers).forEach(closePeer);
+}
+async function createPeer(remoteId, isInitiator) {
+closePeer(remoteId);
+const pc = new RTCPeerConnection(rtcConfig);
+peers[remoteId] = { pc, pendingIce: [] };
+if (localStream) {
+localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+}
+pc.onicecandidate = (e) => {
+if (e.candidate) {
+fetch('/api/signal', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({ id: myId, to: remoteId, signal: { candidate: e.candidate } })
+});
+}
+};
+pc.ontrack = (e) => {
+let audio = document.getElementById('audio_' + remoteId);
+if (!audio) {
+audio = document.createElement('audio');
+audio.id = 'audio_' + remoteId;
+audio.autoplay = true;
+audio.playsInline = true;
+document.getElementById('audioPool').appendChild(audio);
+}
+audio.srcObject = e.streams;
+};
+if (isInitiator) {
+const offer = await pc.createOffer();
+await pc.setLocalDescription(offer);
+await fetch('/api/signal', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({ id: myId, to: remoteId, signal: { sdp: pc.localDescription } })
 });
 }
 }
-async function handleSignal(signal) {
-if (!pc) return;
+async function handleSignal(fromId, signal) {
+if (!peers[fromId]) {
+await createPeer(fromId, false);
+}
+const entry = peers[fromId];
+const pc = entry.pc;
 if (signal.sdp) {
 await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
-while (pendingIce.length > 0) {
-await pc.addIceCandidate(new RTCIceCandidate(pendingIce.shift()));
+while (entry.pendingIce.length > 0) {
+await pc.addIceCandidate(new RTCIceCandidate(entry.pendingIce.shift()));
 }
 if (signal.sdp.type === 'offer') {
 const answer = await pc.createAnswer();
@@ -243,17 +349,18 @@ await pc.setLocalDescription(answer);
 await fetch('/api/signal', {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
-body: JSON.stringify({ id: myId, signal: { sdp: pc.localDescription } })
+body: JSON.stringify({ id: myId, to: fromId, signal: { sdp: pc.localDescription } })
 });
 }
 } else if (signal.candidate) {
 if (pc.remoteDescription) {
 await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
 } else {
-pendingIce.push(signal.candidate);
+entry.pendingIce.push(signal.candidate);
 }
 }
 }
+// --- ОПРОС СЕРВЕРА ---
 async function pollServer() {
 try {
 const res = await fetch('/api/poll', {
@@ -267,18 +374,38 @@ const data = await res.json();
 document.getElementById('onlineCount').textContent = data.online;
 for (const ev of data.events) {
 if (ev.type === 'matched') {
+clearInterval(timerInt);
 messages.innerHTML = '';
-setUIState('connected');
-addMsg('Собеседник найден! Можете говорить 👋', 'sys');
-await createRTC(ev.initiator);
+showView('call');
+btnStop.disabled = false;
+msgInput.disabled = false;
+btnSend.disabled = false;
+document.getElementById('roomMeCard').innerHTML = '' + getNick() + ' (Вы)';
+document.getElementById('roomPartnerCard').innerHTML = '' + ev.partnerNick + '';
+addMsg('Собеседник найден: ' + ev.partnerNick + ' 👋', 'sys');
+await createPeer(ev.partnerId, ev.initiator);
+} else if (ev.type === 'group_state') {
+renderGroupSeats(ev.members);
+for (const m of ev.members) {
+if (m.id !== myId && !peers[m.id] && myId > m.id) {
+await createPeer(m.id, true);
+}
+}
+Object.keys(peers).forEach(pid => {
+if (!ev.members.some(m => m.id === pid)) closePeer(pid);
+});
 } else if (ev.type === 'signal') {
-await handleSignal(ev.signal);
+await handleSignal(ev.from, ev.signal);
 } else if (ev.type === 'msg') {
-addMsg(ev.text, 'partner');
+addMsg((ev.nick ? ev.nick + ': ' : '') + ev.text, 'partner');
 } else if (ev.type === 'partner_left') {
-closeRTC();
-setUIState('idle');
+closeAllPeers();
+clearInterval(timerInt);
+showView('idle');
 statusEl.textContent = 'Собеседник отключился';
+btnStop.disabled = true;
+msgInput.disabled = true;
+btnSend.disabled = true;
 addMsg('Собеседник покинул чат', 'sys');
 }
 }
@@ -289,48 +416,82 @@ document.getElementById('connDot').classList.remove('connected');
 setTimeout(pollServer, 600);
 }
 pollServer();
-btnNext.onclick = async () => {
-await ensureMic();
-closeRTC();
-messages.innerHTML = '';
-setUIState('searching');
-addMsg('Поиск свободного собеседника...', 'sys');
-await fetch('/api/find', {
-method: 'POST',
-headers: { 'Content-Type': 'application/json' },
-body: JSON.stringify({ id: myId })
+// --- КЛИКИ ПО ВСЕМ КНОПКАМ ---
+document.getElementById('modeSolo').addEventListener('click', function() {
+currentMode = 'solo';
+this.classList.add('active');
+document.getElementById('modeGroup').classList.remove('active');
+btnNext.textContent = 'Найти / Далее';
+stopEverything('Режим: 1 на 1');
 });
-};
-btnStop.onclick = async () => {
-closeRTC();
-setUIState('idle');
-statusEl.textContent = 'Поиск остановлен';
-addMsg('Вы остановили общение', 'sys');
+document.getElementById('modeGroup').addEventListener('click', function() {
+currentMode = 'group';
+this.classList.add('active');
+document.getElementById('modeSolo').classList.remove('active');
+btnNext.textContent = 'Войти в комнату';
+stopEverything('Режим: Комната до 6 чел.');
+});
+async function stopEverything(text) {
+closeAllPeers();
+clearInterval(timerInt);
+showView('idle');
+statusEl.textContent = text || 'Остановлено';
+btnStop.disabled = true;
+msgInput.disabled = true;
+btnSend.disabled = true;
 await fetch('/api/stop', {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify({ id: myId })
 });
-};
-btnMute.onclick = () => {
+}
+btnNext.addEventListener('click', async () => {
+await ensureMic();
+closeAllPeers();
+messages.innerHTML = '';
+btnStop.disabled = false;
+if (currentMode === 'solo') {
+showView('queue');
+startSearchTimer();
+msgInput.disabled = true;
+btnSend.disabled = true;
+addMsg('Поиск свободного собеседника...', 'sys');
+} else {
+showView('group');
+msgInput.disabled = false;
+btnSend.disabled = false;
+renderGroupSeats([{ id: myId, nick: getNick(), ava: myAva }]);
+addMsg('Вы вошли в общую комнату', 'sys');
+}
+await fetch('/api/find', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({ id: myId, mode: currentMode, nick: getNick(), ava: myAva })
+});
+});
+btnStop.addEventListener('click', () => {
+stopEverything('Поиск остановлен');
+addMsg('Вы остановили общение', 'sys');
+});
+btnMute.addEventListener('click', () => {
 isMuted = !isMuted;
 if (localStream) {
 localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
 }
 btnMute.textContent = isMuted ? 'Включить микрофон' : 'Выключить микрофон';
 btnMute.classList.toggle('muted', isMuted);
-};
-document.getElementById('chatForm').onsubmit = async (e) => {
+});
+document.getElementById('chatForm').addEventListener('submit', async (e) => {
 e.preventDefault();
 const text = msgInput.value.trim();
 if (!text) return;
 msgInput.value = '';
-addMsg(text, 'me');
+addMsg(getNick() + ': ' + text, 'me');
 await fetch('/api/msg', {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
-body: JSON.stringify({ id: myId, text })
+body: JSON.stringify({ id: myId, text, nick: getNick() })
 });
-};
+});
 
 
