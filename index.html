@@ -12,10 +12,9 @@
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
             background:
-                radial-gradient(circle at 15% 10%, rgba(0, 230, 118, 0.10), transparent 35%),
-                radial-gradient(circle at 85% 90%, rgba(72, 118, 255, 0.12), transparent 38%),
+                radial-gradient(circle at 15% 10%, rgba(255, 90, 180, .12), transparent 38%),
+                radial-gradient(circle at 85% 90%, rgba(72, 118, 255, .12), transparent 38%),
                 #0f1115;
-            background-attachment: fixed;
             color: #fff;
             display: flex;
             justify-content: center;
@@ -25,15 +24,45 @@
             padding: 15px;
         }
 
+        button, input { font: inherit; }
+        button { touch-action: manipulation; }
+
         .app {
-            background: rgba(24, 27, 34, 0.92);
-            backdrop-filter: blur(8px);
+            --home-bg: none;
+            position: relative;
+            isolation: isolate;
+            overflow: hidden;
             width: 100%;
             max-width: 460px;
+            padding: 22px;
             border-radius: 20px;
-            padding: 25px;
-            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
-            border: 1px solid #262a35;
+            border: 1px solid rgba(93, 75, 100, .75);
+            background: #181b22;
+            box-shadow: 0 12px 40px rgba(0, 0, 0, .65);
+        }
+
+        .app::before {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: -2;
+            pointer-events: none;
+            background-image: var(--home-bg);
+            background-position: left center;
+            background-size: cover;
+            background-repeat: no-repeat;
+            opacity: .68;
+        }
+
+        .app::after {
+            content: "";
+            position: absolute;
+            inset: 0;
+            z-index: -1;
+            pointer-events: none;
+            background:
+                linear-gradient(180deg, rgba(15, 17, 21, .35), rgba(15, 17, 21, .78)),
+                linear-gradient(90deg, rgba(15, 17, 21, .12), rgba(15, 17, 21, .45));
         }
 
         .header {
@@ -41,224 +70,292 @@
             justify-content: space-between;
             align-items: center;
             gap: 10px;
-            margin-bottom: 16px;
+            margin-bottom: 13px;
         }
 
         .logo {
-            font-size: 1.5rem;
-            font-weight: 800;
             color: #00e676;
+            font-size: 1.5rem;
+            font-weight: 850;
             letter-spacing: 1px;
+            text-shadow: 0 2px 12px rgba(0, 0, 0, .5);
         }
 
         .online-badge {
-            background: #232834;
-            padding: 6px 12px;
-            border-radius: 20px;
-            font-size: 0.85rem;
-            color: #a0aab8;
             display: flex;
             align-items: center;
             white-space: nowrap;
+            padding: 6px 11px;
+            border-radius: 20px;
+            background: rgba(28, 31, 40, .9);
+            color: #b4bdca;
+            font-size: .82rem;
         }
 
         .online-dot {
             width: 8px;
             height: 8px;
-            background: #ff5252;
-            border-radius: 50%;
             margin-right: 6px;
+            border-radius: 50%;
+            background: #ff5252;
         }
 
         .online-dot.connected { background: #00e676; }
-        .online-dot.demo { background: #ff9800; }
+        .online-dot.connecting { background: #ff9800; }
+
+        .profile-bar {
+            display: flex;
+            align-items: center;
+            gap: 11px;
+            min-height: 62px;
+            margin-bottom: 13px;
+            padding: 9px 11px;
+            border: 1px solid rgba(87, 81, 105, .75);
+            border-radius: 14px;
+            background: rgba(24, 27, 35, .9);
+        }
+
+        .profile-avatar {
+            width: 44px;
+            height: 44px;
+            min-width: 44px;
+            overflow: hidden;
+            border: 1px solid #50586d;
+            border-radius: 11px;
+            background: #29303d;
+        }
+
+        .profile-avatar img,
+        .avatar img,
+        .seat-avatar img {
+            display: block;
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            image-rendering: pixelated;
+        }
+
+        .profile-content { flex: 1; min-width: 0; }
+
+        .profile-caption {
+            margin-bottom: 3px;
+            color: #929dad;
+            font-size: .69rem;
+        }
+
+        .profile-name-line {
+            display: flex;
+            align-items: center;
+            gap: 7px;
+        }
+
+        .profile-name {
+            min-width: 0;
+            overflow: hidden;
+            color: #fff;
+            font-size: .96rem;
+            font-weight: 750;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .nick-edit {
+            flex-shrink: 0;
+            padding: 4px;
+            border: 0;
+            background: transparent;
+            color: #00e676;
+            font-size: .74rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .nick-form { display: flex; gap: 6px; }
+
+        .nick-form input {
+            flex: 1;
+            min-width: 0;
+            height: 32px;
+            padding: 5px 9px;
+            border: 1px solid #536079;
+            border-radius: 8px;
+            outline: none;
+            background: #12151c;
+            color: #fff;
+            font-size: .85rem;
+        }
+
+        .nick-form button {
+            width: 32px;
+            min-width: 32px;
+            height: 32px;
+            border: 0;
+            border-radius: 8px;
+            font-weight: 800;
+            cursor: pointer;
+        }
+
+        .nick-save { background: #00e676; color: #002412; }
+        .nick-cancel { background: #343b4b; color: #fff; }
 
         .mode-buttons {
             display: grid;
             grid-template-columns: 1fr 1fr;
             gap: 10px;
-            margin-bottom: 14px;
+            margin-bottom: 13px;
         }
 
         .mode-btn {
-            border: 1px solid #354052;
+            padding: 12px 7px;
+            border: 1px solid #40577f;
             border-radius: 12px;
-            padding: 12px 8px;
+            background: rgba(48, 64, 95, .95);
             color: #fff;
-            background: #232834;
-            font-size: 0.92rem;
-            font-weight: 700;
+            font-size: .9rem;
+            font-weight: 750;
             cursor: pointer;
         }
 
         .mode-btn:first-child {
-            color: #001b0d;
-            background: #00c968;
             border-color: #00c968;
+            background: #00c968;
+            color: #001b0d;
         }
 
-        .mode-btn:last-child {
-            background: #30405f;
-            border-color: #40577f;
-        }
-
-        .mode-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        .mode-btn:disabled, .btn:disabled { opacity: .4; cursor: not-allowed; }
 
         .voice-box {
-            background: rgba(18, 20, 26, 0.85);
-            border-radius: 16px;
-            padding: 22px 15px;
-            text-align: center;
-            margin-bottom: 15px;
-            border: 1px solid #222630;
-            min-height: 155px;
             display: flex;
             align-items: center;
             justify-content: center;
+            min-height: 158px;
+            margin-bottom: 12px;
+            padding: 19px 14px;
+            border: 1px solid rgba(48, 49, 62, .9);
+            border-radius: 16px;
+            background: rgba(17, 19, 25, .86);
+            text-align: center;
         }
 
         #idleView { width: 100%; }
 
         .avatar {
-            width: 72px;
-            height: 72px;
-            border-radius: 50%;
-            background: #232834;
-            margin: 0 auto 12px;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 2rem;
+            width: 70px;
+            height: 70px;
+            margin: 0 auto 11px;
             overflow: hidden;
-            transition: box-shadow 0.15s, background 0.15s;
-        }
-
-        .avatar img {
-            width: 100%;
-            height: 100%;
-            object-fit: cover;
-            display: block;
+            border-radius: 50%;
+            background: #29303d;
+            font-size: 2rem;
+            transition: box-shadow .15s;
         }
 
         .avatar.speaking,
         .seat.speaking .seat-avatar {
-            box-shadow: 0 0 0 6px rgba(0, 230, 118, 0.35);
-            background: #1c382c;
+            box-shadow: 0 0 0 6px rgba(0, 230, 118, .35);
         }
 
         #status {
-            font-size: 1rem;
-            color: #cfd8e3;
-            font-weight: 500;
+            color: #e0e5ee;
+            font-size: .98rem;
+            font-weight: 550;
             line-height: 1.4;
+            overflow-wrap: anywhere;
         }
 
-        .mic-state {
-            color: #788292;
-            font-size: 0.78rem;
-            margin-top: 7px;
-        }
-
-        .queue-window,
-        .group-window {
+        .queue-window, .group-window {
             display: none;
             width: 100%;
             flex-direction: column;
             align-items: center;
         }
 
-        .queue-window.active,
-        .group-window.active { display: flex; }
+        .queue-window.active, .group-window.active { display: flex; }
 
-        /* Крутящийся символ находится строго по центру меню ожидания */
         .solo-spinner {
-            width: 82px;
-            height: 82px;
             display: flex;
             align-items: center;
             justify-content: center;
+            width: 76px;
+            height: 76px;
+            margin-bottom: 9px;
             color: #00e676;
-            font-size: 4rem;
+            font-size: 3.8rem;
             line-height: 1;
-            margin-bottom: 14px;
             animation: spin 1.15s linear infinite;
-            transform-origin: 50% 50%;
         }
 
-        @keyframes spin {
-            from { transform: rotate(0deg); }
-            to { transform: rotate(360deg); }
-        }
+        @keyframes spin { to { transform: rotate(360deg); } }
 
         .queue-title {
-            font-size: 1.05rem;
-            font-weight: 700;
+            margin-bottom: 5px;
             color: #00e676;
-            margin-bottom: 6px;
+            font-weight: 750;
         }
 
         .queue-sub {
-            font-size: 0.85rem;
-            color: #a0aab8;
-            margin-bottom: 10px;
+            margin-bottom: 9px;
+            color: #a7b1c0;
+            font-size: .82rem;
         }
 
         .queue-timer {
-            background: #232834;
-            color: #fff;
-            padding: 4px 12px;
+            padding: 4px 11px;
+            border: 1px solid #3a4050;
             border-radius: 12px;
-            font-size: 0.85rem;
-            font-weight: 600;
-            border: 1px solid #323846;
+            background: #232834;
+            font-size: .82rem;
         }
 
         .group-title {
-            color: #8fb5ff;
-            font-size: 1.08rem;
-            font-weight: 800;
             margin-bottom: 5px;
+            color: #a8c3ff;
+            font-size: 1.06rem;
+            font-weight: 800;
         }
 
         .group-info {
-            color: #a0aab8;
-            font-size: 0.82rem;
-            margin-bottom: 13px;
+            margin-bottom: 12px;
+            color: #a7b1c0;
+            font-size: .8rem;
         }
 
         .group-info span { color: #fff; font-weight: 700; }
 
         .group-grid {
-            width: 100%;
             display: grid;
             grid-template-columns: repeat(3, 1fr);
-            gap: 9px;
+            gap: 8px;
+            width: 100%;
         }
 
         .seat {
             min-width: 0;
-            padding: 8px 3px;
-            border-radius: 11px;
-            background: #1c2029;
-            border: 1px solid #2b3240;
-            color: #7f8a9b;
-            font-size: 0.72rem;
+            padding: 7px 3px;
             overflow: hidden;
+            border: 1px solid #303745;
+            border-radius: 10px;
+            background: rgba(28, 32, 41, .95);
+            color: #8590a1;
+            font-size: .69rem;
         }
 
-        .seat.occupied { color: #fff; border-color: #37644d; }
+        .seat.occupied { border-color: #397456; color: #fff; }
 
         .seat-avatar {
-            width: 38px;
-            height: 38px;
-            margin: 0 auto 5px;
-            border-radius: 50%;
-            background: #29303d;
             display: flex;
             align-items: center;
             justify-content: center;
-            font-size: 1.15rem;
-            transition: box-shadow 0.15s;
+            width: 37px;
+            height: 37px;
+            margin: 0 auto 5px;
+            overflow: hidden;
+            border-radius: 50%;
+            background: #29303d;
+            font-size: 1.1rem;
         }
 
         .seat-name {
@@ -267,162 +364,178 @@
             white-space: nowrap;
         }
 
-        .chat-box {
-            background: rgba(18, 20, 26, 0.85);
-            border-radius: 14px;
-            height: 180px;
-            display: flex;
-            flex-direction: column;
-            margin-bottom: 15px;
-            border: 1px solid #222630;
-            overflow: hidden;
+        .test-panel {
+            margin-bottom: 12px;
+            padding: 10px 11px;
+            border: 1px solid rgba(57, 63, 78, .9);
+            border-radius: 13px;
+            background: rgba(20, 23, 30, .91);
         }
 
-        #messages {
-            flex: 1;
-            padding: 12px;
-            overflow-y: auto;
-            font-size: 0.9rem;
+        .diag-head, .diag-line {
             display: flex;
-            flex-direction: column;
+            align-items: center;
+            justify-content: space-between;
             gap: 8px;
         }
 
+        .diag-head { margin-bottom: 8px; }
+
+        .diag-title {
+            color: #dbe3ee;
+            font-size: .77rem;
+            font-weight: 750;
+        }
+
+        .sound-test {
+            padding: 5px 8px;
+            border: 1px solid #46516a;
+            border-radius: 8px;
+            background: #2b3344;
+            color: #fff;
+            font-size: .7rem;
+            cursor: pointer;
+        }
+
+        .diag-line {
+            margin: 5px 0 4px;
+            color: #97a3b4;
+            font-size: .69rem;
+        }
+
+        .diag-line span { overflow-wrap: anywhere; }
+        #netDiag { text-align: right; }
+
+        .level {
+            height: 5px;
+            overflow: hidden;
+            border-radius: 5px;
+            background: #303746;
+        }
+
+        .level i {
+            display: block;
+            width: 0;
+            height: 100%;
+            border-radius: inherit;
+            background: #00e676;
+            transition: width .08s linear;
+        }
+
+        .level.remote i { background: #79a5ff; }
+
+        .chat-box {
+            display: flex;
+            flex-direction: column;
+            height: 165px;
+            margin-bottom: 12px;
+            overflow: hidden;
+            border: 1px solid rgba(48, 49, 62, .9);
+            border-radius: 14px;
+            background: rgba(17, 19, 25, .88);
+        }
+
+        #messages {
+            display: flex;
+            flex: 1;
+            flex-direction: column;
+            gap: 7px;
+            padding: 11px;
+            overflow-y: auto;
+            font-size: .86rem;
+        }
+
         .msg {
-            padding: 8px 12px;
+            max-width: 85%;
+            padding: 7px 11px;
             border-radius: 10px;
-            max-width: 82%;
             overflow-wrap: anywhere;
             white-space: pre-wrap;
         }
 
         .msg.me {
-            background: #00e676;
-            color: #000;
             align-self: flex-end;
+            background: #00e676;
+            color: #001b0d;
             font-weight: 500;
         }
 
         .msg.partner {
-            background: #262b38;
-            color: #fff;
             align-self: flex-start;
+            background: #2a3040;
+            color: #fff;
         }
 
         .msg.sys {
-            background: transparent;
-            color: #788292;
             align-self: center;
-            font-size: 0.8rem;
+            max-width: 96%;
+            padding: 3px;
+            background: transparent;
+            color: #929dad;
+            font-size: .75rem;
             text-align: center;
-            max-width: 95%;
         }
 
         .chat-input {
             display: flex;
-            border-top: 1px solid #222630;
+            border-top: 1px solid #292d38;
         }
 
         .chat-input input {
             flex: 1;
             min-width: 0;
+            padding: 11px;
+            border: 0;
+            outline: 0;
             background: transparent;
-            border: none;
-            padding: 12px;
             color: #fff;
-            outline: none;
-            font-size: 0.9rem;
+            font-size: .87rem;
         }
 
-        .chat-input input:disabled { opacity: 0.55; }
-
         .chat-input button {
+            padding: 0 17px;
+            border: 0;
             background: transparent;
-            border: none;
             color: #00e676;
-            font-weight: bold;
-            padding: 0 18px;
             font-size: 1.1rem;
             cursor: pointer;
         }
 
-        .chat-input button:disabled { color: #555; cursor: not-allowed; }
+        .chat-input button:disabled { color: #555; }
 
         .controls {
             display: grid;
             grid-template-columns: 1fr 1fr;
-            gap: 10px;
+            gap: 9px;
         }
 
         .btn {
-            padding: 15px;
-            border: none;
+            padding: 13px;
+            border: 0;
             border-radius: 12px;
-            font-size: 1rem;
-            font-weight: 700;
+            font-size: .94rem;
+            font-weight: 750;
             cursor: pointer;
         }
 
-        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        #btnNext { background: #00e676; color: #000; }
+        #btnNext { background: #00e676; color: #002412; }
         #btnStop { background: #ff5252; color: #fff; }
 
         #btnMute {
             grid-column: span 2;
-            background: #262b38;
+            background: rgba(43, 49, 64, .96);
             color: #fff;
-            font-weight: 600;
+            font-size: .86rem;
         }
 
-        #btnMute.muted { background: #ff9800; color: #000; }
+        #btnMute.muted { background: #ff9800; color: #191000; }
 
-        .cookie-banner {
-            position: fixed;
-            bottom: 18px;
-            left: 50%;
-            transform: translateX(-50%);
-            width: calc(100% - 30px);
-            max-width: 460px;
-            background: rgba(24, 27, 34, 0.97);
-            border: 1px solid rgba(0, 230, 118, 0.35);
-            border-radius: 16px;
-            padding: 14px 16px;
-            display: none;
-            align-items: center;
-            justify-content: space-between;
-            gap: 12px;
-            z-index: 999;
-        }
-
-        .cookie-banner.show { display: flex; }
-
-        .cookie-text {
-            font-size: 0.88rem;
-            color: #e6ecf5;
-            line-height: 1.4;
-        }
-
-        .cookie-text span { color: #00e676; font-weight: 700; }
-
-        .cookie-close {
-            background: #262b38;
-            color: #a0aab8;
-            border: 1px solid #353b4d;
-            border-radius: 50%;
-            width: 34px;
-            height: 34px;
-            min-width: 34px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            font-size: 1rem;
-            cursor: pointer;
-        }
+        #audioPool { display: none; }
 
         @media (max-width: 380px) {
-            .app { padding: 18px; }
-            .logo { font-size: 1.25rem; }
-            .online-badge { font-size: 0.75rem; padding: 5px 8px; }
+            .app { padding: 17px; }
+            .logo { font-size: 1.22rem; }
+            .online-badge { padding: 5px 8px; font-size: .73rem; }
         }
 
         @media (prefers-reduced-motion: reduce) {
@@ -431,35 +544,50 @@
     </style>
 </head>
 <body>
-<div class="app">
-    <div class="header">
+<main class="app" id="appRoot">
+    <header class="header">
         <div class="logo">LIKODOPT</div>
-        <div class="online-badge" title="Демо-режим: сервер онлайна не подключён">
-            <span class="online-dot demo" id="connDot"></span>
+        <div class="online-badge">
+            <span class="online-dot connecting" id="connDot"></span>
             Онлайн: <span id="onlineCount">—</span>
         </div>
-    </div>
+    </header>
+
+    <section class="profile-bar">
+        <div class="profile-avatar">
+            <img id="ownAvatarImage" alt="Ваш автоматический аватар">
+        </div>
+        <div class="profile-content">
+            <div class="profile-caption">Ваш ник · пиксельный аватар 10×10</div>
+            <div class="profile-name-line" id="profileNameLine">
+                <span class="profile-name" id="ownNick">Гость</span>
+                <button type="button" class="nick-edit" id="btnEditNick">✎ Изменить</button>
+            </div>
+            <form class="nick-form" id="nickForm" hidden>
+                <input id="nickInput" type="text" maxlength="20" required autocomplete="nickname" placeholder="От 2 до 20 символов">
+                <button type="submit" class="nick-save" aria-label="Сохранить">✓</button>
+                <button type="button" class="nick-cancel" id="btnCancelNick" aria-label="Отмена">✕</button>
+            </form>
+        </div>
+    </section>
 
     <div class="mode-buttons">
         <button type="button" class="mode-btn" id="btnSolo">👤 1 на 1 · Соло</button>
         <button type="button" class="mode-btn" id="btnGroup">👥 Группа · 6 человек</button>
     </div>
 
-    <div class="voice-box">
+    <section class="voice-box">
         <div id="idleView">
             <div class="avatar" id="partnerAvatar">
-                <!-- КАРТИНКА АВАТАРА: ссылка задаётся ниже в AVATAR_IMAGE_URL -->
-                <img id="avatarImage" alt="Аватар собеседника" hidden>
-                <span id="avatarEmoji">🎙️</span>
+                <img id="avatarImage" alt="Аватар собеседника">
             </div>
-            <div id="status" aria-live="polite">Готово. Выберите режим общения.</div>
-            <div class="mic-state" id="micState">Микрофон не подключён</div>
+            <div id="status" aria-live="polite">Подключение к серверу...</div>
         </div>
 
         <div class="queue-window" id="queueView">
             <div class="solo-spinner" aria-label="Идёт поиск">⟳</div>
             <div class="queue-title">Вы в очереди ожидания</div>
-            <div class="queue-sub">Подбираем собеседника для разговора 1 на 1...</div>
+            <div class="queue-sub">Откройте сайт на втором устройстве и тоже начните поиск.</div>
             <div class="queue-timer">Время поиска: <span id="searchTimerText">00:00</span></div>
         </div>
 
@@ -471,15 +599,31 @@
             </div>
             <div class="group-grid" id="groupGrid"></div>
         </div>
-    </div>
+    </section>
 
-    <div class="chat-box">
+    <section class="test-panel">
+        <div class="diag-head">
+            <span class="diag-title">Проверка микрофона и звука</span>
+            <button type="button" class="sound-test" id="btnTestSound">🔊 Тест динамиков</button>
+        </div>
+        <div class="diag-line">
+            <span id="micDiag">Микрофон ещё не запрошен</span>
+            <span id="netDiag">WebRTC: нет соединения</span>
+        </div>
+        <div class="level"><i id="micLevel"></i></div>
+        <div class="diag-line">
+            <span id="remoteDiag">Звук собеседника: пока отсутствует</span>
+        </div>
+        <div class="level remote"><i id="remoteLevel"></i></div>
+    </section>
+
+    <section class="chat-box">
         <div id="messages" aria-live="polite"></div>
         <form class="chat-input" id="chatForm">
-            <input type="text" id="msgInput" placeholder="Написать сообщение..." maxlength="500" disabled autocomplete="off">
-            <button type="submit" id="btnSend" disabled aria-label="Отправить сообщение">➤</button>
+            <input type="text" id="msgInput" placeholder="Сначала начните поиск" maxlength="500" disabled autocomplete="off">
+            <button type="submit" id="btnSend" disabled aria-label="Отправить">➤</button>
         </form>
-    </div>
+    </section>
 
     <div class="controls">
         <button type="button" class="btn" id="btnNext">Найти / Далее</button>
@@ -488,104 +632,166 @@
     </div>
 
     <div id="audioPool"></div>
-</div>
-
-<div class="cookie-banner" id="cookieBanner">
-    <div class="cookie-text">🍪 Мы используем ваши файлы <span>Cookie</span> для улучшения работы сайта.</div>
-    <button type="button" class="cookie-close" id="btnCloseCookie" aria-label="Закрыть">✕</button>
-</div>
+</main>
 
 <script>
 (() => {
     "use strict";
 
-    /* ==================== НАСТРОЙКИ КАРТИНОК ==================== */
+    // Сохраните присланное изображение рядом с index.html под этим именем.
+    const HOME_BG_IMAGE_URL = "./main-bg.jpg";
+    const NICK_KEY = "likodopt_nickname";
 
-    // КАРТИНКА ФОНА: вставь ссылку между кавычками, например "/bg" или "./images/bg.jpg".
-    const BG_IMAGE_URL = "";
-
-    // КАРТИНКА АВАТАРА: например "./avatar.png" или "https://site.ru/avatar.jpg".
-    const AVATAR_IMAGE_URL = "";
-
-    // В демо поиск соло занимает несколько секунд. Реальные люди требуют серверную часть.
-    const DEMO_MODE = true;
-
-    /* ==================== ЭЛЕМЕНТЫ ==================== */
+    // STUN помогает установить соединение, но для части сетей нужен свой TURN-сервер.
+    const ICE_SERVERS = [
+        { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }
+        // Для публичного запуска добавьте сюда turn:ВАШ_СЕРВЕР с username/credential.
+    ];
 
     const $ = (id) => document.getElementById(id);
-
+    const appRoot = $("appRoot");
+    const connDot = $("connDot");
+    const onlineCount = $("onlineCount");
     const idleView = $("idleView");
     const queueView = $("queueView");
     const groupView = $("groupView");
     const statusText = $("status");
-    const micState = $("micState");
     const partnerAvatar = $("partnerAvatar");
-    const avatarEmoji = $("avatarEmoji");
     const avatarImage = $("avatarImage");
-
     const messages = $("messages");
     const chatForm = $("chatForm");
     const msgInput = $("msgInput");
     const btnSend = $("btnSend");
-
     const btnSolo = $("btnSolo");
     const btnGroup = $("btnGroup");
     const btnNext = $("btnNext");
     const btnStop = $("btnStop");
     const btnMute = $("btnMute");
-
+    const btnTestSound = $("btnTestSound");
     const searchTimerText = $("searchTimerText");
     const groupGrid = $("groupGrid");
     const audioPool = $("audioPool");
+    const micDiag = $("micDiag");
+    const remoteDiag = $("remoteDiag");
+    const netDiag = $("netDiag");
+    const micLevel = $("micLevel");
+    const remoteLevel = $("remoteLevel");
 
-    /* ==================== СОСТОЯНИЕ ==================== */
+    const ownNick = $("ownNick");
+    const ownAvatarImage = $("ownAvatarImage");
+    const profileNameLine = $("profileNameLine");
+    const nickForm = $("nickForm");
+    const nickInput = $("nickInput");
 
-    // idle — начальный экран, search — очередь соло,
-    // solo — демо-диалог, group — созданная групповая комната.
+    let ws = null;
+    let reconnectTimer = null;
     let mode = "idle";
+    let nickname = loadNickname();
+    let remoteUsers = new Map();
+    let peers = new Map();
+
     let searchStartedAt = 0;
     let searchInterval = null;
-    let matchTimeout = null;
-    let demoReplied = false;
 
     let micStream = null;
     let micPromise = null;
     let audioContext = null;
-    let analyser = null;
-    let meterAnimation = null;
+    let micAnalyser = null;
+    let micData = null;
+    let meterStarted = false;
 
-    /* ==================== КАРТИНКИ ==================== */
-
-    if (BG_IMAGE_URL.trim()) {
-        document.body.style.background =
-            `url("${BG_IMAGE_URL.trim()}") no-repeat center center fixed, #0f1115`;
-        document.body.style.backgroundSize = "cover";
+    function storageGet(key) {
+        try { return localStorage.getItem(key); } catch { return null; }
     }
 
-    if (AVATAR_IMAGE_URL.trim()) {
-        avatarImage.src = AVATAR_IMAGE_URL.trim();
-        avatarImage.hidden = false;
-        avatarEmoji.hidden = true;
-
-        avatarImage.addEventListener("error", () => {
-            avatarImage.hidden = true;
-            avatarEmoji.hidden = false;
-        });
+    function storageSet(key, value) {
+        try { localStorage.setItem(key, value); } catch {}
     }
 
-    /* ==================== ИНТЕРФЕЙС ==================== */
-
-    function showView(name) {
-        idleView.hidden = name !== "idle";
-        queueView.classList.toggle("active", name === "queue");
-        groupView.classList.toggle("active", name === "group");
+    function normalizeNick(value) {
+        return String(value || "").replace(/\s+/g, " ").trim().slice(0, 20);
     }
+
+    function loadNickname() {
+        const saved = normalizeNick(storageGet(NICK_KEY));
+        if (saved.length >= 2) return saved;
+
+        const generated = `Гость-${Math.floor(1000 + Math.random() * 9000)}`;
+        storageSet(NICK_KEY, generated);
+        return generated;
+    }
+
+    function hashString(text) {
+        let hash = 2166136261;
+
+        for (let i = 0; i < text.length; i++) {
+            hash ^= text.charCodeAt(i);
+            hash = Math.imul(hash, 16777619);
+        }
+
+        return hash >>> 0;
+    }
+
+    function createPixelAvatar(seed) {
+        const canvas = document.createElement("canvas");
+        canvas.width = 10;
+        canvas.height = 10;
+
+        const ctx = canvas.getContext("2d");
+        let state = hashString("likodopt:" + seed);
+
+        const random = () => {
+            state += 0x6D2B79F5;
+            let value = state;
+            value = Math.imul(value ^ (value >>> 15), value | 1);
+            value ^= value + Math.imul(value ^ (value >>> 7), value | 61);
+            return ((value ^ (value >>> 14)) >>> 0) / 4294967296;
+        };
+
+        const hue = Math.floor(random() * 360);
+        const accentHue = (hue + 45 + Math.floor(random() * 100)) % 360;
+
+        ctx.imageSmoothingEnabled = false;
+        ctx.fillStyle = `hsl(${(hue + 180) % 360}, 38%, 17%)`;
+        ctx.fillRect(0, 0, 10, 10);
+
+        for (let y = 0; y < 10; y++) {
+            for (let x = 0; x < 5; x++) {
+                if (random() < 0.45) continue;
+
+                ctx.fillStyle = random() < .2
+                    ? `hsl(${accentHue}, 92%, 74%)`
+                    : `hsl(${hue}, 88%, 63%)`;
+
+                ctx.fillRect(x, y, 1, 1);
+                ctx.fillRect(9 - x, y, 1, 1);
+            }
+        }
+
+        return canvas.toDataURL("image/png");
+    }
+
+    function refreshOwnIdentity() {
+        ownNick.textContent = nickname;
+        ownNick.title = nickname;
+        ownAvatarImage.src = createPixelAvatar(nickname);
+        if (mode === "group") renderGroup();
+    }
+
+    function setPartnerAvatar(seed) {
+        avatarImage.src = createPixelAvatar(seed || "LIKODOPT");
+    }
+
+    // Фон устанавливается только после успешной загрузки main-bg.jpg.
+    const backgroundImage = new Image();
+    backgroundImage.onload = () => {
+        appRoot.style.setProperty("--home-bg", `url("${HOME_BG_IMAGE_URL}")`);
+    };
+    backgroundImage.src = HOME_BG_IMAGE_URL;
 
     function addMessage(text, type = "sys") {
         const item = document.createElement("div");
         item.className = `msg ${type}`;
-
-        // textContent вместо innerHTML защищает чат от вставки HTML/скриптов.
         item.textContent = text;
         messages.appendChild(item);
         messages.scrollTop = messages.scrollHeight;
@@ -595,114 +801,285 @@
         messages.replaceChildren();
     }
 
-    function setChatEnabled(enabled) {
-        msgInput.disabled = !enabled;
-        btnSend.disabled = !enabled;
-        msgInput.placeholder = enabled
-            ? "Написать сообщение..."
-            : "Сначала начните поиск или создайте комнату";
+    function showView(name) {
+        idleView.hidden = name !== "idle";
+        queueView.classList.toggle("active", name === "queue");
+        groupView.classList.toggle("active", name === "group");
     }
 
     function updateButtons() {
-        const isIdle = mode === "idle";
+        const idle = mode === "idle";
 
-        btnSolo.disabled = !isIdle;
-        btnGroup.disabled = !isIdle;
-        btnStop.disabled = isIdle;
-
+        btnSolo.disabled = !idle;
+        btnGroup.disabled = !idle;
+        btnStop.disabled = idle;
         btnNext.disabled = mode === "search" || mode === "group";
         btnNext.textContent = mode === "solo" ? "Следующий" : "Найти / Далее";
 
-        setChatEnabled(mode === "solo" || mode === "group");
+        const chatEnabled = mode === "solo" || mode === "group";
+        msgInput.disabled = !chatEnabled;
+        btnSend.disabled = !chatEnabled;
+        msgInput.placeholder = chatEnabled
+            ? "Написать сообщение..."
+            : "Сначала начните поиск";
     }
 
-    function clearTimers() {
+    function clearSearchTimer() {
         if (searchInterval !== null) {
             clearInterval(searchInterval);
             searchInterval = null;
         }
+    }
 
-        if (matchTimeout !== null) {
-            clearTimeout(matchTimeout);
-            matchTimeout = null;
+    function startSearchTimer() {
+        clearSearchTimer();
+        searchStartedAt = Date.now();
+        searchTimerText.textContent = "00:00";
+
+        searchInterval = setInterval(() => {
+            const elapsed = Math.floor((Date.now() - searchStartedAt) / 1000);
+            const minutes = String(Math.floor(elapsed / 60)).padStart(2, "0");
+            const seconds = String(elapsed % 60).padStart(2, "0");
+            searchTimerText.textContent = `${minutes}:${seconds}`;
+        }, 1000);
+    }
+
+    function sendWS(type, data = {}) {
+        if (!ws || ws.readyState !== WebSocket.OPEN) return false;
+        ws.send(JSON.stringify({ type, ...data }));
+        return true;
+    }
+
+    function connectWebSocket() {
+        if (ws && (ws.readyState === WebSocket.OPEN || ws.readyState === WebSocket.CONNECTING)) {
+            return;
+        }
+
+        const protocol = location.protocol === "https:" ? "wss:" : "ws:";
+        ws = new WebSocket(`${protocol}//${location.host}/ws`);
+
+        connDot.className = "online-dot connecting";
+
+        ws.addEventListener("open", () => {
+            connDot.className = "online-dot connected";
+
+            if (mode === "idle") {
+                statusText.textContent = "Готово. Выберите режим общения.";
+            }
+
+            sendWS("nick", { nick: nickname });
+        });
+
+        ws.addEventListener("message", (event) => {
+            let data;
+
+            try { data = JSON.parse(event.data); } catch { return; }
+            handleServerMessage(data).catch((error) => {
+                console.error(error);
+                addMessage("Ошибка обработки соединения: " + error.message, "sys");
+            });
+        });
+
+        ws.addEventListener("close", () => {
+            connDot.className = "online-dot";
+            onlineCount.textContent = "—";
+
+            if (mode !== "idle") {
+                resetLocalSession();
+                addMessage("Связь с сервером потеряна. Выполняется переподключение.", "sys");
+            } else {
+                statusText.textContent = "Сервер недоступен. Переподключение...";
+            }
+
+            clearTimeout(reconnectTimer);
+            reconnectTimer = setTimeout(connectWebSocket, 1800);
+        });
+
+        ws.addEventListener("error", () => {
+            statusText.textContent = "Не удалось подключиться к серверу.";
+        });
+    }
+
+    async function handleServerMessage(data) {
+        switch (data.type) {
+            case "online":
+                onlineCount.textContent = String(data.count);
+                break;
+
+            case "waiting":
+                if (mode === "search") {
+                    statusText.textContent = "Ожидание собеседника...";
+                }
+                break;
+
+            case "joined":
+                clearSearchTimer();
+                mode = data.mode;
+                remoteUsers.clear();
+
+                for (const user of data.peers || []) {
+                    remoteUsers.set(user.id, user);
+                }
+
+                enterRoomUI(data.code);
+
+                // Новый участник инициирует соединения с уже находящимися в комнате.
+                for (const user of data.peers || []) {
+                    createPeer(user.id, true);
+                }
+
+                addMessage(
+                    data.mode === "solo"
+                        ? "Собеседник найден. Устанавливается голосовое WebRTC-соединение."
+                        : "Вы подключились к групповой комнате.",
+                    "sys"
+                );
+                break;
+
+            case "peer-joined":
+                clearSearchTimer();
+                mode = data.mode;
+                remoteUsers.set(data.peer.id, data.peer);
+                enterRoomUI(data.code, data.count);
+
+                addMessage(
+                    data.mode === "solo"
+                        ? `${data.peer.nick} найден. Устанавливается голосовое соединение.`
+                        : `${data.peer.nick} вошёл в комнату.`,
+                    "sys"
+                );
+                break;
+
+            case "signal":
+                await handleSignal(data.from, data.data);
+                break;
+
+            case "chat":
+                addMessage(`${data.nick}: ${data.text}`, "partner");
+                break;
+
+            case "peer-left": {
+                const user = remoteUsers.get(data.peerId);
+                remoteUsers.delete(data.peerId);
+                closePeer(data.peerId);
+
+                if (mode === "group") {
+                    renderGroup(data.count, data.code);
+                    if (user) addMessage(`${user.nick} покинул комнату.`, "sys");
+                }
+                break;
+            }
+
+            case "room-closed":
+                resetLocalSession();
+                addMessage(data.reason || "Разговор завершён.", "sys");
+                break;
         }
     }
 
-    function formatTime(totalSeconds) {
-        const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
-        const seconds = String(totalSeconds % 60).padStart(2, "0");
-        return `${minutes}:${seconds}`;
+    function enterRoomUI(code, count) {
+        if (mode === "solo") {
+            const partner = [...remoteUsers.values()][0];
+            showView("idle");
+            setPartnerAvatar(partner ? `${partner.nick}:${partner.id}` : "Собеседник");
+            statusText.textContent = partner
+                ? `${partner.nick} · голосовой разговор`
+                : "Собеседник подключается...";
+        } else {
+            showView("group");
+            $("groupCode").textContent = code || "------";
+            renderGroup(count, code);
+        }
+
+        updateButtons();
+        updateNetworkDiag();
     }
 
-    function updateSearchTimer() {
-        const elapsed = Math.floor((Date.now() - searchStartedAt) / 1000);
-        searchTimerText.textContent = formatTime(elapsed);
+    function renderGroup(count, code) {
+        if (code) $("groupCode").textContent = code;
+
+        const users = [...remoteUsers.values()].slice(0, 5);
+        $("groupCount").textContent = `${Math.min(6, users.length + 1)}/6`;
+        groupGrid.replaceChildren();
+
+        const seats = [
+            { id: "me", nick: nickname, own: true },
+            ...users.map((user) => ({ ...user, own: false }))
+        ];
+
+        for (let index = 0; index < 6; index++) {
+            const user = seats[index];
+            const seat = document.createElement("div");
+            seat.className = "seat" + (user ? " occupied" : "");
+
+            const avatar = document.createElement("div");
+            avatar.className = "seat-avatar";
+
+            if (user) {
+                const image = document.createElement("img");
+                image.src = createPixelAvatar(`${user.nick}:${user.id}`);
+                image.alt = `Аватар ${user.nick}`;
+                avatar.appendChild(image);
+            } else {
+                avatar.textContent = "＋";
+            }
+
+            const name = document.createElement("div");
+            name.className = "seat-name";
+            name.textContent = user ? user.nick : "Свободно";
+            name.title = user ? user.nick : "Свободно";
+
+            seat.append(avatar, name);
+            groupGrid.appendChild(seat);
+        }
     }
 
-    function removeRemoteAudio() {
-        audioPool.replaceChildren();
-    }
+    async function getAudioContext() {
+        const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+        if (!AudioContextClass) throw new Error("Web Audio не поддерживается");
 
-    /* ==================== МИКРОФОН И ЗВУК ==================== */
+        if (!audioContext) audioContext = new AudioContextClass();
+
+        if (audioContext.state === "suspended") {
+            await audioContext.resume();
+        }
+
+        return audioContext;
+    }
 
     function getMicTrack() {
         return micStream ? micStream.getAudioTracks()[0] : null;
     }
 
-    function updateMicUI() {
-        const track = getMicTrack();
-        const isLive = track && track.readyState === "live";
-
-        if (!isLive) {
-            btnMute.textContent = "🎤 Включить микрофон";
-            btnMute.classList.remove("muted");
-            micState.textContent = "Микрофон не подключён";
-            return;
-        }
-
-        if (track.enabled) {
-            btnMute.textContent = "🎙️ Выключить микрофон";
-            btnMute.classList.remove("muted");
-            micState.textContent = "Микрофон включён";
-        } else {
-            btnMute.textContent = "🔇 Включить микрофон";
-            btnMute.classList.add("muted");
-            micState.textContent = "Микрофон выключен";
-        }
-    }
-
-    function getMicrophoneErrorText(error) {
+    function microphoneError(error) {
         switch (error && error.name) {
             case "NotAllowedError":
             case "SecurityError":
-                return "Доступ к микрофону запрещён. Разреши его в настройках браузера.";
+                return "Доступ к микрофону запрещён. Разрешите его в настройках браузера.";
             case "NotFoundError":
             case "DevicesNotFoundError":
-                return "Микрофон не найден. Подключи его и попробуй снова.";
+                return "Микрофон не найден.";
             case "NotReadableError":
-                return "Микрофон занят другим приложением или недоступен.";
+                return "Микрофон занят другим приложением.";
             default:
-                return "Не удалось включить микрофон: " + (error?.message || "неизвестная ошибка");
+                return "Ошибка микрофона: " + (error?.message || "неизвестная ошибка");
         }
     }
 
     async function ensureMic() {
-        const existingTrack = getMicTrack();
+        const existing = getMicTrack();
 
-        if (existingTrack && existingTrack.readyState === "live") {
-            if (audioContext?.state === "suspended") {
-                await audioContext.resume().catch(() => {});
-            }
+        if (existing && existing.readyState === "live") {
+            existing.enabled = true;
+            updateMicUI();
             return true;
         }
 
-        // Защита от нескольких одновременных запросов getUserMedia.
         if (micPromise) return micPromise;
 
         micPromise = (async () => {
             if (!navigator.mediaDevices?.getUserMedia) {
-                addMessage("Браузер не поддерживает микрофон. Для HTTPS используй современный браузер.", "sys");
-                updateMicUI();
+                addMessage("Микрофон доступен только в современном браузере через HTTPS или localhost.", "sys");
                 return false;
             }
 
@@ -716,38 +1093,31 @@
                     }
                 });
 
-                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
-
-                if (AudioContextClass) {
-                    audioContext = audioContext || new AudioContextClass();
-
-                    // AudioContext запускается только после пользовательского действия.
-                    if (audioContext.state === "suspended") {
-                        await audioContext.resume();
-                    }
-
-                    const source = audioContext.createMediaStreamSource(micStream);
-                    analyser = audioContext.createAnalyser();
-                    analyser.fftSize = 512;
-                    analyser.smoothingTimeConstant = 0.55;
-
-                    // ВАЖНО: source НЕ подключается к audioContext.destination.
-                    // Иначе свой голос идёт в динамики и появляется эхо/писк.
-                    source.connect(analyser);
-                    startMicLevelMeter();
-                }
-
                 const track = getMicTrack();
                 track.enabled = true;
                 track.addEventListener("ended", () => {
-                    stopMic();
+                    micDiag.textContent = "Микрофон отключён устройством или браузером";
+                    updateMicUI();
                 }, { once: true });
 
+                const ctx = await getAudioContext();
+                const source = ctx.createMediaStreamSource(micStream);
+
+                micAnalyser = ctx.createAnalyser();
+                micAnalyser.fftSize = 512;
+                micAnalyser.smoothingTimeConstant = .5;
+                micData = new Uint8Array(micAnalyser.fftSize);
+
+                // Локальный микрофон не выводится в динамики — иначе будет эхо.
+                source.connect(micAnalyser);
+
+                startLevelMeter();
                 updateMicUI();
                 return true;
             } catch (error) {
-                console.error("Microphone error:", error);
-                addMessage(getMicrophoneErrorText(error), "sys");
+                console.error(error);
+                addMessage(microphoneError(error), "sys");
+                micDiag.textContent = microphoneError(error);
                 stopMic();
                 return false;
             }
@@ -761,23 +1131,38 @@
     }
 
     function stopMic() {
-        if (meterAnimation !== null) {
-            cancelAnimationFrame(meterAnimation);
-            meterAnimation = null;
-        }
-
         if (micStream) {
             micStream.getTracks().forEach((track) => track.stop());
         }
 
         micStream = null;
-        analyser = null;
+        micAnalyser = null;
+        micData = null;
+        micLevel.style.width = "0";
         partnerAvatar.classList.remove("speaking");
-
-        const ownSeat = groupGrid.querySelector(".seat.occupied");
-        if (ownSeat) ownSeat.classList.remove("speaking");
-
         updateMicUI();
+    }
+
+    function updateMicUI() {
+        const track = getMicTrack();
+        const live = track && track.readyState === "live";
+
+        if (!live) {
+            btnMute.textContent = "🎤 Включить микрофон";
+            btnMute.classList.remove("muted");
+            micDiag.textContent = "Микрофон не подключён";
+            return;
+        }
+
+        if (track.enabled) {
+            btnMute.textContent = "🎙️ Выключить микрофон";
+            btnMute.classList.remove("muted");
+            micDiag.textContent = "Микрофон включён — скажите несколько слов";
+        } else {
+            btnMute.textContent = "🔇 Включить микрофон";
+            btnMute.classList.add("muted");
+            micDiag.textContent = "Микрофон заглушен";
+        }
     }
 
     async function toggleMic() {
@@ -790,214 +1175,410 @@
 
         track.enabled = !track.enabled;
 
-        if (track.enabled && audioContext?.state === "suspended") {
-            await audioContext.resume().catch(() => {});
+        if (track.enabled) {
+            try { await getAudioContext(); } catch {}
         }
 
         updateMicUI();
     }
 
-    function startMicLevelMeter() {
-        if (!analyser || meterAnimation !== null) return;
-
-        const data = new Uint8Array(analyser.fftSize);
-
-        const measure = () => {
-            if (!analyser || !micStream) {
-                meterAnimation = null;
-                return;
-            }
-
-            analyser.getByteTimeDomainData(data);
-
-            let peak = 0;
-            for (const value of data) {
-                peak = Math.max(peak, Math.abs(value - 128));
-            }
-
-            const track = getMicTrack();
-            const speaking = Boolean(track?.enabled) && peak > 13;
-
-            partnerAvatar.classList.toggle(
-                "speaking",
-                speaking && mode === "solo"
-            );
-
-            const ownSeat = groupGrid.querySelector(".seat.occupied");
-            if (ownSeat) {
-                ownSeat.classList.toggle("speaking", speaking && mode === "group");
-            }
-
-            meterAnimation = requestAnimationFrame(measure);
-        };
-
-        meterAnimation = requestAnimationFrame(measure);
+    function signal(peerId, data) {
+        sendWS("signal", { to: peerId, data });
     }
 
-    /*
-        Эту функцию может вызвать серверная/WebRTC-часть, когда появится
-        аудиопоток другого человека:
+    function createPeer(peerId, initiator) {
+        if (peers.has(peerId)) return peers.get(peerId);
 
-        window.LikodoptAudio.playRemoteStream(remoteStream, "peer-id");
+        const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
 
-        Локальный поток для WebRTC:
-        window.LikodoptAudio.getLocalStream()
-    */
-    function playRemoteStream(stream, id = "peer") {
-        const oldAudio = audioPool.querySelector(`[data-peer="${CSS.escape(id)}"]`);
-        if (oldAudio) oldAudio.remove();
+        const entry = {
+            id: peerId,
+            pc,
+            audio: null,
+            remoteStream: null,
+            remoteSource: null,
+            remoteAnalyser: null,
+            remoteData: null,
+            hasRemoteDescription: false,
+            pendingCandidates: []
+        };
+
+        peers.set(peerId, entry);
+
+        if (micStream) {
+            for (const track of micStream.getTracks()) {
+                pc.addTrack(track, micStream);
+            }
+        }
+
+        pc.addEventListener("icecandidate", (event) => {
+            if (event.candidate) {
+                signal(peerId, {
+                    kind: "candidate",
+                    candidate: event.candidate
+                });
+            }
+        });
+
+        pc.addEventListener("track", (event) => {
+            const stream = event.streams[0] || new MediaStream([event.track]);
+            attachRemoteAudio(entry, stream);
+        });
+
+        pc.addEventListener("connectionstatechange", () => {
+            updateNetworkDiag();
+
+            if (pc.connectionState === "failed") {
+                addMessage("WebRTC не смог соединиться. Возможно, для вашей сети нужен TURN-сервер.", "sys");
+            }
+        });
+
+        pc.addEventListener("iceconnectionstatechange", updateNetworkDiag);
+
+        if (initiator) {
+            (async () => {
+                const offer = await pc.createOffer();
+                await pc.setLocalDescription(offer);
+
+                signal(peerId, {
+                    kind: "description",
+                    description: pc.localDescription
+                });
+            })().catch((error) => {
+                console.error("Offer error:", error);
+                addMessage("Не удалось создать WebRTC-предложение.", "sys");
+            });
+        }
+
+        updateNetworkDiag();
+        return entry;
+    }
+
+    async function flushCandidates(entry) {
+        const candidates = entry.pendingCandidates.splice(0);
+
+        for (const candidate of candidates) {
+            await entry.pc.addIceCandidate(candidate);
+        }
+    }
+
+    async function handleSignal(peerId, data) {
+        if (!data || typeof data !== "object") return;
+
+        const entry = createPeer(peerId, false);
+
+        if (data.kind === "description" && data.description) {
+            const description = data.description;
+
+            if (description.type === "offer") {
+                await entry.pc.setRemoteDescription(description);
+                entry.hasRemoteDescription = true;
+                await flushCandidates(entry);
+
+                const answer = await entry.pc.createAnswer();
+                await entry.pc.setLocalDescription(answer);
+
+                signal(peerId, {
+                    kind: "description",
+                    description: entry.pc.localDescription
+                });
+            } else if (description.type === "answer") {
+                await entry.pc.setRemoteDescription(description);
+                entry.hasRemoteDescription = true;
+                await flushCandidates(entry);
+            }
+
+            return;
+        }
+
+        if (data.kind === "candidate" && data.candidate) {
+            if (entry.hasRemoteDescription) {
+                await entry.pc.addIceCandidate(data.candidate);
+            } else {
+                entry.pendingCandidates.push(data.candidate);
+            }
+        }
+    }
+
+    function attachRemoteAudio(entry, stream) {
+        entry.remoteStream = stream;
+
+        if (entry.audio) entry.audio.remove();
 
         const audio = document.createElement("audio");
-        audio.dataset.peer = id;
         audio.autoplay = true;
         audio.playsInline = true;
         audio.setAttribute("playsinline", "");
         audio.srcObject = stream;
-        audio.muted = false;
         audio.volume = 1;
+        audio.muted = false;
 
+        entry.audio = audio;
         audioPool.appendChild(audio);
 
-        audio.play().catch(() => {
-            addMessage("Браузер заблокировал автозвук. Нажми один раз по странице, чтобы включить его.", "sys");
+        audio.addEventListener("playing", () => {
+            remoteDiag.textContent = "Звук собеседника: поток воспроизводится";
         });
 
-        return audio;
+        audio.play().catch(() => {
+            remoteDiag.textContent = "Нажмите по странице или «Тест динамиков», чтобы разблокировать звук";
+        });
+
+        setupRemoteAnalyser(entry, stream);
+        startLevelMeter();
     }
 
-    window.LikodoptAudio = {
-        playRemoteStream,
-        getLocalStream: () => micStream
-    };
+    async function setupRemoteAnalyser(entry, stream) {
+        try {
+            const ctx = await getAudioContext();
+            if (peers.get(entry.id) !== entry) return;
 
-    // Разблокировка звука и AudioContext после жеста пользователя.
-    document.addEventListener("pointerdown", () => {
-        if (audioContext?.state === "suspended") {
-            audioContext.resume().catch(() => {});
+            const source = ctx.createMediaStreamSource(stream);
+            const analyser = ctx.createAnalyser();
+
+            analyser.fftSize = 512;
+            analyser.smoothingTimeConstant = .5;
+            source.connect(analyser);
+
+            entry.remoteSource = source;
+            entry.remoteAnalyser = analyser;
+            entry.remoteData = new Uint8Array(analyser.fftSize);
+        } catch (error) {
+            console.warn("Remote analyser:", error);
+        }
+    }
+
+    function closePeer(peerId) {
+        const entry = peers.get(peerId);
+        if (!entry) return;
+
+        peers.delete(peerId);
+
+        try { entry.pc.close(); } catch {}
+        try { entry.remoteSource?.disconnect(); } catch {}
+
+        if (entry.audio) {
+            entry.audio.pause();
+            entry.audio.srcObject = null;
+            entry.audio.remove();
         }
 
-        audioPool.querySelectorAll("audio").forEach((audio) => {
-            if (audio.paused) audio.play().catch(() => {});
-        });
-    }, { passive: true });
+        updateNetworkDiag();
+    }
 
-    /* ==================== СОЛО 1 НА 1 ==================== */
+    function closeAllPeers() {
+        for (const peerId of [...peers.keys()]) {
+            closePeer(peerId);
+        }
 
-    function startSoloSearch() {
-        clearTimers();
-        removeRemoteAudio();
+        audioPool.replaceChildren();
+        remoteLevel.style.width = "0";
+        remoteDiag.textContent = "Звук собеседника: пока отсутствует";
+        updateNetworkDiag();
+    }
+
+    function updateNetworkDiag() {
+        const entries = [...peers.values()];
+
+        if (!entries.length) {
+            netDiag.textContent = "WebRTC: нет соединения";
+            return;
+        }
+
+        const connected = entries.filter(
+            (entry) => entry.pc.connectionState === "connected"
+        ).length;
+
+        const failed = entries.some(
+            (entry) => ["failed", "disconnected", "closed"].includes(entry.pc.connectionState)
+        );
+
+        netDiag.textContent = failed
+            ? `WebRTC: проблема (${connected}/${entries.length})`
+            : `WebRTC: ${connected}/${entries.length} подключено`;
+    }
+
+    function peakLevel(analyser, data) {
+        if (!analyser || !data) return 0;
+
+        analyser.getByteTimeDomainData(data);
+
+        let peak = 0;
+        for (const value of data) {
+            peak = Math.max(peak, Math.abs(value - 128));
+        }
+
+        return peak;
+    }
+
+    function startLevelMeter() {
+        if (meterStarted) return;
+        meterStarted = true;
+
+        const measure = () => {
+            const track = getMicTrack();
+            const micPeak = track?.enabled ? peakLevel(micAnalyser, micData) : 0;
+            const micPercent = Math.min(100, micPeak * 4);
+
+            micLevel.style.width = `${micPercent}%`;
+
+            if (track?.enabled && track.readyState === "live") {
+                micDiag.textContent = micPeak > 10
+                    ? "Микрофон: сигнал есть ✓"
+                    : "Микрофон включён — скажите несколько слов";
+            }
+
+            partnerAvatar.classList.toggle(
+                "speaking",
+                mode === "solo" && micPeak > 12
+            );
+
+            let maxRemotePeak = 0;
+            let hasRemoteStream = false;
+            let hasPlayingAudio = false;
+
+            for (const entry of peers.values()) {
+                if (entry.remoteStream) hasRemoteStream = true;
+                if (entry.audio && !entry.audio.paused) hasPlayingAudio = true;
+
+                maxRemotePeak = Math.max(
+                    maxRemotePeak,
+                    peakLevel(entry.remoteAnalyser, entry.remoteData)
+                );
+            }
+
+            remoteLevel.style.width = `${Math.min(100, maxRemotePeak * 4)}%`;
+
+            if (maxRemotePeak > 8) {
+                remoteDiag.textContent = "Звук собеседника: сигнал есть ✓";
+            } else if (hasRemoteStream && hasPlayingAudio) {
+                remoteDiag.textContent = "Аудиопоток получен: сейчас тишина";
+            } else if (hasRemoteStream) {
+                remoteDiag.textContent = "Аудиопоток получен, но браузер пока не воспроизводит его";
+            } else if (peers.size) {
+                remoteDiag.textContent = "Ожидание аудиопотока собеседника...";
+            }
+
+            requestAnimationFrame(measure);
+        };
+
+        requestAnimationFrame(measure);
+    }
+
+    async function testSpeakers() {
+        try {
+            const ctx = await getAudioContext();
+            const now = ctx.currentTime;
+
+            [523.25, 783.99].forEach((frequency, index) => {
+                const oscillator = ctx.createOscillator();
+                const gain = ctx.createGain();
+                const start = now + index * .22;
+                const end = start + .18;
+
+                oscillator.type = "sine";
+                oscillator.frequency.value = frequency;
+
+                gain.gain.setValueAtTime(.0001, start);
+                gain.gain.exponentialRampToValueAtTime(.07, start + .025);
+                gain.gain.exponentialRampToValueAtTime(.0001, end);
+
+                oscillator.connect(gain);
+                gain.connect(ctx.destination);
+                oscillator.start(start);
+                oscillator.stop(end + .02);
+            });
+
+            btnTestSound.textContent = "🔊 Два сигнала...";
+            setTimeout(() => {
+                btnTestSound.textContent = "🔊 Тест динамиков";
+            }, 900);
+
+            for (const entry of peers.values()) {
+                if (entry.audio?.paused) {
+                    entry.audio.play().catch(() => {});
+                }
+            }
+        } catch (error) {
+            addMessage("Не удалось запустить тест звука: " + error.message, "sys");
+        }
+    }
+
+    async function startSoloSearch() {
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+            addMessage("Сервер ещё не подключён.", "sys");
+            return;
+        }
+
+        clearSearchTimer();
+        closeAllPeers();
+        remoteUsers.clear();
+        clearMessages();
 
         mode = "search";
-        demoReplied = false;
-        clearMessages();
         showView("queue");
+        startSearchTimer();
         updateButtons();
+        setPartnerAvatar("LIKODOPT");
 
-        avatarEmoji.textContent = "🎙️";
-        searchTimerText.textContent = "00:00";
-        searchStartedAt = Date.now();
+        addMessage("Ищем реального собеседника. Для проверки начните поиск во второй вкладке.", "sys");
 
-        addMessage("Начат поиск собеседника 1 на 1. Нажми «Стоп», чтобы отменить.", "sys");
-        searchInterval = setInterval(updateSearchTimer, 1000);
+        await ensureMic();
 
-        // Разрешение запрашивается непосредственно после нажатия кнопки.
-        ensureMic();
-
-        if (DEMO_MODE) {
-            const delay = 2200 + Math.floor(Math.random() * 1800);
-            matchTimeout = setTimeout(connectDemoPartner, delay);
-        } else {
-            // Здесь должна вызываться команда входа в очередь твоего сервера.
-            addMessage("Ожидание ответа сервера...", "sys");
+        if (mode === "search") {
+            sendWS("find", { nick: nickname });
         }
     }
 
-    function connectDemoPartner() {
-        if (mode !== "search") return;
-
-        clearTimers();
-        mode = "solo";
-        showView("idle");
-        avatarEmoji.textContent = "🎧";
-        statusText.textContent = "Собеседник найден · демо-режим 1 на 1";
-        updateButtons();
-
-        addMessage("Собеседник найден. Можно писать и проверять микрофон.", "sys");
-        addMessage("Это демо: для поиска реальных людей и передачи голоса нужно подключить сервер.", "sys");
-        msgInput.focus();
-    }
-
-    /* ==================== ГРУППА НА 6 ЧЕЛОВЕК ==================== */
-
-    function makeRoomCode() {
-        return Math.random().toString(36).slice(2, 8).toUpperCase().padEnd(6, "X");
-    }
-
-    function renderGroupSeats() {
-        groupGrid.replaceChildren();
-
-        for (let index = 0; index < 6; index++) {
-            const seat = document.createElement("div");
-            const isOwnSeat = index === 0;
-
-            seat.className = "seat" + (isOwnSeat ? " occupied" : "");
-
-            const avatar = document.createElement("div");
-            avatar.className = "seat-avatar";
-            avatar.textContent = isOwnSeat ? "🎙️" : "＋";
-
-            const name = document.createElement("div");
-            name.className = "seat-name";
-            name.textContent = isOwnSeat ? "Вы" : "Свободно";
-
-            seat.append(avatar, name);
-            groupGrid.appendChild(seat);
+    async function createGroupRoom() {
+        if (!ws || ws.readyState !== WebSocket.OPEN) {
+            addMessage("Сервер ещё не подключён.", "sys");
+            return;
         }
-    }
 
-    function createGroupRoom() {
-        clearTimers();
-        removeRemoteAudio();
-
-        mode = "group";
+        clearSearchTimer();
+        closeAllPeers();
+        remoteUsers.clear();
         clearMessages();
-        showView("group");
-        renderGroupSeats();
 
-        $("groupCode").textContent = makeRoomCode();
-        $("groupCount").textContent = "1/6";
-
+        mode = "search";
+        showView("queue");
+        document.querySelector(".queue-title").textContent = "Подключение к группе";
+        document.querySelector(".queue-sub").textContent = "Создаём голосовую комнату...";
+        startSearchTimer();
         updateButtons();
-        ensureMic();
 
-        addMessage("Групповая комната на 6 человек создана. Ты занимаешь первое место.", "sys");
-        addMessage("Остальные места свободны. Реальное подключение участников выполняется через сервер.", "sys");
-        msgInput.focus();
+        await ensureMic();
+
+        if (mode === "search") {
+            sendWS("group", { nick: nickname });
+        }
     }
 
-    /* ==================== ОСТАНОВКА ==================== */
-
-    function stopSession() {
-        const wasActive = mode !== "idle";
-
-        clearTimers();
-        removeRemoteAudio();
+    function resetLocalSession() {
+        clearSearchTimer();
+        closeAllPeers();
+        remoteUsers.clear();
         stopMic();
 
         mode = "idle";
         showView("idle");
-        partnerAvatar.classList.remove("speaking");
-        avatarEmoji.textContent = "🎙️";
-        statusText.textContent = "Готово. Выберите режим общения.";
+        setPartnerAvatar("LIKODOPT");
+        statusText.textContent = ws?.readyState === WebSocket.OPEN
+            ? "Готово. Выберите режим общения."
+            : "Сервер недоступен. Переподключение...";
+
+        document.querySelector(".queue-title").textContent = "Вы в очереди ожидания";
+        document.querySelector(".queue-sub").textContent = "Откройте сайт на втором устройстве и тоже начните поиск.";
         searchTimerText.textContent = "00:00";
         updateButtons();
-
-        if (wasActive) {
-            addMessage("Поиск или разговор остановлен. Микрофон отключён.", "sys");
-        }
     }
 
-    /* ==================== ЧАТ ==================== */
+    function stopSession() {
+        sendWS("leave");
+        resetLocalSession();
+        addMessage("Поиск или разговор остановлен. Микрофон отключён.", "sys");
+    }
 
     chatForm.addEventListener("submit", (event) => {
         event.preventDefault();
@@ -1005,68 +1586,86 @@
         const text = msgInput.value.trim();
         if (!text || (mode !== "solo" && mode !== "group")) return;
 
-        addMessage(text, "me");
-        msgInput.value = "";
-        msgInput.focus();
-
-        // Один честно подписанный демо-ответ, чтобы проверить стили входящих сообщений.
-        if (mode === "solo" && DEMO_MODE && !demoReplied) {
-            demoReplied = true;
-
-            setTimeout(() => {
-                if (mode === "solo") {
-                    addMessage("Привет! Я демо-собеседник. Интерфейс чата работает 👋", "partner");
-                }
-            }, 600);
+        if (sendWS("chat", { text })) {
+            addMessage(text, "me");
+            msgInput.value = "";
+            msgInput.focus();
+        } else {
+            addMessage("Сообщение не отправлено: нет связи с сервером.", "sys");
         }
     });
 
-    /* ==================== КНОПКИ ==================== */
+    $("btnEditNick").addEventListener("click", () => {
+        nickInput.value = nickname;
+        profileNameLine.hidden = true;
+        nickForm.hidden = false;
+        nickInput.focus();
+        nickInput.select();
+    });
+
+    $("btnCancelNick").addEventListener("click", () => {
+        nickForm.hidden = true;
+        profileNameLine.hidden = false;
+    });
+
+    nickForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+
+        const next = normalizeNick(nickInput.value);
+
+        if (next.length < 2) {
+            addMessage("Ник должен содержать от 2 до 20 символов.", "sys");
+            return;
+        }
+
+        nickname = next;
+        storageSet(NICK_KEY, nickname);
+        refreshOwnIdentity();
+        sendWS("nick", { nick: nickname });
+
+        nickForm.hidden = true;
+        profileNameLine.hidden = false;
+        addMessage(`Ник изменён на «${nickname}». Аватар обновлён.`, "sys");
+    });
 
     btnSolo.addEventListener("click", startSoloSearch);
     btnNext.addEventListener("click", startSoloSearch);
     btnGroup.addEventListener("click", createGroupRoom);
     btnStop.addEventListener("click", stopSession);
     btnMute.addEventListener("click", toggleMic);
+    btnTestSound.addEventListener("click", testSpeakers);
 
-    /* ==================== COOKIE ==================== */
+    document.addEventListener("pointerdown", () => {
+        if (audioContext?.state === "suspended") {
+            audioContext.resume().catch(() => {});
+        }
 
-    const cookieBanner = $("cookieBanner");
-    const cookieKey = "likodopt_cookie_accepted";
-    let cookieAccepted = false;
+        for (const entry of peers.values()) {
+            if (entry.audio?.paused) entry.audio.play().catch(() => {});
+        }
+    }, { passive: true });
 
-    try {
-        cookieAccepted = localStorage.getItem(cookieKey) === "1";
-    } catch (_) {
-        // localStorage может быть запрещён настройками браузера.
-    }
+    window.addEventListener("beforeunload", () => {
+        sendWS("leave");
+        clearSearchTimer();
 
-    if (!cookieAccepted) {
-        cookieBanner.classList.add("show");
-    }
+        for (const entry of peers.values()) {
+            try { entry.pc.close(); } catch {}
+        }
 
-    $("btnCloseCookie").addEventListener("click", () => {
-        cookieBanner.classList.remove("show");
-
-        try {
-            localStorage.setItem(cookieKey, "1");
-        } catch (_) {
-            // Баннер всё равно закрывается, даже если хранилище недоступно.
+        if (micStream) {
+            micStream.getTracks().forEach((track) => track.stop());
         }
     });
 
-    /* ==================== ЗАПУСК И ВЫХОД ==================== */
-
-    window.addEventListener("beforeunload", () => {
-        clearTimers();
-        stopMic();
-    });
-
+    refreshOwnIdentity();
+    setPartnerAvatar("LIKODOPT");
     showView("idle");
-    setChatEnabled(false);
     updateButtons();
     updateMicUI();
-    addMessage("Выбери «1 на 1», группу или нажми «Найти / Далее».", "sys");
+    startLevelMeter();
+    addMessage("Для соединения нужен запущенный server.js. Нажмите «Тест динамиков», чтобы проверить вывод звука.", "sys");
+    connectWebSocket();
 })();
 </script>
 </body>
