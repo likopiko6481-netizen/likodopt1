@@ -3,22 +3,52 @@ const path = require('path');
 const fs = require('fs');
 
 const app = express();
-const PORT = process.env.PORT || 80;
+const PORT = process.env.PORT || 3000;
 
-app.use(express.json({ limit: '2mb' }));
+app.use(express.json());
 app.use(express.static(__dirname));
 
-let signalSeq = 0;
-let signals = [];
-const activeUsers = new Map();
+const users = new Map();
+let waitingQueue = [];
+const pairs = new Map();
+
+function ensureUser(id) {
+    if (!users.has(id)) {
+        users.set(id, { lastSeen: Date.now(), events: [] });
+    }
+    const u = users.get(id);
+    u.lastSeen = Date.now();
+    return u;
+}
+
+function pushEvent(id, ev) {
+    const u = users.get(id);
+    if (u) u.events.push(ev);
+}
+
+function removeFromQueue(id) {
+    waitingQueue = waitingQueue.filter(cid => cid !== id);
+}
+
+function disconnectPartner(id) {
+    const partnerId = pairs.get(id);
+    if (partnerId) {
+        pairs.delete(id);
+        pairs.delete(partnerId);
+        pushEvent(partnerId, { type: 'partner_disconnected' });
+    }
+}
 
 setInterval(() => {
     const now = Date.now();
-    signals = signals.filter(s => now - s.ts < 30000);
-    for (const [uid, lastSeen] of activeUsers.entries()) {
-        if (now - lastSeen > 12000) activeUsers.delete(uid);
+    for (const [id, u] of users.entries()) {
+        if (now - u.lastSeen > 12000) {
+            users.delete(id);
+            removeFromQueue(id);
+            disconnectPartner(id);
+        }
     }
-}, 5000);
+}, 4000);
 
 const HTML_PAGE = `<!DOCTYPE html>
 <html lang="ru">
@@ -41,282 +71,116 @@ const HTML_PAGE = `<!DOCTYPE html>
             padding: 15px;
         }
         .app {
-            background: rgba(24, 27, 34, 0.92);
-            backdrop-filter: blur(10px);
+            background: rgba(24, 27, 34, 0.90);
+            backdrop-filter: blur(8px);
             width: 100%;
             max-width: 460px;
             border-radius: 20px;
-            padding: 22px;
-            box-shadow: 0 12px 40px rgba(0,0,0,0.65);
+            padding: 25px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.6);
             border: 1px solid #262a35;
         }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
         .logo { font-size: 1.5rem; font-weight: 800; color: #00e676; letter-spacing: 1px; }
         .online-badge { background: #232834; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; color: #a0aab8; display: flex; align-items: center; }
         .online-dot { width: 8px; height: 8px; background: #ff5252; border-radius: 50%; margin-right: 6px; transition: background 0.3s; }
         .online-dot.connected { background: #00e676; }
-
-        .profile-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; background: #181c24; padding: 8px 12px; border-radius: 14px; border: 1px solid #262a35; }
-        .my-ava { width: 38px; height: 38px; border-radius: 8px; border: 1px solid #00e676; image-rendering: pixelated; cursor: pointer; background: #232834; }
-        .profile-row input { flex: 1; background: transparent; border: none; color: #fff; font-size: 0.95rem; outline: none; }
-        .ava-reroll { background: #232834; border: 1px solid #323846; color: #00e676; border-radius: 8px; padding: 6px 9px; cursor: pointer; font-size: 0.85rem; }
-
-        .mode-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
-        .tab-btn { background: #1b1f29; border: 1px solid #2c3240; color: #a0aab8; padding: 10px; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 0.88rem; transition: 0.2s; }
-        .tab-btn.active { background: rgba(0, 230, 118, 0.14); border-color: #00e676; color: #00e676; }
-
-        .voice-box { background: rgba(18, 20, 26, 0.85); border-radius: 16px; padding: 20px 15px; text-align: center; margin-bottom: 14px; border: 1px solid #222630; min-height: 155px; display: flex; flex-direction: column; justify-content: center; }
-        .screen { display: none; }
-        .screen.active { display: block; }
-
-        .avatar { width: 68px; height: 68px; border-radius: 50%; background: #232834; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 1.9rem; }
-        #status { font-size: 0.98rem; color: #cfd8e3; font-weight: 500; }
-        #netStatus { font-size: 0.78rem; color: #788292; margin-top: 6px; }
-
-        .radar { position: relative; width: 68px; height: 68px; border-radius: 50%; background: rgba(0, 230, 118, 0.12); border: 2px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 1.7rem; margin: 0 auto 12px; }
+        .voice-box { background: rgba(18, 20, 26, 0.85); border-radius: 16px; padding: 22px 15px; text-align: center; margin-bottom: 15px; border: 1px solid #222630; }
+        .avatar { width: 72px; height: 72px; border-radius: 50%; background: #232834; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+        .avatar.speaking { box-shadow: 0 0 0 6px rgba(0, 230, 118, 0.35); background: #1c382c; }
+        #status { font-size: 1rem; color: #cfd8e3; font-weight: 500; }
+        .queue-window { display: none; flex-direction: column; align-items: center; padding: 10px 5px; }
+        .queue-window.active { display: flex; }
+        .radar { position: relative; width: 76px; height: 76px; border-radius: 50%; background: rgba(0, 230, 118, 0.12); border: 2px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 1.9rem; margin-bottom: 14px; }
         .radar::before { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid #00e676; animation: pulseRing 2s infinite ease-out; }
         @keyframes pulseRing { 0% { transform: scale(0.95); opacity: 0.8; } 100% { transform: scale(1.55); opacity: 0; } }
-        .queue-timer { display: inline-block; background: #232834; color: #fff; padding: 3px 10px; border-radius: 10px; font-size: 0.8rem; margin-top: 6px; border: 1px solid #323846; }
-        .lobby-chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 10px; }
-        .chip { background: #232834; padding: 4px 10px; border-radius: 12px; font-size: 0.78rem; color: #cfd8e3; }
-
-        .duo-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .user-card { background: #1d212b; border: 1px solid #00e676; border-radius: 14px; padding: 14px 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 600; }
-
-        .group-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-        .seat { background: #1d212b; border: 1px dashed #2c3240; border-radius: 12px; padding: 10px 6px; display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: 0.78rem; color: #788292; }
-        .seat.occupied { border-style: solid; border-color: #00e676; color: #fff; }
-
-        .chat-box { background: rgba(18, 20, 26, 0.85); border-radius: 14px; height: 170px; display: flex; flex-direction: column; margin-bottom: 14px; border: 1px solid #222630; overflow: hidden; }
-        #messages { flex: 1; padding: 12px; overflow-y: auto; font-size: 0.88rem; display: flex; flex-direction: column; gap: 7px; }
-        .msg { padding: 7px 11px; border-radius: 10px; max-width: 84%; word-wrap: break-word; }
+        .queue-title { font-size: 1.05rem; font-weight: 700; color: #00e676; margin-bottom: 6px; }
+        .queue-sub { font-size: 0.85rem; color: #a0aab8; margin-bottom: 10px; }
+        .queue-timer { background: #232834; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; border: 1px solid #323846; }
+        .chat-box { background: rgba(18, 20, 26, 0.85); border-radius: 14px; height: 180px; display: flex; flex-direction: column; margin-bottom: 15px; border: 1px solid #222630; overflow: hidden; }
+        #messages { flex: 1; padding: 12px; overflow-y: auto; font-size: 0.9rem; display: flex; flex-direction: column; gap: 8px; }
+        .msg { padding: 8px 12px; border-radius: 10px; max-width: 82%; word-wrap: break-word; }
         .msg.me { background: #00e676; color: #000; align-self: flex-end; font-weight: 500; }
         .msg.partner { background: #262b38; color: #fff; align-self: flex-start; }
-        .msg.sys { background: transparent; color: #788292; align-self: center; font-size: 0.78rem; text-align: center; }
+        .msg.sys { background: transparent; color: #788292; align-self: center; font-size: 0.8rem; text-align: center; }
         .chat-input { display: flex; border-top: 1px solid #222630; }
-        .chat-input input { flex: 1; background: transparent; border: none; padding: 11px; color: #fff; outline: none; font-size: 0.9rem; }
-        .chat-input button { background: transparent; border: none; color: #00e676; font-weight: bold; padding: 0 16px; font-size: 1.1rem; cursor: pointer; }
+        .chat-input input { flex: 1; background: transparent; border: none; padding: 12px; color: #fff; outline: none; font-size: 0.9rem; }
+        .chat-input button { background: transparent; border: none; color: #00e676; font-weight: bold; padding: 0 18px; font-size: 1.1rem; cursor: pointer; }
         .chat-input button:disabled { color: #555; }
-
         .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .btn { padding: 14px; border: none; border-radius: 12px; font-size: 0.98rem; font-weight: 700; cursor: pointer; transition: 0.15s; }
+        .btn { padding: 15px; border: none; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; }
         .btn:disabled { opacity: 0.4; cursor: not-allowed; }
         #btnNext { background: #00e676; color: #000; }
         #btnStop { background: #ff5252; color: #fff; }
         #btnMute { grid-column: span 2; background: #262b38; color: #fff; font-weight: 600; }
         #btnMute.muted { background: #ff9800; color: #000; }
-
-        .cookie-banner { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); width: calc(100% - 30px); max-width: 460px; background: rgba(24, 27, 34, 0.96); border: 1px solid rgba(0, 230, 118, 0.35); border-radius: 16px; padding: 12px 15px; display: none; align-items: center; justify-content: space-between; gap: 10px; z-index: 999; }
+        .cookie-banner { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); width: calc(100% - 30px); max-width: 460px; background: rgba(24, 27, 34, 0.96); border: 1px solid rgba(0, 230, 118, 0.35); border-radius: 16px; padding: 14px 16px; display: none; align-items: center; justify-content: space-between; gap: 12px; z-index: 999; }
         .cookie-banner.show { display: flex; }
-        .cookie-text { font-size: 0.84rem; color: #e6ecf5; }
+        .cookie-text { font-size: 0.88rem; color: #e6ecf5; line-height: 1.4; }
         .cookie-text span { color: #00e676; font-weight: 700; }
-        .cookie-close { background: #262b38; color: #a0aab8; border: 1px solid #353b4d; border-radius: 50%; width: 30px; height: 30px; min-width: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
+        .cookie-close { background: #262b38; color: #a0aab8; border: 1px solid #353b4d; border-radius: 50%; width: 34px; height: 34px; min-width: 34px; display: flex; align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; }
     </style>
 </head>
 <body>
 <div class="app">
     <div class="header">
         <div class="logo">LIKODOPT</div>
-        <div class="online-badge"><span class="online-dot" id="connDot"></span>Онлайн: <span id="onlineCount">1</span></div>
+        <div class="online-badge"><span class="online-dot" id="connDot"></span>Онлайн: <span id="onlineCount">0</span></div>
     </div>
-
-    <div class="profile-row">
-        <img id="myAvaImg" class="my-ava" alt="ava" title="Сменить аватарку">
-        <input type="text" id="nickInput" placeholder="Введите ваш никнейм..." maxlength="20">
-        <button type="button" class="ava-reroll" id="btnRerollAva" title="Новая аватарка">🎲</button>
-    </div>
-
-    <div class="mode-tabs">
-        <button type="button" class="tab-btn active" id="modeSolo">1 на 1 (Рулетка)</button>
-        <button type="button" class="tab-btn" id="modeGroup">Комната (до 6 чел.)</button>
-    </div>
-
     <div class="voice-box">
-        <div id="idleView" class="screen active">
-            <div class="avatar">🎙️</div>
-            <div id="status">Готов к общению</div>
-            <div id="netStatus">Подключение к серверу...</div>
+        <div id="idleView">
+            <div class="avatar" id="partnerAvatar">🎙️</div>
+            <div id="status">Подключение к серверу...</div>
         </div>
-
-        <div id="queueView" class="screen">
+        <div class="queue-window" id="queueView">
             <div class="radar">🔍</div>
-            <div style="font-weight:700;color:#00e676;">Поиск собеседника...</div>
+            <div class="queue-title">Вы в очереди ожидания</div>
+            <div class="queue-sub">Подбираем свободного собеседника...</div>
             <div class="queue-timer">Время поиска: <span id="searchTimerText">00:00</span></div>
-            <div id="lobbyChips" class="lobby-chips"></div>
-        </div>
-
-        <div id="callView" class="screen">
-            <div class="duo-cards">
-                <div class="user-card" id="roomMeCard"></div>
-                <div class="user-card" id="roomPartnerCard"></div>
-            </div>
-        </div>
-
-        <div id="groupView" class="screen">
-            <div style="font-size:0.84rem;color:#00e676;margin-bottom:8px;font-weight:600;">Участников: <span id="groupCountText">1</span> / 6</div>
-            <div class="group-grid" id="groupGrid"></div>
         </div>
     </div>
-
     <div class="chat-box">
-const express = require('express');
-const path = require('path');
-const fs = require('fs');
+        <div id="messages"></div>
+        <form class="chat-input" id="chatForm">
+            <input type="text" id="msgInput" placeholder="Написать сообщение..." disabled autocomplete="off">
+            <button type="submit" id="btnSend" disabled>➤</button>
+        </form>
+    </div>
+    <div class="controls">
+      <button type="button" class="btn" id="btnNext">Найти / Далее</button>
+      <button type="button" class="btn" id="btnStop" disabled>Стоп</button>
+      <button type="button" class="btn" id="btnMute">Выключить микрофон</button>
+    </div>
 
-const app = express();
-const PORT = process.env.PORT || 80;
+    <div id="audioPool"></div>
+  </div>
 
-app.use(express.json({ limit: '2mb' }));
-app.use(express.static(__dirname));
+   <div class="cookie-banner" id="cookieBanner">
+    <div class="cookie-text">🍪 Мы используем ваши файлы <span>Cookie</span> для улучшения работы сайта.</div>
+    <button type="button" class="cookie-close" id="btnCloseCookie">✕</button>
+  </div>
+     <script src="./buttons.js?v=50"></script>
+  <script src="./profile.js?v=50"></script>
+    <script src="https://unpkg.com"></script>
+  <script src="./net.js?v=2026"></script>
+</body>
+</html>`;
 
-let signalSeq = 0;
-let signals = [];
-const activeUsers = new Map();
+app.get('/', (req, res) => {
+    res.send(HTML_PAGE);
+});
 
-setInterval(() => {
-    const now = Date.now();
-    signals = signals.filter(s => now - s.ts < 30000);
-    for (const [uid, lastSeen] of activeUsers.entries()) {
-        if (now - lastSeen > 12000) activeUsers.delete(uid);
+app.get('/bg', (req, res) => {
+    const bgFiles = ['bg.jpg', 'bg.png', 'bg.webp', 'background.jpg', 'background.png'];
+    for (const file of bgFiles) {
+        const fullPath = path.join(__dirname, file);
+        if (fs.existsSync(fullPath)) {
+            return res.sendFile(fullPath);
+        }
     }
-}, 5000);
+    res.status(204).end();
+});
 
-const HTML_PAGE = `<!DOCTYPE html>
-<html lang="ru">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <meta name="google" content="notranslate">
-    <title>Likodopt — Голосовая чат-рулетка</title>
-    <style>
-        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-        body {
-            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: url('/bg') no-repeat center center fixed, #0f1115;
-            background-size: cover;
-            color: #fff;
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            min-height: 100vh;
-            padding: 15px;
-        }
-        .app {
-            background: rgba(24, 27, 34, 0.92);
-            backdrop-filter: blur(10px);
-            width: 100%;
-            max-width: 460px;
-            border-radius: 20px;
-            padding: 22px;
-            box-shadow: 0 12px 40px rgba(0,0,0,0.65);
-            border: 1px solid #262a35;
-        }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
-        .logo { font-size: 1.5rem; font-weight: 800; color: #00e676; letter-spacing: 1px; }
-        .online-badge { background: #232834; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; color: #a0aab8; display: flex; align-items: center; }
-        .online-dot { width: 8px; height: 8px; background: #ff5252; border-radius: 50%; margin-right: 6px; transition: background 0.3s; }
-        .online-dot.connected { background: #00e676; }
-
-        .profile-row { display: flex; align-items: center; gap: 10px; margin-bottom: 14px; background: #181c24; padding: 8px 12px; border-radius: 14px; border: 1px solid #262a35; }
-        .my-ava { width: 38px; height: 38px; border-radius: 8px; border: 1px solid #00e676; image-rendering: pixelated; cursor: pointer; background: #232834; }
-        .profile-row input { flex: 1; background: transparent; border: none; color: #fff; font-size: 0.95rem; outline: none; }
-        .ava-reroll { background: #232834; border: 1px solid #323846; color: #00e676; border-radius: 8px; padding: 6px 9px; cursor: pointer; font-size: 0.85rem; }
-
-        .mode-tabs { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; margin-bottom: 14px; }
-        .tab-btn { background: #1b1f29; border: 1px solid #2c3240; color: #a0aab8; padding: 10px; border-radius: 12px; font-weight: 600; cursor: pointer; font-size: 0.88rem; transition: 0.2s; }
-        .tab-btn.active { background: rgba(0, 230, 118, 0.14); border-color: #00e676; color: #00e676; }
-
-        .voice-box { background: rgba(18, 20, 26, 0.85); border-radius: 16px; padding: 20px 15px; text-align: center; margin-bottom: 14px; border: 1px solid #222630; min-height: 155px; display: flex; flex-direction: column; justify-content: center; }
-        .screen { display: none; }
-        .screen.active { display: block; }
-
-        .avatar { width: 68px; height: 68px; border-radius: 50%; background: #232834; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 1.9rem; }
-        #status { font-size: 0.98rem; color: #cfd8e3; font-weight: 500; }
-        #netStatus { font-size: 0.78rem; color: #788292; margin-top: 6px; }
-
-        .radar { position: relative; width: 68px; height: 68px; border-radius: 50%; background: rgba(0, 230, 118, 0.12); border: 2px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 1.7rem; margin: 0 auto 12px; }
-        .radar::before { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid #00e676; animation: pulseRing 2s infinite ease-out; }
-        @keyframes pulseRing { 0% { transform: scale(0.95); opacity: 0.8; } 100% { transform: scale(1.55); opacity: 0; } }
-        .queue-timer { display: inline-block; background: #232834; color: #fff; padding: 3px 10px; border-radius: 10px; font-size: 0.8rem; margin-top: 6px; border: 1px solid #323846; }
-        .lobby-chips { display: flex; flex-wrap: wrap; gap: 6px; justify-content: center; margin-top: 10px; }
-        .chip { background: #232834; padding: 4px 10px; border-radius: 12px; font-size: 0.78rem; color: #cfd8e3; }
-
-        .duo-cards { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .user-card { background: #1d212b; border: 1px solid #00e676; border-radius: 14px; padding: 14px 8px; display: flex; flex-direction: column; align-items: center; gap: 6px; font-size: 0.9rem; font-weight: 600; }
-
-        .group-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
-        .seat { background: #1d212b; border: 1px dashed #2c3240; border-radius: 12px; padding: 10px 6px; display: flex; flex-direction: column; align-items: center; gap: 5px; font-size: 0.78rem; color: #788292; }
-        .seat.occupied { border-style: solid; border-color: #00e676; color: #fff; }
-
-        .chat-box { background: rgba(18, 20, 26, 0.85); border-radius: 14px; height: 170px; display: flex; flex-direction: column; margin-bottom: 14px; border: 1px solid #222630; overflow: hidden; }
-        #messages { flex: 1; padding: 12px; overflow-y: auto; font-size: 0.88rem; display: flex; flex-direction: column; gap: 7px; }
-        .msg { padding: 7px 11px; border-radius: 10px; max-width: 84%; word-wrap: break-word; }
-        .msg.me { background: #00e676; color: #000; align-self: flex-end; font-weight: 500; }
-        .msg.partner { background: #262b38; color: #fff; align-self: flex-start; }
-        .msg.sys { background: transparent; color: #788292; align-self: center; font-size: 0.78rem; text-align: center; }
-        .chat-input { display: flex; border-top: 1px solid #222630; }
-        .chat-input input { flex: 1; background: transparent; border: none; padding: 11px; color: #fff; outline: none; font-size: 0.9rem; }
-        .chat-input button { background: transparent; border: none; color: #00e676; font-weight: bold; padding: 0 16px; font-size: 1.1rem; cursor: pointer; }
-        .chat-input button:disabled { color: #555; }
-
-        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .btn { padding: 14px; border: none; border-radius: 12px; font-size: 0.98rem; font-weight: 700; cursor: pointer; transition: 0.15s; }
-        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-        #btnNext { background: #00e676; color: #000; }
-        #btnStop { background: #ff5252; color: #fff; }
-        #btnMute { grid-column: span 2; background: #262b38; color: #fff; font-weight: 600; }
-        #btnMute.muted { background: #ff9800; color: #000; }
-
-        .cookie-banner { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); width: calc(100% - 30px); max-width: 460px; background: rgba(24, 27, 34, 0.96); border: 1px solid rgba(0, 230, 118, 0.35); border-radius: 16px; padding: 12px 15px; display: none; align-items: center; justify-content: space-between; gap: 10px; z-index: 999; }
-        .cookie-banner.show { display: flex; }
-        .cookie-text { font-size: 0.84rem; color: #e6ecf5; }
-        .cookie-text span { color: #00e676; font-weight: 700; }
-        .cookie-close { background: #262b38; color: #a0aab8; border: 1px solid #353b4d; border-radius: 50%; width: 30px; height: 30px; min-width: 30px; display: flex; align-items: center; justify-content: center; cursor: pointer; }
-    </style>
-</head>
-<body>
-<div class="app">
-    <div class="header">
-        <div class="logo">LIKODOPT</div>
-        <div class="online-badge"><span class="online-dot" id="connDot"></span>Онлайн: <span id="onlineCount">1</span></div>
-    </div>
-
-    <div class="profile-row">
-        <img id="myAvaImg" class="my-ava" alt="ava" title="Сменить аватарку">
-        <input type="text" id="nickInput" placeholder="Введите ваш никнейм..." maxlength="20">
-        <button type="button" class="ava-reroll" id="btnRerollAva" title="Новая аватарка">🎲</button>
-    </div>
-
-    <div class="mode-tabs">
-        <button type="button" class="tab-btn active" id="modeSolo">1 на 1 (Рулетка)</button>
-        <button type="button" class="tab-btn" id="modeGroup">Комната (до 6 чел.)</button>
-    </div>
-
-    <div class="voice-box">
-        <div id="idleView" class="screen active">
-            <div class="avatar">🎙️</div>
-            <div id="status">Готов к общению</div>
-            <div id="netStatus">Подключение к серверу...</div>
-        </div>
-
-        <div id="queueView" class="screen">
-            <div class="radar">🔍</div>
-            <div style="font-weight:700;color:#00e676;">Поиск собеседника...</div>
-            <div class="queue-timer">Время поиска: <span id="searchTimerText">00:00</span></div>
-            <div id="lobbyChips" class="lobby-chips"></div>
-        </div>
-
-        <div id="callView" class="screen">
-            <div class="duo-cards">
-                <div class="user-card" id="roomMeCard"></div>
-                <div class="user-card" id="roomPartnerCard"></div>
-            </div>
-        </div>
-
-        <div id="groupView" class="screen">
-            <div style="font-size:0.84rem;color:#00e676;margin-bottom:8px;font-weight:600;">Участников: <span id="groupCountText">1</span> / 6</div>
-            <div class="group-grid" id="groupGrid"></div>
-        </div>
-    </div>
-
-    <div class="chat-box">
+app.listen(PORT, '0.0.0.0', () => {
+    console.log(`Server running on port ${PORT}`);
+});
