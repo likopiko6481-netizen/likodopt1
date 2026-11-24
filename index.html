@@ -7,97 +7,484 @@
     <title>Likodopt — Голосовая чат-рулетка</title>
     <style>
         * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        [hidden] { display: none !important; }
+
         body {
             font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-            background: url('/bg') no-repeat center center fixed, #0f1115;
-            background-size: cover;
+            background:
+                radial-gradient(circle at 15% 10%, rgba(0, 230, 118, 0.10), transparent 35%),
+                radial-gradient(circle at 85% 90%, rgba(72, 118, 255, 0.12), transparent 38%),
+                #0f1115;
+            background-attachment: fixed;
             color: #fff;
             display: flex;
             justify-content: center;
             align-items: center;
             min-height: 100vh;
+            min-height: 100dvh;
             padding: 15px;
         }
+
         .app {
-            background: rgba(24, 27, 34, 0.90);
+            background: rgba(24, 27, 34, 0.92);
             backdrop-filter: blur(8px);
             width: 100%;
             max-width: 460px;
             border-radius: 20px;
             padding: 25px;
-            box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+            box-shadow: 0 12px 40px rgba(0, 0, 0, 0.6);
             border: 1px solid #262a35;
         }
-        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
-        .logo { font-size: 1.5rem; font-weight: 800; color: #00e676; letter-spacing: 1px; }
-        .online-badge { background: #232834; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; color: #a0aab8; display: flex; align-items: center; }
-        .online-dot { width: 8px; height: 8px; background: #ff5252; border-radius: 50%; margin-right: 6px; transition: background 0.3s; }
+
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 10px;
+            margin-bottom: 16px;
+        }
+
+        .logo {
+            font-size: 1.5rem;
+            font-weight: 800;
+            color: #00e676;
+            letter-spacing: 1px;
+        }
+
+        .online-badge {
+            background: #232834;
+            padding: 6px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            color: #a0aab8;
+            display: flex;
+            align-items: center;
+            white-space: nowrap;
+        }
+
+        .online-dot {
+            width: 8px;
+            height: 8px;
+            background: #ff5252;
+            border-radius: 50%;
+            margin-right: 6px;
+        }
+
         .online-dot.connected { background: #00e676; }
-        .voice-box { background: rgba(18, 20, 26, 0.85); border-radius: 16px; padding: 22px 15px; text-align: center; margin-bottom: 15px; border: 1px solid #222630; }
-        .avatar { width: 72px; height: 72px; border-radius: 50%; background: #232834; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
-        .avatar.speaking { box-shadow: 0 0 0 6px rgba(0, 230, 118, 0.35); background: #1c382c; }
-        #status { font-size: 1rem; color: #cfd8e3; font-weight: 500; }
-        .queue-window { display: none; flex-direction: column; align-items: center; padding: 10px 5px; }
-        .queue-window.active { display: flex; }
-        .radar { position: relative; width: 76px; height: 76px; border-radius: 50%; background: rgba(0, 230, 118, 0.12); border: 2px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 1.9rem; margin-bottom: 14px; }
-        .radar::before { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid #00e676; animation: pulseRing 2s infinite ease-out; }
-        @keyframes pulseRing { 0% { transform: scale(0.95); opacity: 0.8; } 100% { transform: scale(1.55); opacity: 0; } }
-        .queue-title { font-size: 1.05rem; font-weight: 700; color: #00e676; margin-bottom: 6px; }
-        .queue-sub { font-size: 0.85rem; color: #a0aab8; margin-bottom: 10px; }
-        .queue-timer { background: #232834; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; border: 1px solid #323846; }
-        .chat-box { background: rgba(18, 20, 26, 0.85); border-radius: 14px; height: 180px; display: flex; flex-direction: column; margin-bottom: 15px; border: 1px solid #222630; overflow: hidden; }
-        #messages { flex: 1; padding: 12px; overflow-y: auto; font-size: 0.9rem; display: flex; flex-direction: column; gap: 8px; }
-        .msg { padding: 8px 12px; border-radius: 10px; max-width: 82%; word-wrap: break-word; }
-        .msg.me { background: #00e676; color: #000; align-self: flex-end; font-weight: 500; }
-        .msg.partner { background: #262b38; color: #fff; align-self: flex-start; }
-        .msg.sys { background: transparent; color: #788292; align-self: center; font-size: 0.8rem; text-align: center; }
-        .chat-input { display: flex; border-top: 1px solid #222630; }
-        .chat-input input { flex: 1; background: transparent; border: none; padding: 12px; color: #fff; outline: none; font-size: 0.9rem; }
-        .chat-input button { background: transparent; border: none; color: #00e676; font-weight: bold; padding: 0 18px; font-size: 1.1rem; cursor: pointer; }
-        .chat-input button:disabled { color: #555; }
-        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-        .btn { padding: 15px; border: none; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; }
+        .online-dot.demo { background: #ff9800; }
+
+        .mode-buttons {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+            margin-bottom: 14px;
+        }
+
+        .mode-btn {
+            border: 1px solid #354052;
+            border-radius: 12px;
+            padding: 12px 8px;
+            color: #fff;
+            background: #232834;
+            font-size: 0.92rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
+        .mode-btn:first-child {
+            color: #001b0d;
+            background: #00c968;
+            border-color: #00c968;
+        }
+
+        .mode-btn:last-child {
+            background: #30405f;
+            border-color: #40577f;
+        }
+
+        .mode-btn:disabled { opacity: 0.4; cursor: not-allowed; }
+
+        .voice-box {
+            background: rgba(18, 20, 26, 0.85);
+            border-radius: 16px;
+            padding: 22px 15px;
+            text-align: center;
+            margin-bottom: 15px;
+            border: 1px solid #222630;
+            min-height: 155px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        #idleView { width: 100%; }
+
+        .avatar {
+            width: 72px;
+            height: 72px;
+            border-radius: 50%;
+            background: #232834;
+            margin: 0 auto 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 2rem;
+            overflow: hidden;
+            transition: box-shadow 0.15s, background 0.15s;
+        }
+
+        .avatar img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            display: block;
+        }
+
+        .avatar.speaking,
+        .seat.speaking .seat-avatar {
+            box-shadow: 0 0 0 6px rgba(0, 230, 118, 0.35);
+            background: #1c382c;
+        }
+
+        #status {
+            font-size: 1rem;
+            color: #cfd8e3;
+            font-weight: 500;
+            line-height: 1.4;
+        }
+
+        .mic-state {
+            color: #788292;
+            font-size: 0.78rem;
+            margin-top: 7px;
+        }
+
+        .queue-window,
+        .group-window {
+            display: none;
+            width: 100%;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .queue-window.active,
+        .group-window.active { display: flex; }
+
+        /* Крутящийся символ находится строго по центру меню ожидания */
+        .solo-spinner {
+            width: 82px;
+            height: 82px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: #00e676;
+            font-size: 4rem;
+            line-height: 1;
+            margin-bottom: 14px;
+            animation: spin 1.15s linear infinite;
+            transform-origin: 50% 50%;
+        }
+
+        @keyframes spin {
+            from { transform: rotate(0deg); }
+            to { transform: rotate(360deg); }
+        }
+
+        .queue-title {
+            font-size: 1.05rem;
+            font-weight: 700;
+            color: #00e676;
+            margin-bottom: 6px;
+        }
+
+        .queue-sub {
+            font-size: 0.85rem;
+            color: #a0aab8;
+            margin-bottom: 10px;
+        }
+
+        .queue-timer {
+            background: #232834;
+            color: #fff;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            border: 1px solid #323846;
+        }
+
+        .group-title {
+            color: #8fb5ff;
+            font-size: 1.08rem;
+            font-weight: 800;
+            margin-bottom: 5px;
+        }
+
+        .group-info {
+            color: #a0aab8;
+            font-size: 0.82rem;
+            margin-bottom: 13px;
+        }
+
+        .group-info span { color: #fff; font-weight: 700; }
+
+        .group-grid {
+            width: 100%;
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 9px;
+        }
+
+        .seat {
+            min-width: 0;
+            padding: 8px 3px;
+            border-radius: 11px;
+            background: #1c2029;
+            border: 1px solid #2b3240;
+            color: #7f8a9b;
+            font-size: 0.72rem;
+            overflow: hidden;
+        }
+
+        .seat.occupied { color: #fff; border-color: #37644d; }
+
+        .seat-avatar {
+            width: 38px;
+            height: 38px;
+            margin: 0 auto 5px;
+            border-radius: 50%;
+            background: #29303d;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1.15rem;
+            transition: box-shadow 0.15s;
+        }
+
+        .seat-name {
+            overflow: hidden;
+            text-overflow: ellipsis;
+            white-space: nowrap;
+        }
+
+        .chat-box {
+            background: rgba(18, 20, 26, 0.85);
+            border-radius: 14px;
+            height: 180px;
+            display: flex;
+            flex-direction: column;
+            margin-bottom: 15px;
+            border: 1px solid #222630;
+            overflow: hidden;
+        }
+
+        #messages {
+            flex: 1;
+            padding: 12px;
+            overflow-y: auto;
+            font-size: 0.9rem;
+            display: flex;
+            flex-direction: column;
+            gap: 8px;
+        }
+
+        .msg {
+            padding: 8px 12px;
+            border-radius: 10px;
+            max-width: 82%;
+            overflow-wrap: anywhere;
+            white-space: pre-wrap;
+        }
+
+        .msg.me {
+            background: #00e676;
+            color: #000;
+            align-self: flex-end;
+            font-weight: 500;
+        }
+
+        .msg.partner {
+            background: #262b38;
+            color: #fff;
+            align-self: flex-start;
+        }
+
+        .msg.sys {
+            background: transparent;
+            color: #788292;
+            align-self: center;
+            font-size: 0.8rem;
+            text-align: center;
+            max-width: 95%;
+        }
+
+        .chat-input {
+            display: flex;
+            border-top: 1px solid #222630;
+        }
+
+        .chat-input input {
+            flex: 1;
+            min-width: 0;
+            background: transparent;
+            border: none;
+            padding: 12px;
+            color: #fff;
+            outline: none;
+            font-size: 0.9rem;
+        }
+
+        .chat-input input:disabled { opacity: 0.55; }
+
+        .chat-input button {
+            background: transparent;
+            border: none;
+            color: #00e676;
+            font-weight: bold;
+            padding: 0 18px;
+            font-size: 1.1rem;
+            cursor: pointer;
+        }
+
+        .chat-input button:disabled { color: #555; cursor: not-allowed; }
+
+        .controls {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 10px;
+        }
+
+        .btn {
+            padding: 15px;
+            border: none;
+            border-radius: 12px;
+            font-size: 1rem;
+            font-weight: 700;
+            cursor: pointer;
+        }
+
         .btn:disabled { opacity: 0.4; cursor: not-allowed; }
         #btnNext { background: #00e676; color: #000; }
         #btnStop { background: #ff5252; color: #fff; }
-        #btnMute { grid-column: span 2; background: #262b38; color: #fff; font-weight: 600; }
+
+        #btnMute {
+            grid-column: span 2;
+            background: #262b38;
+            color: #fff;
+            font-weight: 600;
+        }
+
         #btnMute.muted { background: #ff9800; color: #000; }
-        .cookie-banner { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); width: calc(100% - 30px); max-width: 460px; background: rgba(24, 27, 34, 0.96); border: 1px solid rgba(0, 230, 118, 0.35); border-radius: 16px; padding: 14px 16px; display: none; align-items: center; justify-content: space-between; gap: 12px; z-index: 999; }
+
+        .cookie-banner {
+            position: fixed;
+            bottom: 18px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: calc(100% - 30px);
+            max-width: 460px;
+            background: rgba(24, 27, 34, 0.97);
+            border: 1px solid rgba(0, 230, 118, 0.35);
+            border-radius: 16px;
+            padding: 14px 16px;
+            display: none;
+            align-items: center;
+            justify-content: space-between;
+            gap: 12px;
+            z-index: 999;
+        }
+
         .cookie-banner.show { display: flex; }
-        .cookie-text { font-size: 0.88rem; color: #e6ecf5; line-height: 1.4; }
+
+        .cookie-text {
+            font-size: 0.88rem;
+            color: #e6ecf5;
+            line-height: 1.4;
+        }
+
         .cookie-text span { color: #00e676; font-weight: 700; }
-        .cookie-close { background: #262b38; color: #a0aab8; border: 1px solid #353b4d; border-radius: 50%; width: 34px; height: 34px; min-width: 34px; display: flex; align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; }
+
+        .cookie-close {
+            background: #262b38;
+            color: #a0aab8;
+            border: 1px solid #353b4d;
+            border-radius: 50%;
+            width: 34px;
+            height: 34px;
+            min-width: 34px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 1rem;
+            cursor: pointer;
+        }
+
+        @media (max-width: 380px) {
+            .app { padding: 18px; }
+            .logo { font-size: 1.25rem; }
+            .online-badge { font-size: 0.75rem; padding: 5px 8px; }
+        }
+
+        @media (prefers-reduced-motion: reduce) {
+            .solo-spinner { animation-duration: 2.5s; }
+        }
     </style>
 </head>
 <body>
 <div class="app">
     <div class="header">
         <div class="logo">LIKODOPT</div>
-        <div class="online-badge"><span class="online-dot" id="connDot"></span>Онлайн: <span id="onlineCount">0</span></div>
+        <div class="online-badge" title="Демо-режим: сервер онлайна не подключён">
+            <span class="online-dot demo" id="connDot"></span>
+            Онлайн: <span id="onlineCount">—</span>
+        </div>
     </div>
+
+    <div class="mode-buttons">
+        <button type="button" class="mode-btn" id="btnSolo">👤 1 на 1 · Соло</button>
+        <button type="button" class="mode-btn" id="btnGroup">👥 Группа · 6 человек</button>
+    </div>
+
     <div class="voice-box">
         <div id="idleView">
-            <div class="avatar" id="partnerAvatar">🎙️</div>
-            <div id="status">Подключение к серверу...</div>
+            <div class="avatar" id="partnerAvatar">
+                <!-- КАРТИНКА АВАТАРА: ссылка задаётся ниже в AVATAR_IMAGE_URL -->
+                <img id="avatarImage" alt="Аватар собеседника" hidden>
+                <span id="avatarEmoji">🎙️</span>
+            </div>
+            <div id="status" aria-live="polite">Готово. Выберите режим общения.</div>
+            <div class="mic-state" id="micState">Микрофон не подключён</div>
         </div>
+
         <div class="queue-window" id="queueView">
-            <div class="radar">🔍</div>
+            <div class="solo-spinner" aria-label="Идёт поиск">⟳</div>
             <div class="queue-title">Вы в очереди ожидания</div>
-            <div class="queue-sub">Подбираем свободного собеседника...</div>
+            <div class="queue-sub">Подбираем собеседника для разговора 1 на 1...</div>
             <div class="queue-timer">Время поиска: <span id="searchTimerText">00:00</span></div>
         </div>
+
+        <div class="group-window" id="groupView">
+            <div class="group-title">Групповая комната</div>
+            <div class="group-info">
+                Код: <span id="groupCode">------</span>
+                · Участников: <span id="groupCount">1/6</span>
+            </div>
+            <div class="group-grid" id="groupGrid"></div>
+        </div>
     </div>
+
     <div class="chat-box">
-        <div id="messages"></div>
+        <div id="messages" aria-live="polite"></div>
         <form class="chat-input" id="chatForm">
-            <input type="text" id="msgInput" placeholder="Написать сообщение..." disabled autocomplete="off">
-            <button type="submit" id="btnSend" disabled>➤</button>
+            <input type="text" id="msgInput" placeholder="Написать сообщение..." maxlength="500" disabled autocomplete="off">
+            <button type="submit" id="btnSend" disabled aria-label="Отправить сообщение">➤</button>
         </form>
     </div>
+
     <div class="controls">
         <button type="button" class="btn" id="btnNext">Найти / Далее</button>
         <button type="button" class="btn" id="btnStop" disabled>Стоп</button>
-        <button type="button" class="btn" id="btnMute">Выключить микрофон</button>
+        <button type="button" class="btn" id="btnMute">🎤 Включить микрофон</button>
     </div>
 
     <div id="audioPool"></div>
@@ -105,11 +492,582 @@
 
 <div class="cookie-banner" id="cookieBanner">
     <div class="cookie-text">🍪 Мы используем ваши файлы <span>Cookie</span> для улучшения работы сайта.</div>
-    <button type="button" class="cookie-close" id="btnCloseCookie">✕</button>
+    <button type="button" class="cookie-close" id="btnCloseCookie" aria-label="Закрыть">✕</button>
 </div>
-<script src="./buttons.js?v=50"></script>
-<script src="./profile.js?v=50"></script>
-<script src="https://unpkg.com"></script>
-<script src="./net.js?v=2026"></script>
+
+<script>
+(() => {
+    "use strict";
+
+    /* ==================== НАСТРОЙКИ КАРТИНОК ==================== */
+
+    // КАРТИНКА ФОНА: вставь ссылку между кавычками, например "/bg" или "./images/bg.jpg".
+    const BG_IMAGE_URL = "";
+
+    // КАРТИНКА АВАТАРА: например "./avatar.png" или "https://site.ru/avatar.jpg".
+    const AVATAR_IMAGE_URL = "";
+
+    // В демо поиск соло занимает несколько секунд. Реальные люди требуют серверную часть.
+    const DEMO_MODE = true;
+
+    /* ==================== ЭЛЕМЕНТЫ ==================== */
+
+    const $ = (id) => document.getElementById(id);
+
+    const idleView = $("idleView");
+    const queueView = $("queueView");
+    const groupView = $("groupView");
+    const statusText = $("status");
+    const micState = $("micState");
+    const partnerAvatar = $("partnerAvatar");
+    const avatarEmoji = $("avatarEmoji");
+    const avatarImage = $("avatarImage");
+
+    const messages = $("messages");
+    const chatForm = $("chatForm");
+    const msgInput = $("msgInput");
+    const btnSend = $("btnSend");
+
+    const btnSolo = $("btnSolo");
+    const btnGroup = $("btnGroup");
+    const btnNext = $("btnNext");
+    const btnStop = $("btnStop");
+    const btnMute = $("btnMute");
+
+    const searchTimerText = $("searchTimerText");
+    const groupGrid = $("groupGrid");
+    const audioPool = $("audioPool");
+
+    /* ==================== СОСТОЯНИЕ ==================== */
+
+    // idle — начальный экран, search — очередь соло,
+    // solo — демо-диалог, group — созданная групповая комната.
+    let mode = "idle";
+    let searchStartedAt = 0;
+    let searchInterval = null;
+    let matchTimeout = null;
+    let demoReplied = false;
+
+    let micStream = null;
+    let micPromise = null;
+    let audioContext = null;
+    let analyser = null;
+    let meterAnimation = null;
+
+    /* ==================== КАРТИНКИ ==================== */
+
+    if (BG_IMAGE_URL.trim()) {
+        document.body.style.background =
+            `url("${BG_IMAGE_URL.trim()}") no-repeat center center fixed, #0f1115`;
+        document.body.style.backgroundSize = "cover";
+    }
+
+    if (AVATAR_IMAGE_URL.trim()) {
+        avatarImage.src = AVATAR_IMAGE_URL.trim();
+        avatarImage.hidden = false;
+        avatarEmoji.hidden = true;
+
+        avatarImage.addEventListener("error", () => {
+            avatarImage.hidden = true;
+            avatarEmoji.hidden = false;
+        });
+    }
+
+    /* ==================== ИНТЕРФЕЙС ==================== */
+
+    function showView(name) {
+        idleView.hidden = name !== "idle";
+        queueView.classList.toggle("active", name === "queue");
+        groupView.classList.toggle("active", name === "group");
+    }
+
+    function addMessage(text, type = "sys") {
+        const item = document.createElement("div");
+        item.className = `msg ${type}`;
+
+        // textContent вместо innerHTML защищает чат от вставки HTML/скриптов.
+        item.textContent = text;
+        messages.appendChild(item);
+        messages.scrollTop = messages.scrollHeight;
+    }
+
+    function clearMessages() {
+        messages.replaceChildren();
+    }
+
+    function setChatEnabled(enabled) {
+        msgInput.disabled = !enabled;
+        btnSend.disabled = !enabled;
+        msgInput.placeholder = enabled
+            ? "Написать сообщение..."
+            : "Сначала начните поиск или создайте комнату";
+    }
+
+    function updateButtons() {
+        const isIdle = mode === "idle";
+
+        btnSolo.disabled = !isIdle;
+        btnGroup.disabled = !isIdle;
+        btnStop.disabled = isIdle;
+
+        btnNext.disabled = mode === "search" || mode === "group";
+        btnNext.textContent = mode === "solo" ? "Следующий" : "Найти / Далее";
+
+        setChatEnabled(mode === "solo" || mode === "group");
+    }
+
+    function clearTimers() {
+        if (searchInterval !== null) {
+            clearInterval(searchInterval);
+            searchInterval = null;
+        }
+
+        if (matchTimeout !== null) {
+            clearTimeout(matchTimeout);
+            matchTimeout = null;
+        }
+    }
+
+    function formatTime(totalSeconds) {
+        const minutes = String(Math.floor(totalSeconds / 60)).padStart(2, "0");
+        const seconds = String(totalSeconds % 60).padStart(2, "0");
+        return `${minutes}:${seconds}`;
+    }
+
+    function updateSearchTimer() {
+        const elapsed = Math.floor((Date.now() - searchStartedAt) / 1000);
+        searchTimerText.textContent = formatTime(elapsed);
+    }
+
+    function removeRemoteAudio() {
+        audioPool.replaceChildren();
+    }
+
+    /* ==================== МИКРОФОН И ЗВУК ==================== */
+
+    function getMicTrack() {
+        return micStream ? micStream.getAudioTracks()[0] : null;
+    }
+
+    function updateMicUI() {
+        const track = getMicTrack();
+        const isLive = track && track.readyState === "live";
+
+        if (!isLive) {
+            btnMute.textContent = "🎤 Включить микрофон";
+            btnMute.classList.remove("muted");
+            micState.textContent = "Микрофон не подключён";
+            return;
+        }
+
+        if (track.enabled) {
+            btnMute.textContent = "🎙️ Выключить микрофон";
+            btnMute.classList.remove("muted");
+            micState.textContent = "Микрофон включён";
+        } else {
+            btnMute.textContent = "🔇 Включить микрофон";
+            btnMute.classList.add("muted");
+            micState.textContent = "Микрофон выключен";
+        }
+    }
+
+    function getMicrophoneErrorText(error) {
+        switch (error && error.name) {
+            case "NotAllowedError":
+            case "SecurityError":
+                return "Доступ к микрофону запрещён. Разреши его в настройках браузера.";
+            case "NotFoundError":
+            case "DevicesNotFoundError":
+                return "Микрофон не найден. Подключи его и попробуй снова.";
+            case "NotReadableError":
+                return "Микрофон занят другим приложением или недоступен.";
+            default:
+                return "Не удалось включить микрофон: " + (error?.message || "неизвестная ошибка");
+        }
+    }
+
+    async function ensureMic() {
+        const existingTrack = getMicTrack();
+
+        if (existingTrack && existingTrack.readyState === "live") {
+            if (audioContext?.state === "suspended") {
+                await audioContext.resume().catch(() => {});
+            }
+            return true;
+        }
+
+        // Защита от нескольких одновременных запросов getUserMedia.
+        if (micPromise) return micPromise;
+
+        micPromise = (async () => {
+            if (!navigator.mediaDevices?.getUserMedia) {
+                addMessage("Браузер не поддерживает микрофон. Для HTTPS используй современный браузер.", "sys");
+                updateMicUI();
+                return false;
+            }
+
+            try {
+                micStream = await navigator.mediaDevices.getUserMedia({
+                    video: false,
+                    audio: {
+                        echoCancellation: true,
+                        noiseSuppression: true,
+                        autoGainControl: true
+                    }
+                });
+
+                const AudioContextClass = window.AudioContext || window.webkitAudioContext;
+
+                if (AudioContextClass) {
+                    audioContext = audioContext || new AudioContextClass();
+
+                    // AudioContext запускается только после пользовательского действия.
+                    if (audioContext.state === "suspended") {
+                        await audioContext.resume();
+                    }
+
+                    const source = audioContext.createMediaStreamSource(micStream);
+                    analyser = audioContext.createAnalyser();
+                    analyser.fftSize = 512;
+                    analyser.smoothingTimeConstant = 0.55;
+
+                    // ВАЖНО: source НЕ подключается к audioContext.destination.
+                    // Иначе свой голос идёт в динамики и появляется эхо/писк.
+                    source.connect(analyser);
+                    startMicLevelMeter();
+                }
+
+                const track = getMicTrack();
+                track.enabled = true;
+                track.addEventListener("ended", () => {
+                    stopMic();
+                }, { once: true });
+
+                updateMicUI();
+                return true;
+            } catch (error) {
+                console.error("Microphone error:", error);
+                addMessage(getMicrophoneErrorText(error), "sys");
+                stopMic();
+                return false;
+            }
+        })();
+
+        try {
+            return await micPromise;
+        } finally {
+            micPromise = null;
+        }
+    }
+
+    function stopMic() {
+        if (meterAnimation !== null) {
+            cancelAnimationFrame(meterAnimation);
+            meterAnimation = null;
+        }
+
+        if (micStream) {
+            micStream.getTracks().forEach((track) => track.stop());
+        }
+
+        micStream = null;
+        analyser = null;
+        partnerAvatar.classList.remove("speaking");
+
+        const ownSeat = groupGrid.querySelector(".seat.occupied");
+        if (ownSeat) ownSeat.classList.remove("speaking");
+
+        updateMicUI();
+    }
+
+    async function toggleMic() {
+        const track = getMicTrack();
+
+        if (!track || track.readyState !== "live") {
+            await ensureMic();
+            return;
+        }
+
+        track.enabled = !track.enabled;
+
+        if (track.enabled && audioContext?.state === "suspended") {
+            await audioContext.resume().catch(() => {});
+        }
+
+        updateMicUI();
+    }
+
+    function startMicLevelMeter() {
+        if (!analyser || meterAnimation !== null) return;
+
+        const data = new Uint8Array(analyser.fftSize);
+
+        const measure = () => {
+            if (!analyser || !micStream) {
+                meterAnimation = null;
+                return;
+            }
+
+            analyser.getByteTimeDomainData(data);
+
+            let peak = 0;
+            for (const value of data) {
+                peak = Math.max(peak, Math.abs(value - 128));
+            }
+
+            const track = getMicTrack();
+            const speaking = Boolean(track?.enabled) && peak > 13;
+
+            partnerAvatar.classList.toggle(
+                "speaking",
+                speaking && mode === "solo"
+            );
+
+            const ownSeat = groupGrid.querySelector(".seat.occupied");
+            if (ownSeat) {
+                ownSeat.classList.toggle("speaking", speaking && mode === "group");
+            }
+
+            meterAnimation = requestAnimationFrame(measure);
+        };
+
+        meterAnimation = requestAnimationFrame(measure);
+    }
+
+    /*
+        Эту функцию может вызвать серверная/WebRTC-часть, когда появится
+        аудиопоток другого человека:
+
+        window.LikodoptAudio.playRemoteStream(remoteStream, "peer-id");
+
+        Локальный поток для WebRTC:
+        window.LikodoptAudio.getLocalStream()
+    */
+    function playRemoteStream(stream, id = "peer") {
+        const oldAudio = audioPool.querySelector(`[data-peer="${CSS.escape(id)}"]`);
+        if (oldAudio) oldAudio.remove();
+
+        const audio = document.createElement("audio");
+        audio.dataset.peer = id;
+        audio.autoplay = true;
+        audio.playsInline = true;
+        audio.setAttribute("playsinline", "");
+        audio.srcObject = stream;
+        audio.muted = false;
+        audio.volume = 1;
+
+        audioPool.appendChild(audio);
+
+        audio.play().catch(() => {
+            addMessage("Браузер заблокировал автозвук. Нажми один раз по странице, чтобы включить его.", "sys");
+        });
+
+        return audio;
+    }
+
+    window.LikodoptAudio = {
+        playRemoteStream,
+        getLocalStream: () => micStream
+    };
+
+    // Разблокировка звука и AudioContext после жеста пользователя.
+    document.addEventListener("pointerdown", () => {
+        if (audioContext?.state === "suspended") {
+            audioContext.resume().catch(() => {});
+        }
+
+        audioPool.querySelectorAll("audio").forEach((audio) => {
+            if (audio.paused) audio.play().catch(() => {});
+        });
+    }, { passive: true });
+
+    /* ==================== СОЛО 1 НА 1 ==================== */
+
+    function startSoloSearch() {
+        clearTimers();
+        removeRemoteAudio();
+
+        mode = "search";
+        demoReplied = false;
+        clearMessages();
+        showView("queue");
+        updateButtons();
+
+        avatarEmoji.textContent = "🎙️";
+        searchTimerText.textContent = "00:00";
+        searchStartedAt = Date.now();
+
+        addMessage("Начат поиск собеседника 1 на 1. Нажми «Стоп», чтобы отменить.", "sys");
+        searchInterval = setInterval(updateSearchTimer, 1000);
+
+        // Разрешение запрашивается непосредственно после нажатия кнопки.
+        ensureMic();
+
+        if (DEMO_MODE) {
+            const delay = 2200 + Math.floor(Math.random() * 1800);
+            matchTimeout = setTimeout(connectDemoPartner, delay);
+        } else {
+            // Здесь должна вызываться команда входа в очередь твоего сервера.
+            addMessage("Ожидание ответа сервера...", "sys");
+        }
+    }
+
+    function connectDemoPartner() {
+        if (mode !== "search") return;
+
+        clearTimers();
+        mode = "solo";
+        showView("idle");
+        avatarEmoji.textContent = "🎧";
+        statusText.textContent = "Собеседник найден · демо-режим 1 на 1";
+        updateButtons();
+
+        addMessage("Собеседник найден. Можно писать и проверять микрофон.", "sys");
+        addMessage("Это демо: для поиска реальных людей и передачи голоса нужно подключить сервер.", "sys");
+        msgInput.focus();
+    }
+
+    /* ==================== ГРУППА НА 6 ЧЕЛОВЕК ==================== */
+
+    function makeRoomCode() {
+        return Math.random().toString(36).slice(2, 8).toUpperCase().padEnd(6, "X");
+    }
+
+    function renderGroupSeats() {
+        groupGrid.replaceChildren();
+
+        for (let index = 0; index < 6; index++) {
+            const seat = document.createElement("div");
+            const isOwnSeat = index === 0;
+
+            seat.className = "seat" + (isOwnSeat ? " occupied" : "");
+
+            const avatar = document.createElement("div");
+            avatar.className = "seat-avatar";
+            avatar.textContent = isOwnSeat ? "🎙️" : "＋";
+
+            const name = document.createElement("div");
+            name.className = "seat-name";
+            name.textContent = isOwnSeat ? "Вы" : "Свободно";
+
+            seat.append(avatar, name);
+            groupGrid.appendChild(seat);
+        }
+    }
+
+    function createGroupRoom() {
+        clearTimers();
+        removeRemoteAudio();
+
+        mode = "group";
+        clearMessages();
+        showView("group");
+        renderGroupSeats();
+
+        $("groupCode").textContent = makeRoomCode();
+        $("groupCount").textContent = "1/6";
+
+        updateButtons();
+        ensureMic();
+
+        addMessage("Групповая комната на 6 человек создана. Ты занимаешь первое место.", "sys");
+        addMessage("Остальные места свободны. Реальное подключение участников выполняется через сервер.", "sys");
+        msgInput.focus();
+    }
+
+    /* ==================== ОСТАНОВКА ==================== */
+
+    function stopSession() {
+        const wasActive = mode !== "idle";
+
+        clearTimers();
+        removeRemoteAudio();
+        stopMic();
+
+        mode = "idle";
+        showView("idle");
+        partnerAvatar.classList.remove("speaking");
+        avatarEmoji.textContent = "🎙️";
+        statusText.textContent = "Готово. Выберите режим общения.";
+        searchTimerText.textContent = "00:00";
+        updateButtons();
+
+        if (wasActive) {
+            addMessage("Поиск или разговор остановлен. Микрофон отключён.", "sys");
+        }
+    }
+
+    /* ==================== ЧАТ ==================== */
+
+    chatForm.addEventListener("submit", (event) => {
+        event.preventDefault();
+
+        const text = msgInput.value.trim();
+        if (!text || (mode !== "solo" && mode !== "group")) return;
+
+        addMessage(text, "me");
+        msgInput.value = "";
+        msgInput.focus();
+
+        // Один честно подписанный демо-ответ, чтобы проверить стили входящих сообщений.
+        if (mode === "solo" && DEMO_MODE && !demoReplied) {
+            demoReplied = true;
+
+            setTimeout(() => {
+                if (mode === "solo") {
+                    addMessage("Привет! Я демо-собеседник. Интерфейс чата работает 👋", "partner");
+                }
+            }, 600);
+        }
+    });
+
+    /* ==================== КНОПКИ ==================== */
+
+    btnSolo.addEventListener("click", startSoloSearch);
+    btnNext.addEventListener("click", startSoloSearch);
+    btnGroup.addEventListener("click", createGroupRoom);
+    btnStop.addEventListener("click", stopSession);
+    btnMute.addEventListener("click", toggleMic);
+
+    /* ==================== COOKIE ==================== */
+
+    const cookieBanner = $("cookieBanner");
+    const cookieKey = "likodopt_cookie_accepted";
+    let cookieAccepted = false;
+
+    try {
+        cookieAccepted = localStorage.getItem(cookieKey) === "1";
+    } catch (_) {
+        // localStorage может быть запрещён настройками браузера.
+    }
+
+    if (!cookieAccepted) {
+        cookieBanner.classList.add("show");
+    }
+
+    $("btnCloseCookie").addEventListener("click", () => {
+        cookieBanner.classList.remove("show");
+
+        try {
+            localStorage.setItem(cookieKey, "1");
+        } catch (_) {
+            // Баннер всё равно закрывается, даже если хранилище недоступно.
+        }
+    });
+
+    /* ==================== ЗАПУСК И ВЫХОД ==================== */
+
+    window.addEventListener("beforeunload", () => {
+        clearTimers();
+        stopMic();
+    });
+
+    showView("idle");
+    setChatEnabled(false);
+    updateButtons();
+    updateMicUI();
+    addMessage("Выбери «1 на 1», группу или нажми «Найти / Далее».", "sys");
+})();
+</script>
 </body>
 </html>
