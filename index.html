@@ -1,55 +1,4 @@
-constexpress=require('express');
-const path=require('path');
-const fs = require('fs');
-
-const app = express();
-const PORT = process.env.PORT || 3000;
-
-app.use(express.json());
-app.use(express.static(__dirname));
-
-const users = new Map();
-let waitingQueue = [];
-const pairs = new Map();
-
-function ensureUser(id) {
-    if (!users.has(id)) {
-        users.set(id, { lastSeen: Date.now(), events: [] });
-    }
-    const u = users.get(id);
-    u.lastSeen = Date.now();
-    return u;
-}
-
-function pushEvent(id, ev) {
-    const u = users.get(id);
-    if (u) u.events.push(ev);
-}
-
-function removeFromQueue(id) {
-    waitingQueue = waitingQueue.filter(cid => cid !== id);
-}
-
-function disconnectPartner(id) {
-    const partnerId = pairs.get(id);
-    if (partnerId) {
-        pairs.delete(id);
-        pairs.delete(partnerId);
-        pushEvent(partnerId, { type: 'partner_disconnected' });
-    }
-}
-
-setInterval(() => {
-    const now = Date.now();
-    for (const [id, u] of users.entries()) {
-        if (now - u.lastSeen > 12000) {
-            users.delete(id);
-            removeFromQueue(id);
-            disconnectPartner(id);
-        }
-    }
-}, 4000);
-const HTML_PAGE = `<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -146,39 +95,21 @@ const HTML_PAGE = `<!DOCTYPE html>
         </form>
     </div>
     <div class="controls">
-      <button type="button" class="btn" id="btnNext">Найти / Далее</button>
-      <button type="button" class="btn" id="btnStop" disabled>Стоп</button>
-      <button type="button" class="btn" id="btnMute">Выключить микрофон</button>
+        <button type="button" class="btn" id="btnNext">Найти / Далее</button>
+        <button type="button" class="btn" id="btnStop" disabled>Стоп</button>
+        <button type="button" class="btn" id="btnMute">Выключить микрофон</button>
     </div>
 
     <div id="audioPool"></div>
-  </div>
+</div>
 
-   <div class="cookie-banner" id="cookieBanner">
+<div class="cookie-banner" id="cookieBanner">
     <div class="cookie-text">🍪 Мы используем ваши файлы <span>Cookie</span> для улучшения работы сайта.</div>
     <button type="button" class="cookie-close" id="btnCloseCookie">✕</button>
-  </div>
-     <script src="./buttons.js?v=50"></script>
-  <script src="./profile.js?v=50"></script>
-    <script src="https://unpkg.com"></script>
-  <script src="./net.js?v=2026"></script>
+</div>
+<script src="./buttons.js?v=50"></script>
+<script src="./profile.js?v=50"></script>
+<script src="https://unpkg.com"></script>
+<script src="./net.js?v=2026"></script>
 </body>
-</html>`;
-app.get('/', (req, res) => {
-    res.send(HTML_PAGE);
-});
-
-app.get('/bg', (req, res) => {
-    const bgFiles = ['bg.jpg', 'bg.png', 'bg.webp', 'background.jpg', 'background.png'];
-    for (const file of bgFiles) {
-        const fullPath = path.join(__dirname, file);
-        if (fs.existsSync(fullPath)) {
-            return res.sendFile(fullPath);
-        }
-    }
-    res.status(204).end();
-});
-
-app.listen(PORT, '0.0.0.0', () => {
-    console.log(`Server running on port ${PORT}`);
-});
+</html>
