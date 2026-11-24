@@ -1,174 +1,241 @@
-<!DOCTYPE html>
-<html lang="ru" translate="no">
+const express = require('express');
+const path = require('path');
+const fs = require('fs');
+
+const app = express();
+const PORT = process.env.PORT || 80;
+
+app.use(express.json());
+app.use(express.static(__dirname));
+
+const users = new Map();
+let waitingQueue = [];
+const pairs = new Map();
+
+function ensureUser(id) {
+    if (!users.has(id)) {
+        users.set(id, { lastSeen: Date.now(), events: [] });
+    }
+    const u = users.get(id);
+    u.lastSeen = Date.now();
+    return u;
+}
+
+function pushEvent(id, ev) {
+    const u = users.get(id);
+    if (u) u.events.push(ev);
+}
+
+function removeFromQueue(id) {
+    waitingQueue = waitingQueue.filter(cid => cid !== id);
+}
+
+function disconnectPartner(id) {
+    const partnerId = pairs.get(id);
+    if (partnerId) {
+        pairs.delete(id);
+        pairs.delete(partnerId);
+        pushEvent(partnerId, { type: 'partner_disconnected' });
+    }
+}
+
+setInterval(() => {
+    const now = Date.now();
+    for (const [id, u] of users.entries()) {
+        if (now - u.lastSeen > 12000) {
+            users.delete(id);
+            removeFromQueue(id);
+            disconnectPartner(id);
+        }
+    }
+}, 4000);
+
+const HTML_PAGE = `<!DOCTYPE html>
+<html lang="ru">
 <head>
-  <meta charset="UTF-8">
-  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-  <meta name="google" content="notranslate">
-  <title>LIKODOPT — Голосовая чат-рулетка</title>
-  <style>
-    * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
-    body {
-      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
-      background-color: #0f1115;
-      background-image: url('./bg.png'), url('./bg.jpg'), url('./bg.jpeg'), url('./bg.webp');
-      background-position: center center;
-      background-repeat: no-repeat;
-      background-size: cover;
-      background-attachment: fixed;
-      color: #ffffff;
-      display: flex;
-      justify-content: center;
-      align-items: center;
-      min-height: 100vh;
-      padding: 16px;
-    }
-    .app {
-      background: rgba(24, 27, 34, 0.94);
-      width: 100%;
-      max-width: 460px;
-      border-radius: 22px;
-      padding: 22px;
-      box-shadow: 0 16px 48px rgba(0, 0, 0, 0.75);
-      border: 1px solid #2a2f3d;
-      position: relative;
-      z-index: 10;
-    }
-    .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 14px; padding-bottom: 10px; border-bottom: 1px solid rgba(255, 255, 255, 0.07); }
-    .logo { font-size: 1.55rem; font-weight: 900; color: #00e676; letter-spacing: 1.2px; }
-    .online-badge { background: #232834; padding: 6px 12px; border-radius: 20px; font-size: 0.82rem; font-weight: 600; color: #b0bac9; display: flex; align-items: center; border: 1px solid #303646; }
-    .online-dot { width: 8px; height: 8px; background: #00e676; border-radius: 50%; margin-right: 7px; box-shadow: 0 0 8px #00e676; }
-
-    .mode-switch { display: grid; grid-template-columns: 1fr 1fr; gap: 8px; background: rgba(18, 20, 26, 0.9); padding: 5px; border-radius: 14px; border: 1px solid #252a36; margin-bottom: 14px; }
-    .mode-btn { padding: 11px 8px; border: none; border-radius: 10px; font-size: 0.88rem; font-weight: 700; cursor: pointer; background: transparent; color: #8c96a6; }
-    .mode-btn.active { background: #00e676; color: #000000; }
-
-    .voice-box { background: rgba(18, 20, 26, 0.88); border-radius: 16px; padding: 20px 15px; text-align: center; margin-bottom: 14px; border: 1px solid #252a36; min-height: 190px; display: flex; flex-direction: column; justify-content: center; align-items: center; }
-    .screen-view { display: none; flex-direction: column; align-items: center; width: 100%; }
-    .screen-view.active { display: flex; }
-
-    .avatar { width: 72px; height: 72px; border-radius: 50%; background: #232834; margin: 0 auto 10px; display: flex; align-items: center; justify-content: center; font-size: 2rem; border: 2px solid #303646; }
-    .avatar.speaking { box-shadow: 0 0 0 6px rgba(0, 230, 118, 0.3); background: #1c382c; border: 2px solid #00e676; }
-    #status { font-size: 1.05rem; color: #e2e8f0; font-weight: 700; }
-
-    .radar { position: relative; width: 72px; height: 72px; border-radius: 50%; background: rgba(0, 230, 118, 0.12); border: 2px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 1.85rem; margin-bottom: 10px; pointer-events: none; }
-    .radar::before { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid #00e676; animation: pulseRing 2s infinite ease-out; pointer-events: none; }
-    @keyframes pulseRing { 0% { transform: scale(0.95); opacity: 0.85; } 100% { transform: scale(1.55); opacity: 0; } }
-
-    .queue-title { font-size: 1.06rem; font-weight: 700; color: #00e676; margin-bottom: 4px; }
-    .queue-sub { font-size: 0.84rem; color: #9aa5b4; margin-bottom: 8px; }
-    .timer-pill { background: #232834; color: #ffffff; padding: 5px 14px; border-radius: 12px; font-size: 0.84rem; font-weight: 700; border: 1px solid #343b4b; }
-
-    .lobby-chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 6px; margin-bottom: 10px; }
-    .chip { background: #232834; border: 1px solid #00e676; color: #ffffff; padding: 4px 10px; border-radius: 14px; font-size: 0.76rem; font-weight: 600; }
-
-    .group-grid { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; width: 100%; margin-bottom: 10px; }
-    .seat { background: #1d212b; border: 1px solid #2e3444; border-radius: 12px; padding: 9px 4px; font-size: 0.76rem; color: #788292; display: flex; flex-direction: column; align-items: center; gap: 4px; }
-    .seat.occupied { background: #1c382c; border-color: #00e676; color: #ffffff; font-weight: 600; }
-
-    .chat-box { background: rgba(18, 20, 26, 0.88); border-radius: 14px; height: 155px; display: flex; flex-direction: column; margin-bottom: 14px; border: 1px solid #252a36; overflow: hidden; }
-    #messages { flex: 1; padding: 10px; overflow-y: auto; font-size: 0.9rem; display: flex; flex-direction: column; gap: 7px; }
-    .msg { padding: 7px 11px; border-radius: 10px; max-width: 82%; word-wrap: break-word; }
-    .msg.me { background: #00e676; color: #000000; align-self: flex-end; font-weight: 600; }
-    .msg.partner { background: #262b38; color: #ffffff; align-self: flex-start; }
-    .msg.sys { background: transparent; color: #8490a2; align-self: center; font-size: 0.8rem; text-align: center; }
-
-    .chat-input { display: flex; border-top: 1px solid #252a36; }
-    .chat-input input { flex: 1; background: transparent; border: none; padding: 11px 12px; color: #ffffff; outline: none; font-size: 16px; }
-    .chat-input button { background: transparent; border: none; color: #00e676; font-weight: 800; padding: 0 16px; font-size: 1.2rem; cursor: pointer; }
-    .chat-input button:disabled { color: #555e6e; cursor: not-allowed; }
-
-    .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
-    .btn { padding: 14px; border: none; border-radius: 12px; font-size: 0.98rem; font-weight: 700; cursor: pointer; }
-    .btn:active:not(:disabled) { transform: scale(0.97); }
-    .btn:disabled { opacity: 0.4; cursor: not-allowed; }
-    #btnNext { background: #00e676; color: #000000; }
-    #btnStop { background: #ff5252; color: #ffffff; }
-    #btnMute { grid-column: span 2; background: #262b38; color: #ffffff; font-weight: 600; border: 1px solid #323848; }
-    #btnMute.muted { background: #ff9800; color: #000000; }
-
-    .cookie-banner { position: fixed; bottom: 16px; left: 50%; transform: translateX(-50%); width: calc(100% - 30px); max-width: 460px; background: rgba(24, 27, 34, 0.98); border: 1px solid rgba(0, 230, 118, 0.45); border-radius: 16px; padding: 12px 16px; display: flex; align-items: center; justify-content: space-between; gap: 12px; z-index: 9999; box-shadow: 0 10px 30px rgba(0, 0, 0, 0.85); }
-    .cookie-text { font-size: 0.85rem; color: #e6ecf5; line-height: 1.35; }
-    .cookie-text span { color: #00e676; font-weight: 700; }
-    .cookie-close { background: #262b38; color: #ffffff; border: 1px solid #353b4d; border-radius: 50%; width: 32px; height: 32px; min-width: 32px; display: flex; align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; }
-  </style>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <meta name="google" content="notranslate">
+    <title>Likodopt — Голосовая чат-рулетка</title>
+    <style>
+        * { box-sizing: border-box; margin: 0; padding: 0; -webkit-tap-highlight-color: transparent; }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+            background: url('/bg') no-repeat center center fixed, #0f1115;
+            background-size: cover;
+            color: #fff;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 15px;
+        }
+        .app {
+            background: rgba(24, 27, 34, 0.90);
+            backdrop-filter: blur(8px);
+            width: 100%;
+            max-width: 460px;
+            border-radius: 20px;
+            padding: 25px;
+            box-shadow: 0 12px 40px rgba(0,0,0,0.6);
+            border: 1px solid #262a35;
+        }
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .logo { font-size: 1.5rem; font-weight: 800; color: #00e676; letter-spacing: 1px; }
+        .online-badge { background: #232834; padding: 6px 12px; border-radius: 20px; font-size: 0.85rem; color: #a0aab8; display: flex; align-items: center; }
+        .online-dot { width: 8px; height: 8px; background: #ff5252; border-radius: 50%; margin-right: 6px; transition: background 0.3s; }
+        .online-dot.connected { background: #00e676; }
+        .voice-box { background: rgba(18, 20, 26, 0.85); border-radius: 16px; padding: 22px 15px; text-align: center; margin-bottom: 15px; border: 1px solid #222630; }
+        .avatar { width: 72px; height: 72px; border-radius: 50%; background: #232834; margin: 0 auto 12px; display: flex; align-items: center; justify-content: center; font-size: 2rem; }
+        .avatar.speaking { box-shadow: 0 0 0 6px rgba(0, 230, 118, 0.35); background: #1c382c; }
+        #status { font-size: 1rem; color: #cfd8e3; font-weight: 500; }
+        .queue-window { display: none; flex-direction: column; align-items: center; padding: 10px 5px; }
+        .queue-window.active { display: flex; }
+        .radar { position: relative; width: 76px; height: 76px; border-radius: 50%; background: rgba(0, 230, 118, 0.12); border: 2px solid #00e676; display: flex; align-items: center; justify-content: center; font-size: 1.9rem; margin-bottom: 14px; }
+        .radar::before { content: ''; position: absolute; inset: -4px; border-radius: 50%; border: 2px solid #00e676; animation: pulseRing 2s infinite ease-out; }
+        @keyframes pulseRing { 0% { transform: scale(0.95); opacity: 0.8; } 100% { transform: scale(1.55); opacity: 0; } }
+        .queue-title { font-size: 1.05rem; font-weight: 700; color: #00e676; margin-bottom: 6px; }
+        .queue-sub { font-size: 0.85rem; color: #a0aab8; margin-bottom: 10px; }
+        .queue-timer { background: #232834; color: #fff; padding: 4px 12px; border-radius: 12px; font-size: 0.85rem; font-weight: 600; border: 1px solid #323846; }
+        .chat-box { background: rgba(18, 20, 26, 0.85); border-radius: 14px; height: 180px; display: flex; flex-direction: column; margin-bottom: 15px; border: 1px solid #222630; overflow: hidden; }
+        #messages { flex: 1; padding: 12px; overflow-y: auto; font-size: 0.9rem; display: flex; flex-direction: column; gap: 8px; }
+        .msg { padding: 8px 12px; border-radius: 10px; max-width: 82%; word-wrap: break-word; }
+        .msg.me { background: #00e676; color: #000; align-self: flex-end; font-weight: 500; }
+        .msg.partner { background: #262b38; color: #fff; align-self: flex-start; }
+        .msg.sys { background: transparent; color: #788292; align-self: center; font-size: 0.8rem; text-align: center; }
+        .chat-input { display: flex; border-top: 1px solid #222630; }
+        .chat-input input { flex: 1; background: transparent; border: none; padding: 12px; color: #fff; outline: none; font-size: 0.9rem; }
+        .chat-input button { background: transparent; border: none; color: #00e676; font-weight: bold; padding: 0 18px; font-size: 1.1rem; cursor: pointer; }
+        .chat-input button:disabled { color: #555; }
+        .controls { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .btn { padding: 15px; border: none; border-radius: 12px; font-size: 1rem; font-weight: 700; cursor: pointer; }
+        .btn:disabled { opacity: 0.4; cursor: not-allowed; }
+        #btnNext { background: #00e676; color: #000; }
+        #btnStop { background: #ff5252; color: #fff; }
+        #btnMute { grid-column: span 2; background: #262b38; color: #fff; font-weight: 600; }
+        #btnMute.muted { background: #ff9800; color: #000; }
+        .cookie-banner { position: fixed; bottom: 18px; left: 50%; transform: translateX(-50%); width: calc(100% - 30px); max-width: 460px; background: rgba(24, 27, 34, 0.96); border: 1px solid rgba(0, 230, 118, 0.35); border-radius: 16px; padding: 14px 16px; display: none; align-items: center; justify-content: space-between; gap: 12px; z-index: 999; }
+        .cookie-banner.show { display: flex; }
+        .cookie-text { font-size: 0.88rem; color: #e6ecf5; line-height: 1.4; }
+        .cookie-text span { color: #00e676; font-weight: 700; }
+        .cookie-close { background: #262b38; color: #a0aab8; border: 1px solid #353b4d; border-radius: 50%; width: 34px; height: 34px; min-width: 34px; display: flex; align-items: center; justify-content: center; font-size: 1rem; cursor: pointer; }
+    </style>
 </head>
 <body>
-
-  <div class="app">
+<div class="app">
     <div class="header">
-      <div class="logo">LIKODOPT</div>
-      <div class="online-badge">
-        <span class="online-dot"></span>
-        <span id="netStatus">Онлайн: В сети</span>
-      </div>
+        <div class="logo">LIKODOPT</div>
+        <div class="online-badge"><span class="online-dot" id="connDot"></span>Онлайн: <span id="onlineCount">0</span></div>
     </div>
-
-    <div class="mode-switch">
-      <button type="button" class="mode-btn active" id="btnModeSolo">👤 Соло (1 на 1)</button>
-      <button type="button" class="mode-btn" id="btnModeGroup">👥 Групповой (до 6)</button>
-    </div>
-
     <div class="voice-box">
-      <div class="screen-view active" id="idleView">
-        <div class="avatar" id="idleIcon">🎙️</div>
-        <div id="status">Режим: Соло (1 на 1)</div>
-        <div class="queue-sub" style="margin-top: 5px; margin-bottom: 0;">Нажмите «Найти / Далее»</div>
-      </div>
-
-      <div class="screen-view" id="queueView">
-        <div class="radar">⏳</div>
-        <div class="queue-title">Окно ожидания собеседника</div>
-        <div class="queue-sub">Вы в очереди. Подбираем свободного человека...</div>
-        <div class="lobby-chips" id="lobbyChips"></div>
-        <div class="timer-pill">Время ожидания: <span id="searchTimerText">00:00</span></div>
-      </div>
-
-            <!-- Экран-рума: Собеседник найден (1 на 1) -->
-      <div class="screen-view" id="callView">
-        <div class="queue-title" style="color: #00e676; margin-bottom: 10px;">● Рума 1 на 1 • Собеседник найден!</div>
-        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 10px; width: 100%; margin-bottom: 12px;">
-          <div class="seat occupied" id="roomMeCard" style="padding: 12px 6px;">
-            <span style="font-size: 1.5rem;">🎙️</span>
-            <span>Вы</span>
-          </div>
-          <div class="seat occupied" id="roomPartnerCard" style="padding: 12px 6px;">
-            <span style="font-size: 1.5rem;">🎧</span>
-            <span>Собеседник</span>
-          </div>
+        <div id="idleView">
+            <div class="avatar" id="partnerAvatar">🎙️</div>
+            <div id="status">Подключение к серверу...</div>
         </div>
-        <div class="timer-pill" style="color: #00e676; border-color: #00e676;">В эфире: <span id="callTimerText">00:00</span></div>
-      </div>
-
-      <div class="screen-view" id="groupView">
-        <div class="group-grid" id="groupGrid"></div>
-        <div class="timer-pill" style="color: #00e676;">● Комната (<span id="groupCountText">1</span>/6) • <span id="groupTimerText">00:00</span></div>
-      </div>
+        <div class="queue-window" id="queueView">
+            <div class="radar">🔍</div>
+            <div class="queue-title">Вы в очереди ожидания</div>
+            <div class="queue-sub">Подбираем свободного собеседника...</div>
+            <div class="queue-timer">Время поиска: <span id="searchTimerText">00:00</span></div>
+        </div>
     </div>
-
     <div class="chat-box">
-      <div id="messages"></div>
-      <form class="chat-input" id="chatForm">
-        <input type="text" id="msgInput" placeholder="Написать сообщение..." disabled autocomplete="off">
-        <button type="submit" id="btnSend" disabled>➤</button>
-      </form>
+        <div id="messages"></div>
+        <form class="chat-input" id="chatForm">
+            <input type="text" id="msgInput" placeholder="Написать сообщение..." disabled autocomplete="off">
+            <button type="submit" id="btnSend" disabled>➤</button>
+        </form>
     </div>
-
     <div class="controls">
-      <button type="button" class="btn" id="btnNext">Найти / Далее</button>
-      <button type="button" class="btn" id="btnStop" disabled>Стоп</button>
-      <button type="button" class="btn" id="btnMute">Выключить микрофон</button>
+        <button type="button" class="btn" id="btnNext">Найти / Далее</button>
+        <button type="button" class="btn" id="btnStop" disabled>Стоп</button>
+        <button type="button" class="btn" id="btnMute">Выключить микрофон</button>
     </div>
 
     <div id="audioPool"></div>
-  </div>
+</div>
 
-   <div class="cookie-banner" id="cookieBanner">
+<div class="cookie-banner" id="cookieBanner">
     <div class="cookie-text">🍪 Мы используем ваши файлы <span>Cookie</span> для улучшения работы сайта.</div>
     <button type="button" class="cookie-close" id="btnCloseCookie">✕</button>
-  </div>
-     <script src="./buttons.js?v=50"></script>
-  <script src="./profile.js?v=50"></script>
-    <script src="https://unpkg.com"></script>
-  <script src="./net.js?v=2026"></script>
+</div>
+<script src="./buttons.js?v=50"></script>
+<script src="./profile.js?v=50"></script>
+<script src="https://unpkg.com"></script>
+<script src="./net.js?v=2026"></script>
 </body>
-</html>
+</html>`;
+
+// Главная страница
+app.get('/', (req, res) => {
+    res.send(HTML_PAGE);
+});
+
+// Фон страницы (отдает картинку, если есть в папке, иначе пустой ответ без ошибки)
+app.get('/bg', (req, res) => {
+    const bgFiles = ['bg.jpg', 'bg.png', 'bg.webp', 'background.jpg', 'background.png'];
+    for (const file of bgFiles) {
+        const fullPath = path.join(__dirname, file);
+        if (fs.existsSync(fullPath)) {
+            return res.sendFile(fullPath);
+        }
+    }
+    res.status(204).end();
+});
+
+// Опрос событий (Polling)
+app.post('/poll', (req, res) => {
+    const { id } = req.body;
+    if (!id) return res.status(400).json({ error: 'No id' });
+    const u = ensureUser(id);
+    const events = u.events.splice(0, u.events.length);
+    res.json({ events, online: users.size });
+});
+
+// Поиск собеседника
+app.post('/find', (req, res) => {
+    const { id, peerId } = req.body;
+    if (!id) return res.status(400).json({ error: 'No id' });
+    const u = ensureUser(id);
+    if (peerId) u.peerId = peerId;
+
+    disconnectPartner(id);
+    removeFromQueue(id);
+
+    if (waitingQueue.length > 0) {
+        const partnerId = waitingQueue.shift();
+        if (partnerId && partnerId !== id && users.has(partnerId)) {
+const partner = users.get(partnerId);
+pairs.set(id, partnerId);
+pairs.set(partnerId, id);
+pushEvent(id, { type: 'matched', partnerId, partnerPeerId: partner.peerId, initiator: true });
+pushEvent(partnerId, { type: 'matched', partnerId: id, partnerPeerId: u.peerId, initiator: false });
+return res.json({ status: 'matched' });
+}
+}
+Очередь ожидания.push(id);
+res.json({ статус: 'ожидание' });
+});
+// Остановка поиска / сброс звонка
+app.post('/stop', (req, res) => {
+const { id } = req.body;
+if (!id) return res.status(400).json({ error: 'No id' });
+ensureUser(id);
+removeFromQueue(id);
+disconnectPartner(id);
+res.json({ status: 'stopped' });
+});
+// Отправка текстового сообщения собеседнику
+app.post('/msg', (req, res) => {
+const { id, text } = req.body;
+if (!id ||!text) возвращает res.status(400).json({ ошибка: 'Неверный запрос' });
+EnsureUser(id);
+const partnerId = pairs.get(id);
+if (partnerId) {
+pushEvent(partnerId, { тип: 'сообщение', текст: строка(текст).slice(0, 500) });
+}
+res.json({ ok: true });
+});
+app.listen(ПОРТ, '0.0.0.0', () => {
+console.log(Server running on port ${PORT});
+});
