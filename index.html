@@ -1,135 +1,4 @@
-const express = require('express');
-const path = require('path');
-const fs = require('fs');
-
-const app = express();
-const PORT = process.env.PORT || 80;
-
-app.use(express.json());
-app.use(express.static(__dirname));
-
-// --- СЕРВЕРНАЯ ЛОГИКА ОЧЕРЕДИ И СИГНАЛОВ ---
-const users = new Map(); // id -> { lastSeen, events: [] }
-let waitingQueue = [];
-const pairs = new Map(); // id -> partnerId
-
-function getUser(id) {
-    if (!users.has(id)) {
-        users.set(id, { lastSeen: Date.now(), events: [] });
-    }
-    const u = users.get(id);
-    u.lastSeen = Date.now();
-    return u;
-}
-
-function sendEvent(targetId, event) {
-    const u = users.get(targetId);
-    if (u) u.events.push(event);
-}
-
-function removeFromQueue(id) {
-    waitingQueue = waitingQueue.filter(uid => uid !== id);
-}
-
-function breakPair(id) {
-    const partnerId = pairs.get(id);
-    if (partnerId) {
-        pairs.delete(id);
-        pairs.delete(partnerId);
-        sendEvent(partnerId, { type: 'partner_left' });
-    }
-}
-
-// Чистим тех, кто закрыл вкладку
-setInterval(() => {
-    const now = Date.now();
-    for (const [id, u] of users.entries()) {
-        if (now - u.lastSeen > 10000) {
-            users.delete(id);
-            removeFromQueue(id);
-            breakPair(id);
-        }
-    }
-}, 3000);
-
-// --- API МАРШРУТЫ ---
-app.post('/api/poll', (req, res) => {
-    const { id } = req.body;
-    if (!id) return res.status(400).end();
-    const u = getUser(id);
-    const events = u.events.splice(0, u.events.length);
-    res.json({
-        online: users.size,
-        events
-    });
-});
-
-app.post('/api/find', (req, res) => {
-    const { id } = req.body;
-    if (!id) return res.status(400).end();
-    getUser(id);
-    breakPair(id);
-    removeFromQueue(id);
-
-    // Ищем живого собеседника в очереди
-    while (waitingQueue.length > 0) {
-        const partnerId = waitingQueue.shift();
-        if (partnerId !== id && users.has(partnerId)) {
-            pairs.set(id, partnerId);
-            pairs.set(partnerId, id);
-            // Тот, кто нажал позже, становится инициатором WebRTC звонка
-            sendEvent(id, { type: 'matched', initiator: true });
-            sendEvent(partnerId, { type: 'matched', initiator: false });
-            return res.json({ status: 'matched' });
-        }
-    }
-
-    waitingQueue.push(id);
-    res.json({ status: 'waiting' });
-});
-
-app.post('/api/stop', (req, res) => {
-    const { id } = req.body;
-    if (!id) return res.status(400).end();
-    getUser(id);
-    removeFromQueue(id);
-    breakPair(id);
-    res.json({ status: 'stopped' });
-});
-
-app.post('/api/signal', (req, res) => {
-    const { id, signal } = req.body;
-    if (!id || !signal) return res.status(400).end();
-    getUser(id);
-    const partnerId = pairs.get(id);
-    if (partnerId) {
-        sendEvent(partnerId, { type: 'signal', signal });
-    }
-    res.json({ ok: true });
-});
-
-app.post('/api/msg', (req, res) => {
-    const { id, text } = req.body;
-    if (!id || !text) return res.status(400).end();
-    getUser(id);
-    const partnerId = pairs.get(id);
-    if (partnerId) {
-        sendEvent(partnerId, { type: 'msg', text: String(text).slice(0, 500) });
-    }
-    res.json({ ok: true });
-});
-
-app.get('/bg', (req, res) => {
-    const bgFiles = ['bg.jpg', 'bg.png', 'bg.webp', 'background.jpg', 'background.png'];
-    for (const file of bgFiles) {
-        const fullPath = path.join(__dirname, file);
-        if (fs.existsSync(fullPath)) return res.sendFile(fullPath);
-    }
-    res.status(204).end();
-});
-
-// --- ВЕБ-ИНТЕРФЕЙС И КЛИЕНТСКИЙ JS ---
-const HTML_PAGE = `<!DOCTYPE html>
+<!DOCTYPE html>
 <html lang="ru">
 <head>
     <meta charset="UTF-8">
@@ -250,150 +119,163 @@ const btnStop = document.getElementById('btnStop');
 const btnMute = document.getElementById('btnMute');
 const msgInput = document.getElementById('msgInput');
 const btnSend = document.getElementById('btnSend');
-const messages = document.getElementById('сообщения');
-const statusEl = document.getElementById('статус');
-const idleView = document.getElementById('idleView ');
-const queueView = document.getElementById('Просмотр очереди');
-const avatarIcon = document.getElementById('аватарИкон');
-const remoteAudio = document.getElementById('Удаленное аудио');
-функция addMsg(text, cls) {
-const d = document.createElement('div');
-d.className = 'msg ' + cls;
-d.textContent = text;
-messages.appendChild(d);
-messages.scrollTop = messages.scrollHeight;
+const messages = document.getElementById('messages');
+const statusEl = document.getElementById('status');
+const idleView = document.getElementById('idleView');
+const queueView = document.getElementById('queueView');
+const avatarIcon = document.getElementById('avatarIcon');
+const remoteAudio = document.getElementById('remoteAudio');
+
+function addMsg(text, cls) {
+    const d = document.createElement('div');
+    d.className = 'msg ' + cls;
+    d.textContent = text;
+    messages.appendChild(d);
+    messages.scrollTop = messages.scrollHeight;
 }
-функция startSearchTimer() {
-clearInterval(timerInt);
-пусть sec = 0;
-document.getElementById('timerText').textContent = '00:00';
-timerInt = setInterval(() => {
-sec++;
-const m = строка (Математический этаж(сек / 60)).padStart(2, '0');
-const s = строка (сек % 60).padStart(2, '0');
-document. getElementById('timerText').textContent = m + ':' + s;
-}, 1000);
+
+function startSearchTimer() {
+    clearInterval(timerInt);
+    let sec = 0;
+    document.getElementById('timerText').textContent = '00:00';
+    timerInt = setInterval(() => {
+        sec++;
+        const m = String(Math.floor(sec / 60)).padStart(2, '0');
+        const s = String(sec % 60).padStart(2, '0');
+        document.getElementById('timerText').textContent = m + ':' + s;
+    }, 1000);
 }
+
 function setUIState(state) {
-clearInterval(timerInt);
-if (state === 'idle') {
-idleView.style.display = 'block';
-queueView.style.display = 'none';
-avatarIcon.classList.remove('active');
-btnStop.disabled = true;
-msgInput.disabled = true;
-btnSend.disabled = true;
-} else if (state === 'searching') {
-idleView.style.display = 'none';
-queueView.style.display = 'block';
-btnStop.disabled = false;
-msgInput.disabled = true;
-btnSend.disabled = true;
-startSearchTimer();
-} else if (state === 'connected') {
-idleView.style.display = 'block';
-queueView.style.display = 'none';
-avatarIcon.classList.add('active');
-statusEl.textContent = 'Собеседник на связи 🎧';
-btnStop.disabled = false;
-msgInput.disabled = false;
-btnSend.disabled = false;
+    clearInterval(timerInt);
+    if (state === 'idle') {
+        idleView.style.display = 'block';
+        queueView.style.display = 'none';
+        avatarIcon.classList.remove('active');
+        btnStop.disabled = true;
+        msgInput.disabled = true;
+        btnSend.disabled = true;
+    } else if (state === 'searching') {
+        idleView.style.display = 'none';
+        queueView.style.display = 'block';
+        btnStop.disabled = false;
+        msgInput.disabled = true;
+        btnSend.disabled = true;
+        startSearchTimer();
+    } else if (state === 'connected') {
+        idleView.style.display = 'block';
+        queueView.style.display = 'none';
+        avatarIcon.classList.add('active');
+        statusEl.textContent = 'Собеседник на связи 🎧';
+        btnStop.disabled = false;
+        msgInput.disabled = false;
+        btnSend.disabled = false;
+    }
 }
-}
+
 async function ensureMic() {
-if (localStream) return true;
-try {
-localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
-localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
-return true;
-} catch (e) {
-addMsg('⚠️ Доступ к микрофону запрещен (работает только чат)', 'sys');
-return false;
+    if (localStream) return true;
+    if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
+        addMsg('⚠️ Откройте сайт по https:// для работы микрофона', 'sys');
+        return false;
+    }
+    try {
+        localStream = await navigator.mediaDevices.getUserMedia({ audio: true, video: false });
+        localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
+        return true;
+    } catch (e) {
+        addMsg('⚠️ Доступ к микрофону запрещён (работает только чат)', 'sys');
+        return false;
+    }
 }
+
+function closeRTC() {
+    if (pc) {
+        pc.close();
+        pc = null;
+    }
+    pendingIce = [];
+    remoteAudio.srcObject = null;
 }
-функция closeRTC() {
-if (pc) {
-pc.close();
-pc = null;
-}
-pendingIce = [];
-remoteAudio.srcObject = null;
-}
-асинхронная функция createRTC(isInitiator) {
-closeRTC();
-pc = новое RTCPeerConnection(rtcConfig);
-if (localStream) {
-localStream.getTracks().forEach(трек => pc.addTrack(трек, localStream));
-}
-pc.onicecandidate = (e) => {
-if (e.candidate) {
-fetch('/api/signal', {
-метод: 'POST',
-заголовки: { 'Content-Type': 'application/json' },
-тело: JSON.stringify({ id: myId, signal: { candidate: e.candidate } })
+
+async function createRTC(isInitiator) {
+    closeRTC();
+    pc = new RTCPeerConnection(rtcConfig);
+
+    if (localStream) {
+        localStream.getTracks().forEach(track => pc.addTrack(track, localStream));
+    }
+
+    pc.onicecandidate = (e) => {
+        if (e.candidate) {
+            fetch('/api/signal', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ id: myId, signal: { candidate: e.candidate } })
+            });
+        }
+    };
+
+    pc.ontrack = (e) => {
+        remoteAudio.srcObject = e.streams[0];
+    };
+
+    if (isInitiator) {
+        const offer = await pc.createOffer();
+        await pc.setLocalDescription(offer);
+        await fetch('/api/signal', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({ id: myId, signal: { sdp: pc.localDescription } })
 });
 }
-};
-pc.ontrack = (e) => {
-remoteAudio.srcObject = e.streams;
-};
-if (isInitiator) {
-const offer = await pc.createOffer();
-await pc.setLocalDescription(offer);
+}
+async function handleSignal(signal) {
+if (!pc) return;
+if (signal.sdp) {
+await pc.setRemoteDescription(new RTCSessionDescription(signal.sdp));
+while (pendingIce.length > 0) {
+await pc.addIceCandidate(new RTCIceCandidate(pendingIce.shift()));
+}
+if (signal.sdp.type === 'offer') {
+const answer = await pc.createAnswer();
+await pc.setLocalDescription(answer);
 await fetch('/api/signal', {
 method: 'POST',
 headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify({ id: myId, signal: { sdp: pc.localDescription } })
 });
 }
-}
-асинхронная функция обрабатывает сигнал(signal) {
-if (!pc) return;
-if (signal.sdp) {
-ожидает pc.setRemoteDescription(новое RTCSessionDescription(signal.sdp));
-while (pendingIce.length > 0) {
-ожидает pc.addIceCandidate(новое RTCIceCandidate(pendingIce.shift()));
-}
-if (signal.sdp.type === 'предложение') {
-постоянный ответ = ожидает pc.createAnswer( );
-ожидает pc.setLocalDescription(ответ);
-ожидает выборки('/api/signal', {
-метод: 'POST',
-заголовки: { 'Content-Type': 'application/json' },
-тело: JSON.stringify({ id: myId, signal: { sdp: pc.localDescription } })
-});
-}
 } else if (signal.candidate) {
 if (pc.remoteDescription) {
-ожидает pc.addIceCandidate(новый RTCIceCandidate (signal.candidate));
+await pc.addIceCandidate(new RTCIceCandidate(signal.candidate));
 } else {
 pendingIce.push(signal.candidate);
 }
 }
 }
-// Постоянный опрос сервера
-асинхронная функция pollServer() {
+async function pollServer() {
 try {
 const res = await fetch('/api/poll', {
-метод: 'POST',
-заголовки: { 'Content-Type': 'application/json' },
-тело: JSON.stringify({ id: myId })
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({ id: myId })
 });
 if (res.ok) {
-document.getElementById('ConnDOT').classList.add('connected');
+document.getElementById('connDot').classList.add('connected');
 const data = await res.json();
-document. getElementById('onlineCount').textContent = данные.online;
+document.getElementById('onlineCount').textContent = data.online;
 for (const ev of data.events) {
 if (ev.type === 'matched') {
 messages.innerHTML = '';
 setUIState('connected');
 addMsg('Собеседник найден! Можете говорить 👋', 'sys');
-ожидайте createRTC(ev.инициатор);
-} else if (ev.тип === 'сигнал') {
-ожидайте handleSignal(ev.сигнал);
-} else if (ev.тип === 'сообщение') {
-addMsg(ev.текст, 'партнер');
-} else if (ev.тип === 'partner_left') {
+await createRTC(ev.initiator);
+} else if (ev.type === 'signal') {
+await handleSignal(ev.signal);
+} else if (ev.type === 'msg') {
+addMsg(ev.text, 'partner');
+} else if (ev.type === 'partner_left') {
 closeRTC();
 setUIState('idle');
 statusEl.textContent = 'Собеседник отключился';
@@ -402,29 +284,23 @@ addMsg('Собеседник покинул чат', 'sys');
 }
 }
 } catch (e) {
-document.getElementById('ConnDOT').classList.remove('connected');
+document.getElementById('connDot').classList.remove('connected');
 }
 setTimeout(pollServer, 600);
 }
-Сервер опросов();
-// Кнопка Найти / Далее
+pollServer();
 btnNext.onclick = async () => {
 await ensureMic();
 closeRTC();
 messages.innerHTML = '';
 setUIState('searching');
 addMsg('Поиск свободного собеседника...', 'sys');
-const res = await fetch('/api/find', {
-метод: 'POST',
-заголовки: { 'Content-Type': 'application/json' },
-тело: JSON.stringify({ id: myId })
+await fetch('/api/find', {
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({ id: myId })
 });
-const data = await res.json();
-if (data.status === 'matched') {
-// Событие matched придёт в pollServer
-}
 };
-// Кнопка Стоп
 btnStop.onclick = async () => {
 closeRTC();
 setUIState('idle');
@@ -436,7 +312,6 @@ headers: { 'Content-Type': 'application/json' },
 body: JSON.stringify({ id: myId })
 });
 };
-// Кнопка Микрофон
 btnMute.onclick = () => {
 isMuted = !isMuted;
 if (localStream) {
@@ -445,25 +320,17 @@ localStream.getAudioTracks().forEach(t => t.enabled = !isMuted);
 btnMute.textContent = isMuted ? 'Включить микрофон' : 'Выключить микрофон';
 btnMute.classList.toggle('muted', isMuted);
 };
-// Отправка сообщения
 document.getElementById('chatForm').onsubmit = async (e) => {
 e.preventDefault();
 const text = msgInput.value.trim();
 if (!text) return;
-msgInput.value = ";
+msgInput.value = '';
 addMsg(text, 'me');
 await fetch('/api/msg', {
-метод: 'POST',
-заголовки: { 'Content-Type': 'application/json' },
- тело: JSON.stringify({ идентификатор: myId, текст })
+method: 'POST',
+headers: { 'Content-Type': 'application/json' },
+body: JSON.stringify({ id: myId, text })
 });
 };
 
 
-`;
-app.get('/', (req, res) => {
-res.send(HTML_PAGE);
-});
-app.listen(ПОРТ, '0.0.0.0', () => {
-console.log('Сервер Likodopt, запущенный на порту' + ПОРТ);
-});
