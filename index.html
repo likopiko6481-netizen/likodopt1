@@ -379,13 +379,15 @@
             gap: 8px;
         }
 
-        .diag-head { margin-bottom: 8px; }
+        .diag-head { margin-bottom: 8px; flex-wrap: wrap; }
 
         .diag-title {
             color: #dbe3ee;
             font-size: .77rem;
             font-weight: 750;
         }
+
+        .diag-actions { display: flex; gap: 6px; }
 
         .sound-test {
             padding: 5px 8px;
@@ -397,6 +399,12 @@
             cursor: pointer;
         }
 
+        .sound-test.accent {
+            border-color: #2f6b48;
+            background: #12301f;
+            color: #7ff0b0;
+        }
+
         .diag-line {
             margin: 5px 0 4px;
             color: #97a3b4;
@@ -404,7 +412,7 @@
         }
 
         .diag-line span { overflow-wrap: anywhere; }
-        #netDiag { text-align: right; }
+        #netDiag { text-align: right; cursor: help; }
 
         .level {
             height: 5px;
@@ -423,6 +431,20 @@
         }
 
         .level.remote i { background: #79a5ff; }
+
+        .self-test-out {
+            margin-top: 9px;
+            padding: 9px;
+            border: 1px solid #2a3140;
+            border-radius: 9px;
+            background: #101319;
+            color: #b9c4d3;
+            font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+            font-size: .67rem;
+            line-height: 1.5;
+            white-space: pre-line;
+            overflow-wrap: anywhere;
+        }
 
         .chat-box {
             display: flex;
@@ -604,7 +626,10 @@
     <section class="test-panel">
         <div class="diag-head">
             <span class="diag-title">Проверка микрофона и звука</span>
-            <button type="button" class="sound-test" id="btnTestSound">🔊 Тест динамиков</button>
+            <div class="diag-actions">
+                <button type="button" class="sound-test accent" id="btnSelfTest">🧪 Проверка WebRTC</button>
+                <button type="button" class="sound-test" id="btnTestSound">🔊 Тест динамиков</button>
+            </div>
         </div>
         <div class="diag-line">
             <span id="micDiag">Микрофон ещё не запрошен</span>
@@ -615,6 +640,7 @@
             <span id="remoteDiag">Звук собеседника: пока отсутствует</span>
         </div>
         <div class="level remote"><i id="remoteLevel"></i></div>
+        <div class="self-test-out" id="selfTestOut" hidden></div>
     </section>
 
     <section class="chat-box">
@@ -638,17 +664,26 @@
 (() => {
     "use strict";
 
-    // Сохраните присланное изображение рядом с index.html под этим именем.
+    // ---------------------------------------------------------------------
+    // КОНФИГУРАЦИЯ
+    // ---------------------------------------------------------------------
+    // Фон: положите main-bg.jpg рядом с index.html.
     const HOME_BG_IMAGE_URL = "./main-bg.jpg";
     const NICK_KEY = "likodopt_nickname";
-
-    // STUN помогает установить соединение, но для части сетей нужен свой TURN-сервер.
-    const ICE_SERVERS = [
+    const SIGNAL_OUTBOX_TTL = 15000;
+    const DEFAULT_ICE_SERVERS = [
         { urls: ["stun:stun.l.google.com:19302", "stun:stun1.l.google.com:19302"] }
-        // Для публичного запуска добавьте сюда turn:ВАШ_СЕРВЕР с username/credential.
     ];
+    const LOCAL_SESSION_ID = "c" + Math.random().toString(36).slice(2, 8);
+
+    // ICE можно задать вручную (window.LIKODOPT_ICE_SERVERS) или получить с сервера (/ice-config).
+    let ICE_SERVERS = (Array.isArray(window.LIKODOPT_ICE_SERVERS) && window.LIKODOPT_ICE_SERVERS.length)
+        ? window.LIKODOPT_ICE_SERVERS.slice()
+        : DEFAULT_ICE_SERVERS.slice();
+    let iceSource = "встроенный STUN (Google)";
 
     const $ = (id) => document.getElementById(id);
+
     const appRoot = $("appRoot");
     const connDot = $("connDot");
     const onlineCount = $("onlineCount");
@@ -668,6 +703,8 @@
     const btnStop = $("btnStop");
     const btnMute = $("btnMute");
     const btnTestSound = $("btnTestSound");
+    const btnSelfTest = $("btnSelfTest");
+    const selfTestOut = $("selfTestOut");
     const searchTimerText = $("searchTimerText");
     const groupGrid = $("groupGrid");
     const audioPool = $("audioPool");
@@ -683,12 +720,17 @@
     const nickForm = $("nickForm");
     const nickInput = $("nickInput");
 
+    // ---------------------------------------------------------------------
+    // СОСТОЯНИЕ
+    // ---------------------------------------------------------------------
     let ws = null;
     let reconnectTimer = null;
+    let myId = null;
     let mode = "idle";
     let nickname = loadNickname();
-    let remoteUsers = new Map();
-    let peers = new Map();
+    const remoteUsers = new Map();
+    const peers = new Map();
+    let outbox = [];
 
     let searchStartedAt = 0;
     let searchInterval = null;
@@ -699,6 +741,10 @@
     let micAnalyser = null;
     let micData = null;
     let meterStarted = false;
+
+    function selfId() {
+        return String(myId || LOCAL_SESSION_ID);
+    }
 
     function storageGet(key) {
         try { return localStorage.getItem(key); } catch { return null; }
@@ -782,7 +828,6 @@
         avatarImage.src = createPixelAvatar(seed || "LIKODOPT");
     }
 
-    // Фон устанавливается только после успешной загрузки main-bg.jpg.
     const backgroundImage = new Image();
     backgroundImage.onload = () => {
         appRoot.style.setProperty("--home-bg", `url("${HOME_BG_IMAGE_URL}")`);
@@ -844,10 +889,64 @@
         }, 1000);
     }
 
+    // ---------------------------------------------------------------------
+    // ТРАНСПОРТ: WebSocket + очередь сигналов
+    // ---------------------------------------------------------------------
+    function sendRaw(payload) {
+        if (ws && ws.readyState === WebSocket.OPEN) {
+            try { ws.send(JSON.stringify(payload)); return true; } catch { return false; }
+        }
+        return false;
+    }
+
     function sendWS(type, data = {}) {
-        if (!ws || ws.readyState !== WebSocket.OPEN) return false;
-        ws.send(JSON.stringify({ type, ...data }));
-        return true;
+        return sendRaw({ type, ...data });
+    }
+
+    function sendSignal(peerId, data) {
+        const payload = { type: "signal", to: peerId, data };
+
+        if (sendRaw(payload)) return;
+
+        // Связь на мгновение пропала — не теряем SDP/кандидатов, отправим после реконнекта.
+        outbox.push({ payload, ts: Date.now() });
+        if (outbox.length > 300) outbox.shift();
+    }
+
+    function flushOutbox() {
+        if (!outbox.length) return;
+
+        const now = Date.now();
+        const rest = [];
+
+        for (const item of outbox) {
+            if (now - item.ts > SIGNAL_OUTBOX_TTL) continue;
+            if (!sendRaw(item.payload)) rest.push(item);
+        }
+
+        outbox = rest;
+    }
+
+    async function loadIceConfig() {
+        try {
+            const response = await fetch("/ice-config", { cache: "no-store" });
+            if (!response.ok) return;
+
+            const config = await response.json();
+            if (Array.isArray(config?.iceServers) && config.iceServers.length) {
+                ICE_SERVERS = config.iceServers;
+                const hasTurn = config.iceServers.some((server) => {
+                    const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
+                    return urls.some((url) => String(url).startsWith("turn"));
+                });
+                iceSource = hasTurn
+                    ? "с сервера: STUN + TURN"
+                    : "с сервера: только STUN (TURN не настроен)";
+                updateNetworkDiag();
+            }
+        } catch {
+            // сервер может быть старее — остаёмся на встроенных STUN
+        }
     }
 
     function connectWebSocket() {
@@ -868,12 +967,14 @@
             }
 
             sendWS("nick", { nick: nickname });
+            flushOutbox();
         });
 
         ws.addEventListener("message", (event) => {
             let data;
 
             try { data = JSON.parse(event.data); } catch { return; }
+
             handleServerMessage(data).catch((error) => {
                 console.error(error);
                 addMessage("Ошибка обработки соединения: " + error.message, "sys");
@@ -885,14 +986,17 @@
             onlineCount.textContent = "—";
 
             if (mode !== "idle") {
-                resetLocalSession();
+                resetLocalSession({ keepMic: true });
                 addMessage("Связь с сервером потеряна. Выполняется переподключение.", "sys");
             } else {
                 statusText.textContent = "Сервер недоступен. Переподключение...";
             }
 
             clearTimeout(reconnectTimer);
-            reconnectTimer = setTimeout(connectWebSocket, 1800);
+            reconnectTimer = setTimeout(() => {
+                reconnectTimer = null;
+                connectWebSocket();
+            }, 1800);
         });
 
         ws.addEventListener("error", () => {
@@ -902,6 +1006,11 @@
 
     async function handleServerMessage(data) {
         switch (data.type) {
+            case "welcome":
+                myId = data.id ? String(data.id) : null;
+                flushOutbox();
+                break;
+
             case "online":
                 onlineCount.textContent = String(data.count);
                 break;
@@ -914,18 +1023,19 @@
 
             case "joined":
                 clearSearchTimer();
-                mode = data.mode;
+                mode = data.mode || "solo";
                 remoteUsers.clear();
 
                 for (const user of data.peers || []) {
                     remoteUsers.set(user.id, user);
                 }
 
-                enterRoomUI(data.code);
+                enterRoomUI(data.code, data.count);
 
-                // Новый участник инициирует соединения с уже находящимися в комнате.
+                // Пир создаём для каждого участника. Оффер отправит negotiationneeded,
+                // а встречные офферы разрулит perfect negotiation.
                 for (const user of data.peers || []) {
-                    createPeer(user.id, true);
+                    createPeer(user.id);
                 }
 
                 addMessage(
@@ -938,8 +1048,9 @@
 
             case "peer-joined":
                 clearSearchTimer();
-                mode = data.mode;
+                mode = data.mode || mode;
                 remoteUsers.set(data.peer.id, data.peer);
+                createPeer(data.peer.id);
                 enterRoomUI(data.code, data.count);
 
                 addMessage(
@@ -951,7 +1062,7 @@
                 break;
 
             case "signal":
-                await handleSignal(data.from, data.data);
+                await handleSignal(String(data.from), data.data);
                 break;
 
             case "chat":
@@ -971,7 +1082,8 @@
             }
 
             case "room-closed":
-                resetLocalSession();
+                // Микрофон не гасим: человек сразу пойдёт искать дальше.
+                resetLocalSession({ keepMic: true });
                 addMessage(data.reason || "Разговор завершён.", "sys");
                 break;
         }
@@ -1034,6 +1146,9 @@
         }
     }
 
+    // ---------------------------------------------------------------------
+    // АУДИО
+    // ---------------------------------------------------------------------
     async function getAudioContext() {
         const AudioContextClass = window.AudioContext || window.webkitAudioContext;
         if (!AudioContextClass) throw new Error("Web Audio не поддерживается");
@@ -1080,6 +1195,7 @@
         micPromise = (async () => {
             if (!navigator.mediaDevices?.getUserMedia) {
                 addMessage("Микрофон доступен только в современном браузере через HTTPS или localhost.", "sys");
+                micDiag.textContent = "Микрофон недоступен: нужен HTTPS или localhost";
                 return false;
             }
 
@@ -1111,6 +1227,11 @@
                 // Локальный микрофон не выводится в динамики — иначе будет эхо.
                 source.connect(micAnalyser);
 
+                // Микрофон мог появиться уже после создания пиров — досылаем дорожку.
+                for (const entry of peers.values()) {
+                    attachMicToEntry(entry);
+                }
+
                 startLevelMeter();
                 updateMicUI();
                 return true;
@@ -1140,6 +1261,7 @@
         micData = null;
         micLevel.style.width = "0";
         partnerAvatar.classList.remove("speaking");
+        detachMicFromAllPeers();
         updateMicUI();
     }
 
@@ -1182,120 +1304,247 @@
         updateMicUI();
     }
 
-    function signal(peerId, data) {
-        sendWS("signal", { to: peerId, data });
-    }
-
-    function createPeer(peerId, initiator) {
+    // ---------------------------------------------------------------------
+    // WEBRTC: perfect negotiation
+    // ---------------------------------------------------------------------
+    function createPeer(peerId) {
         if (peers.has(peerId)) return peers.get(peerId);
 
-        const pc = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+        const pc = new RTCPeerConnection({
+            iceServers: ICE_SERVERS,
+            iceCandidatePoolSize: 2
+        });
 
         const entry = {
             id: peerId,
             pc,
+            polite: selfId() < String(peerId),
+            makingOffer: false,
+            ignoreOffer: false,
+            hasRemoteDescription: false,
+            pendingCandidates: [],
+            candidateTypes: new Set(),
+            restartCount: 0,
+            disconnectTimer: null,
+            transceiver: null,
             audio: null,
             remoteStream: null,
             remoteSource: null,
             remoteAnalyser: null,
-            remoteData: null,
-            hasRemoteDescription: false,
-            pendingCandidates: []
+            remoteData: null
         };
 
         peers.set(peerId, entry);
 
-        if (micStream) {
-            for (const track of micStream.getTracks()) {
-                pc.addTrack(track, micStream);
-            }
+        // КРИТИЧНО: аудио-трансивер есть всегда, даже без микрофона.
+        // Иначе в SDP не будет m=audio, ICE-проверкам нечего проверять → connectionState=failed.
+        try {
+            entry.transceiver = pc.addTransceiver("audio", { direction: "recvonly" });
+        } catch (error) {
+            console.warn("addTransceiver:", error);
         }
 
+        attachMicToEntry(entry);
+
+        pc.addEventListener("negotiationneeded", () => {
+            negotiate(entry);
+        });
+
         pc.addEventListener("icecandidate", (event) => {
-            if (event.candidate) {
-                signal(peerId, {
-                    kind: "candidate",
-                    candidate: event.candidate
-                });
-            }
+            if (!event.candidate) return;
+
+            try { entry.candidateTypes.add(event.candidate.type || "unknown"); } catch {}
+
+            sendSignal(peerId, {
+                kind: "candidate",
+                candidate: event.candidate.toJSON ? event.candidate.toJSON() : event.candidate
+            });
+
+            updateNetworkDiag();
         });
 
         pc.addEventListener("track", (event) => {
-            const stream = event.streams[0] || new MediaStream([event.track]);
+            const stream = (event.streams && event.streams[0]) || new MediaStream([event.track]);
             attachRemoteAudio(entry, stream);
         });
 
-        pc.addEventListener("connectionstatechange", () => {
-            updateNetworkDiag();
-
-            if (pc.connectionState === "failed") {
-                addMessage("WebRTC не смог соединиться. Возможно, для вашей сети нужен TURN-сервер.", "sys");
-            }
-        });
-
+        pc.addEventListener("connectionstatechange", () => handleConnectionState(entry));
         pc.addEventListener("iceconnectionstatechange", updateNetworkDiag);
-
-        if (initiator) {
-            (async () => {
-                const offer = await pc.createOffer();
-                await pc.setLocalDescription(offer);
-
-                signal(peerId, {
-                    kind: "description",
-                    description: pc.localDescription
-                });
-            })().catch((error) => {
-                console.error("Offer error:", error);
-                addMessage("Не удалось создать WebRTC-предложение.", "sys");
-            });
-        }
+        pc.addEventListener("icegatheringstatechange", updateNetworkDiag);
 
         updateNetworkDiag();
         return entry;
     }
 
-    async function flushCandidates(entry) {
-        const candidates = entry.pendingCandidates.splice(0);
+    async function negotiate(entry) {
+        const pc = entry.pc;
+        if (pc.signalingState === "closed") return;
 
-        for (const candidate of candidates) {
-            await entry.pc.addIceCandidate(candidate);
+        try {
+            entry.makingOffer = true;
+            const offer = await pc.createOffer();
+
+            // Пока готовили оффер, состояние могло измениться — тогда уступаем.
+            if (pc.signalingState !== "stable") return;
+
+            await pc.setLocalDescription(offer);
+            sendSignal(entry.id, {
+                kind: "description",
+                description: pc.localDescription
+            });
+        } catch (error) {
+            console.warn("Не удалось создать оффер:", error);
+        } finally {
+            entry.makingOffer = false;
+        }
+    }
+
+    function handleConnectionState(entry) {
+        updateNetworkDiag();
+
+        const pc = entry.pc;
+
+        if (pc.connectionState === "connected") {
+            entry.restartCount = 0;
+            if (entry.disconnectTimer) {
+                clearTimeout(entry.disconnectTimer);
+                entry.disconnectTimer = null;
+            }
+            return;
+        }
+
+        if (pc.connectionState === "disconnected") {
+            if (entry.disconnectTimer) return;
+
+            // disconnected часто временное (переключение сети) — даём шанс и пробуем restartIce.
+            entry.disconnectTimer = setTimeout(() => {
+                entry.disconnectTimer = null;
+                if (pc.connectionState !== "disconnected") return;
+
+                if (entry.restartCount < 2) {
+                    entry.restartCount++;
+                    try { pc.restartIce(); } catch {}
+                    addMessage("Соединение прервалось — перезапускаю ICE.", "sys");
+                } else {
+                    addMessage("WebRTC не восстановился. Похоже, для вашей сети нужен TURN-сервер.", "sys");
+                }
+            }, 4000);
+
+            return;
+        }
+
+        if (pc.connectionState === "failed") {
+            if (entry.restartCount < 2) {
+                entry.restartCount++;
+                try { pc.restartIce(); } catch {}
+                addMessage("ICE не прошёл — перезапускаю. Если повторится, нужен TURN-сервер.", "sys");
+            } else {
+                addMessage("WebRTC не смог соединиться: нет relay-кандидатов (TURN), сеть недоступна напрямую.", "sys");
+            }
+        }
+    }
+
+    function attachMicToEntry(entry) {
+        const track = getMicTrack();
+        if (!track || !entry || entry.pc.signalingState === "closed") return;
+
+        if (entry.transceiver) {
+            try {
+                entry.transceiver.direction = "sendrecv";
+                entry.transceiver.sender.replaceTrack(track).catch((error) => {
+                    console.warn("replaceTrack:", error);
+                });
+                return;
+            } catch (error) {
+                console.warn("transceiver mic:", error);
+            }
+        }
+
+        try { entry.pc.addTrack(track, micStream); } catch (error) { console.warn("addTrack:", error); }
+    }
+
+    function detachMicFromAllPeers() {
+        for (const entry of peers.values()) {
+            if (!entry.transceiver) continue;
+
+            try {
+                entry.transceiver.sender.replaceTrack(null).catch(() => {});
+                entry.transceiver.direction = "recvonly";
+            } catch {}
         }
     }
 
     async function handleSignal(peerId, data) {
         if (!data || typeof data !== "object") return;
 
-        const entry = createPeer(peerId, false);
+        const entry = createPeer(peerId);
+        const pc = entry.pc;
 
         if (data.kind === "description" && data.description) {
             const description = data.description;
+            const offerCollision = description.type === "offer"
+                && (entry.makingOffer || pc.signalingState !== "stable");
 
-            if (description.type === "offer") {
-                await entry.pc.setRemoteDescription(description);
-                entry.hasRemoteDescription = true;
-                await flushCandidates(entry);
+            entry.ignoreOffer = !entry.polite && offerCollision;
+            if (entry.ignoreOffer) return;
 
-                const answer = await entry.pc.createAnswer();
-                await entry.pc.setLocalDescription(answer);
-
-                signal(peerId, {
-                    kind: "description",
-                    description: entry.pc.localDescription
-                });
-            } else if (description.type === "answer") {
-                await entry.pc.setRemoteDescription(description);
-                entry.hasRemoteDescription = true;
-                await flushCandidates(entry);
+            if (offerCollision && entry.polite) {
+                try {
+                    await pc.setLocalDescription({ type: "rollback" });
+                } catch (error) {
+                    console.warn("rollback:", error);
+                }
             }
 
+            try {
+                await pc.setRemoteDescription(description);
+            } catch (error) {
+                console.error("setRemoteDescription:", error);
+                addMessage("Не удалось применить SDP собеседника: " + error.message, "sys");
+                return;
+            }
+
+            entry.hasRemoteDescription = true;
+            await flushCandidates(entry);
+
+            if (description.type === "offer") {
+                try {
+                    const answer = await pc.createAnswer();
+                    await pc.setLocalDescription(answer);
+                    sendSignal(peerId, {
+                        kind: "description",
+                        description: pc.localDescription
+                    });
+                } catch (error) {
+                    console.error("createAnswer:", error);
+                }
+            }
+
+            updateNetworkDiag();
             return;
         }
 
         if (data.kind === "candidate" && data.candidate) {
-            if (entry.hasRemoteDescription) {
-                await entry.pc.addIceCandidate(data.candidate);
+            if (entry.hasRemoteDescription && pc.remoteDescription) {
+                try {
+                    await pc.addIceCandidate(data.candidate);
+                } catch {
+                    // устаревший или уже применённый кандидат — это нормально
+                }
             } else {
                 entry.pendingCandidates.push(data.candidate);
+            }
+        }
+    }
+
+    async function flushCandidates(entry) {
+        const pending = entry.pendingCandidates.splice(0);
+
+        for (const candidate of pending) {
+            try {
+                await entry.pc.addIceCandidate(candidate);
+            } catch (error) {
+                console.warn("addIceCandidate отклонён:", error);
             }
         }
     }
@@ -1303,7 +1552,18 @@
     function attachRemoteAudio(entry, stream) {
         entry.remoteStream = stream;
 
-        if (entry.audio) entry.audio.remove();
+        if (entry.remoteSource) {
+            try { entry.remoteSource.disconnect(); } catch {}
+            entry.remoteSource = null;
+        }
+
+        if (entry.audio) {
+            try {
+                entry.audio.pause();
+                entry.audio.srcObject = null;
+                entry.audio.remove();
+            } catch {}
+        }
 
         const audio = document.createElement("audio");
         audio.autoplay = true;
@@ -1340,6 +1600,10 @@
             analyser.smoothingTimeConstant = .5;
             source.connect(analyser);
 
+            if (entry.remoteSource) {
+                try { entry.remoteSource.disconnect(); } catch {}
+            }
+
             entry.remoteSource = source;
             entry.remoteAnalyser = analyser;
             entry.remoteData = new Uint8Array(analyser.fftSize);
@@ -1354,15 +1618,20 @@
 
         peers.delete(peerId);
 
+        if (entry.disconnectTimer) clearTimeout(entry.disconnectTimer);
+
         try { entry.pc.close(); } catch {}
         try { entry.remoteSource?.disconnect(); } catch {}
 
         if (entry.audio) {
-            entry.audio.pause();
-            entry.audio.srcObject = null;
-            entry.audio.remove();
+            try {
+                entry.audio.pause();
+                entry.audio.srcObject = null;
+                entry.audio.remove();
+            } catch {}
         }
 
+        entry.candidateTypes.clear();
         updateNetworkDiag();
     }
 
@@ -1382,20 +1651,37 @@
 
         if (!entries.length) {
             netDiag.textContent = "WebRTC: нет соединения";
+            netDiag.removeAttribute("title");
+            netDiag.style.color = "";
             return;
         }
 
-        const connected = entries.filter(
-            (entry) => entry.pc.connectionState === "connected"
-        ).length;
+        const connected = entries.filter((entry) => entry.pc.connectionState === "connected").length;
+        const broken = entries.filter((entry) => ["failed", "disconnected", "closed"].includes(entry.pc.connectionState));
 
-        const failed = entries.some(
-            (entry) => ["failed", "disconnected", "closed"].includes(entry.pc.connectionState)
-        );
-
-        netDiag.textContent = failed
+        netDiag.textContent = broken.length
             ? `WebRTC: проблема (${connected}/${entries.length})`
-            : `WebRTC: ${connected}/${entries.length} подключено`;
+            : `WebRTC: ${connected}/${entries.length} ${connected === entries.length ? "подключено" : "соединяется"}`;
+
+        netDiag.style.color = broken.length ? "#ff8a8a" : "";
+
+        const details = [];
+
+        for (const entry of entries) {
+            const types = [...entry.candidateTypes].join("/") || "—";
+            details.push(
+                `${entry.id}: pc=${entry.pc.connectionState} ice=${entry.pc.iceConnectionState} `
+                + `gather=${entry.pc.iceGatheringState} sig=${entry.pc.signalingState} cand=${types}`
+            );
+        }
+
+        details.push(`ICE: ${iceSource}`);
+        details.push(`страница: ${location.protocol}//${location.host} · secure=${window.isSecureContext ? "да" : "нет"}`);
+
+        const hasRelay = details.some((line) => line.includes("relay"));
+        if (!hasRelay) details.push("relay-кандидатов нет → для разных сетей нужен TURN");
+
+        netDiag.title = details.join("\n");
     }
 
     function peakLevel(analyser, data) {
@@ -1428,10 +1714,7 @@
                     : "Микрофон включён — скажите несколько слов";
             }
 
-            partnerAvatar.classList.toggle(
-                "speaking",
-                mode === "solo" && micPeak > 12
-            );
+            partnerAvatar.classList.toggle("speaking", mode === "solo" && micPeak > 12);
 
             let maxRemotePeak = 0;
             let hasRemoteStream = false;
@@ -1504,6 +1787,183 @@
         }
     }
 
+    // ---------------------------------------------------------------------
+    // ВСТРОЕННАЯ ПРОВЕРКА WEBRTC (в коде, без внешних сайтов)
+    // ---------------------------------------------------------------------
+    function localLoopTest(timeout = 12000) {
+        return new Promise((resolve) => {
+            const types = new Set();
+            let settled = false;
+            let pcA = null;
+            let pcB = null;
+            let timer = null;
+            let toneCtx = null;
+            let toneOsc = null;
+
+            const cleanup = () => {
+                if (timer) clearTimeout(timer);
+                try { pcA?.close(); } catch {}
+                try { pcB?.close(); } catch {}
+                try { toneOsc?.stop(); } catch {}
+                try { toneCtx?.close(); } catch {}
+            };
+
+            const finish = (ok, msg) => {
+                if (settled) return;
+                settled = true;
+                cleanup();
+                resolve({ ok, msg, types: [...types] });
+            };
+
+            try {
+                pcA = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+                pcB = new RTCPeerConnection({ iceServers: ICE_SERVERS });
+            } catch (error) {
+                resolve({ ok: false, msg: "не удалось создать RTCPeerConnection: " + error.message, types: [] });
+                return;
+            }
+
+            timer = setTimeout(() => {
+                finish(false, "таймаут 12 с: ICE не прошёл даже между двумя пирами на одной странице");
+            }, timeout);
+
+            pcA.addEventListener("icecandidate", (event) => {
+                if (!event.candidate) return;
+                types.add(event.candidate.type || "unknown");
+                pcB.addIceCandidate(event.candidate).catch(() => {});
+            });
+
+            pcB.addEventListener("icecandidate", (event) => {
+                if (!event.candidate) return;
+                types.add(event.candidate.type || "unknown");
+                pcA.addIceCandidate(event.candidate).catch(() => {});
+            });
+
+            pcA.addEventListener("connectionstatechange", () => {
+                if (pcA.connectionState === "connected") {
+                    finish(true, "локальный ICE прошёл — стек WebRTC в браузере работает");
+                } else if (pcA.connectionState === "failed") {
+                    finish(false, "локальный ICE упал — проблема в браузере или в ICE-серверах");
+                }
+            });
+
+            (async () => {
+                // Синтетический тон, чтобы медиатранспорт был настоящим (микрофон не нужен).
+                let track = null;
+
+                try {
+                    const AudioCtor = window.AudioContext || window.webkitAudioContext;
+                    if (AudioCtor) {
+                        toneCtx = new AudioCtor();
+                        toneOsc = toneCtx.createOscillator();
+                        const destination = toneCtx.createMediaStreamDestination();
+                        toneOsc.connect(destination);
+                        toneOsc.start();
+                        track = destination.stream.getAudioTracks()[0];
+                    }
+                } catch (error) {
+                    console.warn("тестовый тон:", error);
+                }
+
+                if (track) {
+                    pcA.addTrack(track, new MediaStream([track]));
+                } else {
+                    pcA.addTransceiver("audio", { direction: "recvonly" });
+                }
+
+                pcB.addTransceiver("audio", { direction: "recvonly" });
+
+                const offer = await pcA.createOffer();
+                await pcA.setLocalDescription(offer);
+                await pcB.setRemoteDescription(offer);
+
+                const answer = await pcB.createAnswer();
+                await pcB.setLocalDescription(answer);
+                await pcA.setRemoteDescription(answer);
+            })().catch((error) => {
+                finish(false, "ошибка offer/answer: " + error.message);
+            });
+        });
+    }
+
+    async function runSelfTest() {
+        const lines = [];
+        const push = (text) => {
+            lines.push(text);
+            selfTestOut.textContent = lines.join("\n");
+        };
+
+        selfTestOut.hidden = false;
+        lines.length = 0;
+
+        push("Проверка WebRTC (встроенная, без внешних сервисов)");
+        push("");
+
+        const hasRtc = typeof RTCPeerConnection === "function";
+        push(`1. RTCPeerConnection: ${hasRtc ? "есть" : "НЕТ"}`);
+        push(`2. Secure context (HTTPS или localhost): ${window.isSecureContext ? "да" : "НЕТ — браузер заблокирует микрофон"}`);
+        push(`3. getUserMedia: ${navigator.mediaDevices?.getUserMedia ? "есть" : "НЕТ"}`);
+        push(`4. Страница: ${location.protocol}//${location.host}`);
+        push(`5. ICE-серверы: ${iceSource}`);
+
+        push(`6. WebSocket: ${ws && ws.readyState === WebSocket.OPEN ? "открыт" : "нет связи"}`);
+
+        try {
+            const response = await fetch("/ice-config", { cache: "no-store" });
+            if (response.ok) {
+                const config = await response.json();
+                const servers = Array.isArray(config?.iceServers) ? config.iceServers : [];
+                const turnCount = servers.filter((server) => {
+                    const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
+                    return urls.some((url) => String(url).startsWith("turn"));
+                }).length;
+                push(`7. /ice-config: ${servers.length} записей, TURN: ${turnCount}`);
+            } else {
+                push(`7. /ice-config: ответ ${response.status}`);
+            }
+        } catch (error) {
+            push(`7. /ice-config: недоступен (${error.message})`);
+        }
+
+        if (!hasRtc) {
+            push("");
+            push("Дальше проверять нечего: браузер без WebRTC.");
+            return;
+        }
+
+        push("");
+        push("8. Локальный ICE: два RTCPeerConnection на этой странице...");
+        const result = await localLoopTest();
+        push(result.ok ? `   ✓ ${result.msg}` : `   ✗ ${result.msg}`);
+        push(`   типы кандидатов: ${result.types.join(", ") || "нет"}`);
+        if (result.types.length && !result.types.includes("relay")) {
+            push("   relay нет — это нормально для локальной сети, но для связи через интернет нужен TURN");
+        }
+
+        push("");
+        const micTrack = getMicTrack();
+        if (micTrack && micTrack.readyState === "live") {
+            push(`9. Микрофон: включён (${micTrack.label || "без имени"})`);
+        } else if (!navigator.mediaDevices?.getUserMedia) {
+            push("9. Микрофон: недоступен без HTTPS/localhost");
+        } else {
+            push("9. Микрофон: ещё не запрошен — нажмите «Включить микрофон»");
+        }
+
+        push("");
+        const peerEntries = [...peers.values()];
+        if (peerEntries.length) {
+            for (const entry of peerEntries) {
+                push(`10. Пир ${entry.id}: pc=${entry.pc.connectionState} ice=${entry.pc.iceConnectionState} sig=${entry.pc.signalingState}`);
+            }
+        } else {
+            push("10. Пиров нет — соединение ещё не устанавливалось");
+        }
+    }
+
+    // ---------------------------------------------------------------------
+    // СЕССИЯ
+    // ---------------------------------------------------------------------
     async function startSoloSearch() {
         if (!ws || ws.readyState !== WebSocket.OPEN) {
             addMessage("Сервер ещё не подключён.", "sys");
@@ -1512,11 +1972,14 @@
 
         clearSearchTimer();
         closeAllPeers();
+        outbox = [];
         remoteUsers.clear();
         clearMessages();
 
         mode = "search";
         showView("queue");
+        document.querySelector(".queue-title").textContent = "Вы в очереди ожидания";
+        document.querySelector(".queue-sub").textContent = "Откройте сайт на втором устройстве и тоже начните поиск.";
         startSearchTimer();
         updateButtons();
         setPartnerAvatar("LIKODOPT");
@@ -1538,6 +2001,7 @@
 
         clearSearchTimer();
         closeAllPeers();
+        outbox = [];
         remoteUsers.clear();
         clearMessages();
 
@@ -1555,11 +2019,11 @@
         }
     }
 
-    function resetLocalSession() {
+    function resetLocalSession(options = {}) {
         clearSearchTimer();
         closeAllPeers();
         remoteUsers.clear();
-        stopMic();
+        if (options.keepMic !== true) stopMic();
 
         mode = "idle";
         showView("idle");
@@ -1635,6 +2099,18 @@
     btnMute.addEventListener("click", toggleMic);
     btnTestSound.addEventListener("click", testSpeakers);
 
+    btnSelfTest.addEventListener("click", () => {
+        btnSelfTest.disabled = true;
+        runSelfTest()
+            .catch((error) => {
+                selfTestOut.hidden = false;
+                selfTestOut.textContent = "Проверка прервалась: " + error.message;
+            })
+            .finally(() => {
+                btnSelfTest.disabled = false;
+            });
+    });
+
     document.addEventListener("pointerdown", () => {
         if (audioContext?.state === "suspended") {
             audioContext.resume().catch(() => {});
@@ -1664,7 +2140,8 @@
     updateButtons();
     updateMicUI();
     startLevelMeter();
-    addMessage("Для соединения нужен запущенный server.js. Нажмите «Тест динамиков», чтобы проверить вывод звука.", "sys");
+    loadIceConfig();
+    addMessage("Для соединения нужен запущенный server.js. Кнопка «Проверка WebRTC» проверяет всё локально.", "sys");
     connectWebSocket();
 })();
 </script>
