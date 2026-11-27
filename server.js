@@ -1,65 +1,242 @@
 "use strict";
 
+/**
+ * Likodopt — сигнальный сервер (Node.js + ws)
+ *
+ * Запуск:
+ *   npm init -y && npm i ws
+ *   node server.js
+ *
+ * HTTPS (нужен для микрофона на телефоне и по LAN-IP):
+ *   TLS_KEY=./certs/key.pem TLS_CERT=./certs/cert.pem node server.js
+ *
+ * TURN (нужен, когда участники в разных сетях):
+ *   TURN_URLS=turn:turn.example.com:3478,TURN_USERNAME=user,TURN_CREDENTIAL=pass
+ *   (все три — переменные окружения, а не один аргумент)
+ *
+ * Прочие переменные: PORT, HOST, STUN_URLS, ICE_TTL
+ */
+
 const http = require("http");
+const https = require("https");
 const fs = require("fs");
 const path = require("path");
-const { WebSocketServer } = require("ws");
+const { WebSocketServer, WebSocket } = require("ws");
 
 const PORT = Number(process.env.PORT) || 3000;
+const HOST = process.env.HOST || "0.0.0.0";
 const ROOT = __dirname;
 
 const MIME = {
     ".html": "text/html; charset=utf-8",
+    ".htm": "text/html; charset=utf-8",
     ".js": "text/javascript; charset=utf-8",
+    ".mjs": "text/javascript; charset=utf-8",
     ".css": "text/css; charset=utf-8",
     ".json": "application/json; charset=utf-8",
+    ".map": "application/json; charset=utf-8",
+    ".txt": "text/plain; charset=utf-8",
     ".jpg": "image/jpeg",
     ".jpeg": "image/jpeg",
     ".png": "image/png",
     ".webp": "image/webp",
     ".gif": "image/gif",
     ".svg": "image/svg+xml",
-    ".ico": "image/x-icon"
+    ".ico": "image/x-icon",
+    ".woff": "font/woff",
+    ".woff2": "font/woff2",
+    ".ttf": "font/ttf",
+    ".mp3": "audio/mpeg",
+    ".ogg": "audio/ogg",
+    ".wav": "audio/wav"
 };
 
-const server = http.createServer((req, res) => {
-    let pathname;
+// Отдаём по HTTP только это. Всё остальное — 404.
+const ALLOWED_EXTENSIONS = new Set(Object.keys(MIME));
 
-    try {
-        pathname = decodeURIComponent(new URL(req.url, "http://localhost").pathname);
-    } catch {
-        res.writeHead(400);
-        res.end("Bad request");
-        return;
+// И это не отдаём никогда, даже если расширение разрешено.
+const DENIED_FILES = new Set([
+    "server.js",
+    "package.json",
+    "package-lock.json",
+    "yarn.lock",
+    ".env",
+    ".env.local",
+    ".gitignore",
+    ".npmrc"
+]);
+
+const DENIED_DIRS = new Set(["node_modules", "certs", ".git", ".vscode", ".idea"]);
+
+const SIGNAL_WINDOW_MS = 10000;
+const SIGNAL_LIMIT = 300;
+const PRUNE_INTERVAL_MS = 5000;
+const HEARTBEAT_INTERVAL_MS = 30000;
+
+// ---------------------------------------------------------------------------
+// ICE-конфигурация (отдаётся клиенту через /ice-config)
+// ---------------------------------------------------------------------------
+function splitEnv(name, fallback) {
+    const raw = name in process.env ? process.env[name] : fallback;
+    return String(raw || "")
+        .split(",")
+        .map((item) => item.trim())
+        .filter(Boolean);
+}
+
+function buildIceConfig() {
+    const iceServers = [];
+
+    const stunUrls = splitEnv("STUN_URLS", "stun:stun.l.google.com:19302,stun:stun1.l.google.com:19302");
+    if (stunUrls.length) iceServers.push({ urls: stunUrls });
+
+    const turnUrls = splitEnv("TURN_URLS", "");
+    if (turnUrls.length) {
+        const turn = { urls: turnUrls };
+        if (process.env.TURN_USERNAME) turn.username = process.env.TURN_USERNAME;
+        if (process.env.TURN_CREDENTIAL) turn.credential = process.env.TURN_CREDENTIAL;
+        iceServers.push(turn);
     }
 
-    if (pathname === "/") pathname = "/index.html";
+    return {
+        iceServers,
+        ttl: Number(process.env.ICE_TTL) || 3600
+    };
+}
 
+const ICE_CONFIG = buildIceConfig();
+const HAS_TURN = ICE_CONFIG.iceServers.some((server) => {
+    const urls = Array.isArray(server.urls) ? server.urls : [server.urls];
+    return urls.some((url) => String(url).startsWith("turn"));
+});
+
+// ---------------------------------------------------------------------------
+// HTTP: статика + служебные эндпоинты
+// ---------------------------------------------------------------------------
+function sendJson(res, status, payload) {
+    const body = JSON.stringify(payload);
+    res.writeHead(status, {
+        "Content-Type": "application/json; charset=utf-8",
+        "Content-Length": Buffer.byteLength(body),
+        "Cache-Control": "no-store"
+    });
+    res.end(body);
+}
+
+function sendText(res, status, text) {
+    res.writeHead(status, {
+        "Content-Type": "text/plain; charset=utf-8",
+        "Content-Length": Buffer.byteLength(text),
+        "Cache-Control": "no-store"
+    });
+    res.end(text);
+}
+
+function isPathSafe(filePath) {
+    return filePath === ROOT || filePath.startsWith(ROOT + path.sep);
+}
+
+function isDenied(filePath) {
+    const relative = path.relative(ROOT, filePath);
+    const parts = relative.split(path.sep);
+
+    if (parts.some((part) => part.startsWith(".") || DENIED_DIRS.has(part))) return true;
+
+    return DENIED_FILES.has(parts[parts.length - 1].toLowerCase());
+}
+
+function serveStatic(req, res, pathname) {
     const filePath = path.resolve(ROOT, "." + pathname);
 
-    if (filePath !== ROOT && !filePath.startsWith(ROOT + path.sep)) {
-        res.writeHead(403);
-        res.end("Forbidden");
+    if (!isPathSafe(filePath) || isDenied(filePath)) {
+        sendText(res, 404, "Файл не найден");
         return;
     }
 
-    fs.stat(filePath, (error, stat) => {
-        if (error || !stat.isFile()) {
-            res.writeHead(404, { "Content-Type": "text/plain; charset=utf-8" });
-            res.end("Файл не найден");
+    const extension = path.extname(filePath).toLowerCase();
+
+    if (!ALLOWED_EXTENSIONS.has(extension)) {
+        sendText(res, 404, "Файл не найден");
+        return;
+    }
+
+    fs.stat(filePath, (statError, stat) => {
+        if (statError || !stat.isFile()) {
+            sendText(res, 404, "Файл не найден");
             return;
         }
 
         res.writeHead(200, {
-            "Content-Type": MIME[path.extname(filePath).toLowerCase()] || "application/octet-stream",
-            "Cache-Control": "no-cache"
+            "Content-Type": MIME[extension] || "application/octet-stream",
+            "Content-Length": stat.size,
+            "Cache-Control": "no-cache",
+            "Permissions-Policy": "microphone=(self)",
+            "X-Content-Type-Options": "nosniff"
         });
+
+        if (req.method === "HEAD") {
+            res.end();
+            return;
+        }
 
         const stream = fs.createReadStream(filePath);
         stream.on("error", () => res.destroy());
         stream.pipe(res);
     });
-});
+}
+
+function handleRequest(req, res) {
+    if (req.method !== "GET" && req.method !== "HEAD") {
+        sendText(res, 405, "Method not allowed");
+        return;
+    }
+
+    let pathname;
+
+    try {
+        pathname = decodeURIComponent(new URL(req.url, "http://localhost").pathname);
+    } catch {
+        sendText(res, 400, "Bad request");
+        return;
+    }
+
+    if (pathname === "/healthz") {
+        sendJson(res, 200, {
+            ok: true,
+            uptime: Math.round(process.uptime()),
+            clients: wss ? wss.clients.size : 0,
+            rooms: rooms.size,
+            turn: HAS_TURN
+        });
+        return;
+    }
+
+    if (pathname === "/ice-config") {
+        sendJson(res, 200, ICE_CONFIG);
+        return;
+    }
+
+    if (pathname === "/") pathname = "/index.html";
+
+    serveStatic(req, res, pathname);
+}
+
+// ---------------------------------------------------------------------------
+// Транспорт: HTTP или HTTPS (если заданы TLS_KEY / TLS_CERT)
+// ---------------------------------------------------------------------------
+let server;
+
+if (process.env.TLS_KEY && process.env.TLS_CERT) {
+    server = https.createServer(
+        {
+            key: fs.readFileSync(path.resolve(process.env.TLS_KEY)),
+            cert: fs.readFileSync(path.resolve(process.env.TLS_CERT))
+        },
+        handleRequest
+    );
+} else {
+    server = http.createServer(handleRequest);
+}
 
 const wss = new WebSocketServer({
     server,
@@ -67,12 +244,15 @@ const wss = new WebSocketServer({
     maxPayload: 128 * 1024
 });
 
+// ---------------------------------------------------------------------------
+// Комнаты и состояние
+// ---------------------------------------------------------------------------
 let nextClientId = 1;
 let waitingSolo = [];
 const rooms = new Map();
 
 function send(ws, type, data = {}) {
-    if (ws.readyState === ws.OPEN) {
+    if (ws.readyState === WebSocket.OPEN) {
         ws.send(JSON.stringify({ type, ...data }));
     }
 }
@@ -89,6 +269,10 @@ function publicUser(ws) {
         id: ws.clientId,
         nick: ws.nick
     };
+}
+
+function isAliveSocket(ws) {
+    return Boolean(ws) && ws.readyState === WebSocket.OPEN;
 }
 
 function makeRoom(mode, maxMembers) {
@@ -152,7 +336,7 @@ function joinSolo(ws) {
 
         if (
             candidate !== ws &&
-            candidate.readyState === candidate.OPEN &&
+            isAliveSocket(candidate) &&
             !candidate.room
         ) {
             partner = candidate;
@@ -170,16 +354,21 @@ function joinSolo(ws) {
     partner.room = room;
     ws.room = room;
 
-    // Первый участник ждал. Второй участник создаёт WebRTC-предложение.
+    // Ждавший участник инициирует соединение, пришедший — отвечает.
+    // Клиент всё равно использует perfect negotiation, флаг нужен для порядка.
     send(partner, "peer-joined", {
         mode: "solo",
         code: room.id,
+        count: 2,
+        initiator: false,
         peer: publicUser(ws)
     });
 
     send(ws, "joined", {
         mode: "solo",
         code: room.id,
+        count: 2,
+        initiator: true,
         peers: [publicUser(partner)]
     });
 }
@@ -195,22 +384,28 @@ function joinGroup(ws) {
 
     const existingPeers = room.members.map(publicUser);
 
+    // Сначала добавляем участника в комнату — иначе его сигналы могут
+    // прийти от уже подключённых раньше, чем он попадёт в room.members.
+    room.members.push(ws);
+    ws.room = room;
+
     for (const member of room.members) {
+        if (member === ws) continue;
+
         send(member, "peer-joined", {
             mode: "group",
             code: room.id,
-            count: room.members.length + 1,
+            count: room.members.length,
+            initiator: true,
             peer: publicUser(ws)
         });
     }
-
-    room.members.push(ws);
-    ws.room = room;
 
     send(ws, "joined", {
         mode: "group",
         code: room.id,
         count: room.members.length,
+        initiator: false,
         peers: existingPeers
     });
 }
@@ -223,11 +418,57 @@ function broadcastOnline() {
     }
 }
 
+function allowSignal(ws) {
+    const now = Date.now();
+
+    ws.signalTimes = (ws.signalTimes || []).filter((time) => now - time < SIGNAL_WINDOW_MS);
+    ws.signalTimes.push(now);
+
+    return ws.signalTimes.length <= SIGNAL_LIMIT;
+}
+
+// Чистим мёртвые сокеты: иначе в очереди и комнатах копятся «зомби»,
+// с которыми клиент честно пытается установить WebRTC и получает 0/1.
+function prune() {
+    waitingSolo = waitingSolo.filter((client) => isAliveSocket(client) && !client.room);
+
+    for (const room of [...rooms.values()]) {
+        const dead = room.members.filter((member) => !isAliveSocket(member));
+
+        for (const member of dead) {
+            member.room = null;
+            room.members = room.members.filter((item) => item !== member);
+
+            if (room.mode === "solo") {
+                for (const other of room.members) {
+                    other.room = null;
+                    send(other, "room-closed", { reason: "Собеседник отключился." });
+                }
+                room.members = [];
+            } else {
+                for (const other of room.members) {
+                    send(other, "peer-left", {
+                        peerId: member.clientId,
+                        count: room.members.length,
+                        code: room.id
+                    });
+                }
+            }
+        }
+
+        if (room.members.length === 0) rooms.delete(room.id);
+    }
+}
+
+// ---------------------------------------------------------------------------
+// WebSocket
+// ---------------------------------------------------------------------------
 wss.on("connection", (ws) => {
     ws.clientId = `u${nextClientId++}`;
-    ws.nick = `Гость-${String(ws.clientId).replace(/\D/g, "").padStart(4, "0")}`;
+    ws.nick = `Гость-${String(nextClientId).padStart(4, "0")}`;
     ws.room = null;
     ws.isAlive = true;
+    ws.signalTimes = [];
 
     send(ws, "welcome", { id: ws.clientId });
     broadcastOnline();
@@ -275,9 +516,9 @@ wss.on("connection", (ws) => {
 
         if (message.type === "chat") {
             const room = ws.room;
-            const text = String(message.text || "").slice(0, 500);
+            const text = String(message.text || "").slice(0, 500).trim();
 
-            if (!room || !text.trim()) return;
+            if (!room || !text) return;
 
             for (const member of room.members) {
                 if (member === ws) continue;
@@ -296,11 +537,13 @@ wss.on("connection", (ws) => {
             const room = ws.room;
             if (!room) return;
 
+            if (!allowSignal(ws)) return;
+
             const target = room.members.find(
                 (member) => member.clientId === String(message.to || "")
             );
 
-            if (!target || target === ws) return;
+            if (!target || target === ws || !isAliveSocket(target)) return;
 
             send(target, "signal", {
                 from: ws.clientId,
@@ -319,6 +562,9 @@ wss.on("connection", (ws) => {
     });
 });
 
+// ---------------------------------------------------------------------------
+// Таймеры
+// ---------------------------------------------------------------------------
 const heartbeat = setInterval(() => {
     for (const ws of wss.clients) {
         if (ws.isAlive === false) {
@@ -329,11 +575,52 @@ const heartbeat = setInterval(() => {
         ws.isAlive = false;
         ws.ping();
     }
-}, 30000);
+}, HEARTBEAT_INTERVAL_MS);
 
-wss.on("close", () => clearInterval(heartbeat));
+const pruner = setInterval(prune, PRUNE_INTERVAL_MS);
 
-server.listen(PORT, "0.0.0.0", () => {
-    console.log(`Likodopt запущен: http://localhost:${PORT}`);
-    console.log("Для проверки откройте сайт в двух вкладках или на двух устройствах.");
+wss.on("close", () => {
+    clearInterval(heartbeat);
+    clearInterval(pruner);
 });
+
+// ---------------------------------------------------------------------------
+// Старт
+// ---------------------------------------------------------------------------
+server.listen(PORT, HOST, () => {
+    const scheme = process.env.TLS_KEY && process.env.TLS_CERT ? "https" : "http";
+
+    console.log(`Likodopt запущен: ${scheme}://localhost:${PORT}`);
+    console.log(`Комнат: ${rooms.size} · ICE-серверов: ${ICE_CONFIG.iceServers.length}`);
+
+    if (scheme === "http") {
+        console.warn("ВНИМАНИЕ: без HTTPS микрофон работает только на localhost.");
+        console.warn("Для телефона/LAN-IP задайте TLS_KEY и TLS_CERT или используйте https-туннель.");
+    }
+
+    if (!HAS_TURN) {
+        console.warn("ВНИМАНИЕ: TURN не настроен (TURN_URLS/TURN_USERNAME/TURN_CREDENTIAL).");
+        console.warn("Участники в разных сетях (LTE + домашний Wi-Fi) не соединятся — будет 0/1.");
+    }
+
+    console.log("Проверка: откройте сайт в двух вкладках или на двух устройствах.");
+});
+
+function shutdown(signal) {
+    console.log(`\n${signal}: завершаем работу...`);
+
+    clearInterval(heartbeat);
+    clearInterval(pruner);
+
+    for (const ws of wss.clients) {
+        try { ws.close(1001, "server shutdown"); } catch {}
+    }
+
+    wss.close(() => {
+        server.close(() => process.exit(0));
+        setTimeout(() => process.exit(0), 3000).unref();
+    });
+}
+
+process.on("SIGINT", () => shutdown("SIGINT"));
+process.on("SIGTERM", () => shutdown("SIGTERM"));
